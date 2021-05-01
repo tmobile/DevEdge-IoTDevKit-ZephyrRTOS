@@ -204,11 +204,7 @@ static int gpio_qdec_init(const struct device *dev)
 			return ret;
 		}
 
-		ret = gpio_add_callback_dt(gpio, &data->gpio_cb);
-		if (ret < 0) {
-			LOG_ERR("Could not set gpio callback");
-			return ret;
-		}
+		gpio_add_callback_dt(gpio, &data->gpio_cb);
 	}
 
 	data->prev_step = gpio_qdec_get_step(dev);
