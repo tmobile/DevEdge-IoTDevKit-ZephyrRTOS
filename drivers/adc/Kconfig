@@ -78,4 +78,5 @@ source "drivers/adc/Kconfig.gecko"
 
 source "drivers/adc/Kconfig.gd32"
 
+source "drivers/adc/Kconfig.ads1119"
 endif # ADC
