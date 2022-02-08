@@ -245,6 +245,9 @@ manifest:
       path: modules/tee/tf-m/psa-arch-tests
       groups:
         - tee
+    - name: uoscore-uedhoc
+      revision: e8920192b66db4f909eb9cd3f155d5245c1ae825
+      path: modules/lib/uoscore-uedhoc
     - name: wiseconnect
       revision: b5826aa21a3e087d7fbb5cad1e47ebb86f6409ee
       path: modules/hal/silabs_wiseconnect
