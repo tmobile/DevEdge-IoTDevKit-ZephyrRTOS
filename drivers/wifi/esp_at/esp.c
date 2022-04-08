@@ -1184,7 +1184,7 @@ static void esp_init_work(struct k_work *work)
 static int esp_reset(const struct device *dev)
 {
 	struct esp_data *data = dev->data;
-	int ret;
+	int ret = -EAGAIN;
 
 	if (net_if_is_carrier_ok(data->net_iface)) {
 		net_if_carrier_off(data->net_iface);
@@ -1203,6 +1203,10 @@ static int esp_reset(const struct device *dev)
 	k_sleep(K_MSEC(100));
 	gpio_pin_set_dt(&config->reset, 0);
 #else
+#if DT_INST_NODE_HAS_PROP(0, external_reset)
+	/* Wait to see if the interface comes up by itself */
+	ret = k_sem_take(&data->sem_if_ready, K_MSEC(CONFIG_WIFI_ESP_AT_RESET_TIMEOUT));
+#endif
 	int retries = 3;
 
 	/* Don't need to run this if the interface came up by itself */
