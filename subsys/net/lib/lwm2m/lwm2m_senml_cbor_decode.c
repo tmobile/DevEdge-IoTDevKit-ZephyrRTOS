@@ -9,9 +9,10 @@
  * Generated with a --default-max-qty of 99
  */
 
-#include <stdint.h>
+
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include "zcbor_decode.h"
 #include "lwm2m_senml_cbor_decode.h"

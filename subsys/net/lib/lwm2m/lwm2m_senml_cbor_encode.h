@@ -12,9 +12,9 @@
 #ifndef LWM2M_SENML_CBOR_ENCODE_H__
 #define LWM2M_SENML_CBOR_ENCODE_H__
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include "zcbor_encode.h"
 #include "lwm2m_senml_cbor_types.h"
