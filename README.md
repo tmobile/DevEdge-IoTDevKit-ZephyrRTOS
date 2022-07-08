@@ -1,2 +1,2 @@
-# DevEdge-IoTDevKit-ZephyrOS
-T-Mobile Zephyr OS
+# DevEdge-IoTDevKit-ZephyrRTOS
+T-Mobile Zephyr RTOS Fork
