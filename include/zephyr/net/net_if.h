@@ -2332,8 +2332,6 @@ struct net_if_api {
 	NET_IF_INIT(dev_name, 0, l2, mtu, NET_IF_MAX_CONFIGS)
 
 /**
- * @def NET_DEVICE_INIT
- *
  * @brief Create a network interface and bind it to network device.
  *
  * @param dev_name Network device name.
@@ -2360,8 +2358,6 @@ struct net_if_api {
 			l2_ctx_type, mtu)
 
 /**
- * @def NET_DEVICE_DT_DEFINE
- *
  * @brief Like NET_DEVICE_INIT but taking metadata from a devicetree node.
  * Create a network interface and bind it to network device.
  *
@@ -2387,8 +2383,6 @@ struct net_if_api {
 			  l2_ctx_type, mtu)
 
 /**
- * @def NET_DEVICE_DT_INST_DEFINE
- *
  * @brief Like NET_DEVICE_DT_DEFINE for an instance of a DT_DRV_COMPAT compatible
  *
  * @param inst instance number.  This is replaced by
@@ -2411,8 +2405,6 @@ struct net_if_api {
 	NET_IF_INIT(dev_name, instance, l2, mtu, NET_IF_MAX_CONFIGS)
 
 /**
- * @def NET_DEVICE_INIT_INSTANCE
- *
  * @brief Create multiple network interfaces and bind them to network device.
  * If your network device needs more than one instance of a network interface,
  * use this macro below and provide a different instance suffix each time
@@ -2444,8 +2436,6 @@ struct net_if_api {
 				   l2_ctx_type, mtu)
 
 /**
- * @def NET_DEVICE_DT_DEFINE_INSTANCE
- *
  * @brief Like NET_DEVICE_OFFLOAD_INIT but taking metadata from a devicetree.
  * Create multiple network interfaces and bind them to network device.
  * If your network device needs more than one instance of a network interface,
@@ -2478,8 +2468,6 @@ struct net_if_api {
 				   l2, l2_ctx_type, mtu)
 
 /**
- * @def NET_DEVICE_DT_INST_DEFINE_INSTANCE
- *
  * @brief Like NET_DEVICE_DT_DEFINE_INSTANCE for an instance of a DT_DRV_COMPAT
  * compatible
  *
@@ -2501,8 +2489,6 @@ struct net_if_api {
 	NET_IF_OFFLOAD_INIT(dev_name, 0, mtu)
 
 /**
- * @def NET_DEVICE_OFFLOAD_INIT
- *
  * @brief Create a offloaded network interface and bind it to network device.
  * The offloaded network interface is implemented by a device vendor HAL or
  * similar.
@@ -2528,8 +2514,6 @@ struct net_if_api {
 				api, mtu)
 
 /**
- * @def NET_DEVICE_DT_OFFLOAD_DEFINE
- *
  * @brief Like NET_DEVICE_OFFLOAD_INIT but taking metadata from a devicetree
  * node. Create a offloaded network interface and bind it to network device.
  * The offloaded network interface is implemented by a device vendor HAL or
@@ -2555,8 +2539,6 @@ struct net_if_api {
 				  prio, api, mtu)
 
 /**
- * @def NET_DEVICE_DT_INST_OFFLOAD_DEFINE
- *
  * @brief Like NET_DEVICE_DT_OFFLOAD_DEFINE for an instance of a DT_DRV_COMPAT
  * compatible
  *
