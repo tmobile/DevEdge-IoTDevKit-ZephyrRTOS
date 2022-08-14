@@ -232,3 +232,32 @@ static int wifi_get_status(uint32_t mgmt_request, struct net_if *iface,
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_STATUS, wifi_get_status);
+
+#ifdef CONFIG_NET_STATISTICS_WIFI
+static int wifi_iface_stats(uint32_t mgmt_request, struct net_if *iface,
+			  void *data, size_t len)
+{
+	int ret;
+	const struct device *dev = net_if_get_device(iface);
+	struct net_wifi_mgmt_offload *off_api =
+		(struct net_wifi_mgmt_offload *) dev->api;
+	struct net_stats_wifi *stats = data;
+
+	if (off_api == NULL || off_api->get_stats == NULL) {
+		return -ENOTSUP;
+	}
+
+	if (!data || len != sizeof(*stats)) {
+		return -EINVAL;
+	}
+
+	ret = off_api->get_stats(dev, stats);
+
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_STATS_GET_WIFI, wifi_iface_stats);
+#endif /* CONFIG_NET_STATISTICS_WIFI */
