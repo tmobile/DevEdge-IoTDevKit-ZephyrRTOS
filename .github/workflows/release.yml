@@ -22,12 +22,12 @@ jobs:
         with:
           args: spdx -o zephyr-${{ steps.get_version.outputs.VERSION }}.spdx
 
-      # - name: upload-results
-      #   uses: actions/upload-artifact@master
-      #   continue-on-error: True
-      #   with:
-      #     name: zephyr-${{ steps.get_version.outputs.VERSION }}.spdx
-      #     path: zephyr-${{ steps.get_version.outputs.VERSION }}.spdx
+      - name: upload-results
+        uses: actions/upload-artifact@v3
+        continue-on-error: True
+        with:
+          name: zephyr-${{ steps.get_version.outputs.VERSION }}.spdx
+          path: zephyr-${{ steps.get_version.outputs.VERSION }}.spdx
 
       - name: Get Diff since last tag
         run: |
