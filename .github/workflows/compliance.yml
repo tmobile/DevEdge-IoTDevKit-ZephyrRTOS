@@ -75,12 +75,12 @@ jobs:
         git log  --pretty=oneline | head -n 10
         ./scripts/ci/check_compliance.py -m Devicetree -m Gitlint -m Identity -m Nits -m pylint -m checkpatch -m Kconfig -c origin/${BASE_REF}..
 
-    # - name: upload-results
-    #   uses: actions/upload-artifact@master
-    #   continue-on-error: True
-    #   with:
-    #     name: compliance.xml
-    #     path: compliance.xml
+    - name: upload-results
+      uses: actions/upload-artifact@v3
+      continue-on-error: True
+      with:
+        name: compliance.xml
+        path: compliance.xml
 
     - name: check-warns
       run: |
