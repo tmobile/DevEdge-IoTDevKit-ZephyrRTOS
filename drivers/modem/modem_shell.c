@@ -15,6 +15,7 @@
 
 #include "modem_sms.h"
 
+#include <zephyr/kernel.h>
 #include <stdlib.h>
 #include <string.h>
 
