@@ -2330,7 +2330,7 @@ struct net_if_api {
 #define Z_NET_DEVICE_INIT(node_id, dev_name, drv_name, init_fn,		\
 			pm_action_cb, data, cfg, prio, api, l2,	\
 			l2_ctx_type, mtu)				\
-	Z_DEVICE_STATE_DEFINE(node_id, dev_name)			\
+	Z_DEVICE_STATE_DEFINE(node_id, dev_name);			\
 	Z_DEVICE_DEFINE(node_id, dev_name, drv_name, init_fn,		\
 			pm_action_cb, data,				\
 			cfg, POST_KERNEL, prio, api,			\
@@ -2404,7 +2404,7 @@ struct net_if_api {
 				   instance, init_fn, pm_action_cb,	\
 				   data, cfg, prio, api, l2,		\
 				   l2_ctx_type, mtu)			\
-	Z_DEVICE_STATE_DEFINE(node_id, dev_name)			\
+	Z_DEVICE_STATE_DEFINE(node_id, dev_name);			\
 	Z_DEVICE_DEFINE(node_id, dev_name, drv_name, init_fn,		\
 			pm_action_cb, data, cfg, POST_KERNEL,		\
 			prio, api, &Z_DEVICE_STATE_NAME(dev_name));	\
@@ -2489,7 +2489,7 @@ struct net_if_api {
 #define Z_NET_DEVICE_OFFLOAD_INIT(node_id, dev_name, drv_name, init_fn,	\
 				  pm_action_cb, data, cfg, prio,	\
 				  api, mtu)				\
-	Z_DEVICE_STATE_DEFINE(node_id, dev_name)			\
+	Z_DEVICE_STATE_DEFINE(node_id, dev_name);			\
 	Z_DEVICE_DEFINE(node_id, dev_name, drv_name, init_fn,		\
 		pm_action_cb, data, cfg, POST_KERNEL, prio, api,	\
 		&Z_DEVICE_STATE_NAME(dev_name));			\
