@@ -8,8 +8,10 @@ concurrency:
 
 jobs:
   clang-build:
-    if: github.repository_owner == 'zephyrproject-rtos'
-    runs-on: zephyr-runner-linux-x64-4xlarge
+    # if: github.repository_owner == 'zephyrproject-rtos'
+    # runs-on: zephyr-runner-linux-x64-4xlarge
+    runs-on: self-hosted
+    needs: clang-build-prep
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.24.5
       options: '--entrypoint /bin/bash'
