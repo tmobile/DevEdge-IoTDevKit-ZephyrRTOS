@@ -15,7 +15,7 @@ jobs:
           access_token: ${{ github.token }}
 
   codecov:
-    runs-on: zephyr_runner
+    runs-on: self-hosted
     needs: codecov-prep
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.23.3
