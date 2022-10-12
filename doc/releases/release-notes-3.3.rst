@@ -678,6 +678,10 @@ Libraries / Subsystems
   * Replaced all :c:func:`k_panic` invocations within settings backend
     initialization with returning / propagating error codes.
 
+* LwM2M
+
+  * The ``lwm2m_senml_cbor_*`` files have been regenerated using zcbor 0.6.0.
+
 HALs
 ****
 
