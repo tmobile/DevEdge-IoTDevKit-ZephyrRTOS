@@ -265,7 +265,7 @@ manifest:
       groups:
         - hal
     - name: zcbor
-      revision: a0d6981f14d4001d6f0d608d1a427f9bc6bb6d02
+      revision: 0.6.0
       path: modules/lib/zcbor
     - name: zscilib
       path: modules/lib/zscilib
