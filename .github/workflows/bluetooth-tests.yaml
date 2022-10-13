@@ -63,19 +63,19 @@ jobs:
           RESULTS_FILE=${ZEPHYR_BASE}/${bsim_bt_test_results_file} \
           SEARCH_PATH=tests/bluetooth/bsim_bt/ tests/bluetooth/bsim_bt/run_parallel.sh
 
-      # - name: Upload Test Results
-      #   if: always()
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: bluetooth-test-results
-      #     path: |
-      #       ./bsim_bt_out/bsim_results.xml
-      #       ${{ github.event_path }}
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: bluetooth-test-results
+          path: |
+            ./bsim_bt_out/bsim_results.xml
+            ${{ github.event_path }}
 
-      # - name: Upload Event Details
-      #   if: always()
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: event
-      #     path: |
-      #       ${{ github.event_path }}
+      - name: Upload Event Details
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: event
+          path: |
+            ${{ github.event_path }}

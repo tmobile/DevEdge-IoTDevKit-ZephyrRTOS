@@ -106,12 +106,12 @@ jobs:
         echo "${PR_NUM}" > pr_num
         echo "Documentation will be available shortly at: ${DOC_URL}" >> $GITHUB_STEP_SUMMARY
 
-    # - name: upload-pr-number
-    #   uses: actions/upload-artifact@v2
-    #   if: github.event_name == 'pull_request'
-    #   with:
-    #     name: pr_num
-    #     path: pr_num
+    - name: upload-pr-number
+      uses: actions/upload-artifact@v3
+      if: github.event_name == 'pull_request'
+      with:
+        name: pr_num
+        path: pr_num
 
   doc-build-pdf:
     name: "Documentation Build (PDF)"

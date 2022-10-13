@@ -92,12 +92,12 @@ jobs:
         run: |
           ccache -s
 
-      # - name: Upload Coverage Results
-      #   if: always()
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: Coverage Data (Subset ${{ matrix.platform }})
-      #     path: coverage/reports/${{ matrix.platform }}.info
+      - name: Upload Coverage Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Coverage Data (Subset ${{ matrix.platform }})
+          path: coverage/reports/${{ matrix.platform }}.info
 
   codecov-results:
     name: "Publish Coverage Results"

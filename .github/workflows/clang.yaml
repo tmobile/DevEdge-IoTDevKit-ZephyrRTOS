@@ -116,12 +116,12 @@ jobs:
         run: |
           ccache -s
 
-      # - name: Upload Unit Test Results
-      #   if: always() && steps.twister.outputs.report_needed != 0
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: Unit Test Results (Subset ${{ matrix.platform }})
-      #     path: twister-out/twister.xml
+      - name: Upload Unit Test Results
+        if: always() && steps.twister.outputs.report_needed != 0
+        uses: actions/upload-artifact@v3
+        with:
+          name: Unit Test Results (Subset ${{ matrix.platform }})
+          path: twister-out/twister.xml
 
   # clang-build-results:
   #   name: "Publish Unit Tests Results"
@@ -139,14 +139,14 @@ jobs:
   #         junitparser merge artifacts/*/twister.xml junit.xml
   #         junit2html junit.xml junit-clang.html
 
-      # - name: Upload Unit Test Results in HTML
-      #   if: always()
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: HTML Unit Test Results
-      #     if-no-files-found: ignore
-      #     path: |
-      #       junit-clang.html
+      - name: Upload Unit Test Results in HTML
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: HTML Unit Test Results
+          if-no-files-found: ignore
+          path: |
+            junit-clang.html
 
       # - name: Publish Unit Test Results
       #   uses: EnricoMi/publish-unit-test-result-action@v1
