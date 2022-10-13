@@ -4,9 +4,18 @@ on:
   schedule:
     - cron: '25 */3 * * 1-5'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+#   cancel-in-progress: true
+jobs:
+  codecov-prep:
+    runs-on: self-hosted
+    if: github.repository == 'zephyrproject-rtos/zephyr'
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
 
 jobs:
   codecov:
@@ -103,17 +112,18 @@ jobs:
         run: |
           ccache -s
 
-      - name: Upload Coverage Results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: Coverage Data (Subset ${{ matrix.platform }})
-          path: coverage/reports/${{ matrix.platform }}.info
+      # - name: Upload Coverage Results
+      #   if: always()
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: Coverage Data (Subset ${{ matrix.platform }})
+      #     path: coverage/reports/${{ matrix.platform }}.info
 
   codecov-results:
     name: "Publish Coverage Results"
     needs: codecov
-    runs-on: ubuntu-20.04
+    # runs-on: ubuntu-20.04
+    runs-on: self-hosted
       # the codecov job might be skipped, we don't need to run this job then
     if: success() || failure()
 

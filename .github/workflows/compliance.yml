@@ -4,7 +4,8 @@ on: pull_request
 
 jobs:
   maintainer_check:
-    runs-on: ubuntu-20.04
+    # runs-on: ubuntu-20.04
+    runs-on: self-hosted
     name: Check MAINTAINERS file
     steps:
     - name: Checkout the code
@@ -12,15 +13,20 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.8.10'
     - name: Run Maintainers Script
       id: maintainer
       env:
         BASE_REF: ${{ github.base_ref }}
       run: |
+        pip install pyyaml
         python3 ./scripts/get_maintainer.py path CMakeLists.txt
 
   check_compliance:
-    runs-on: ubuntu-20.04
+    # runs-on: ubuntu-20.04
+    runs-on: self-hosted
     name: Run compliance checks on patch series (PR)
     steps:
     - name: Update PATH for west
@@ -71,12 +77,12 @@ jobs:
         git log  --pretty=oneline | head -n 10
         ./scripts/ci/check_compliance.py -m Devicetree -m Gitlint -m Identity -m Nits -m pylint -m checkpatch -m Kconfig -c origin/${BASE_REF}..
 
-    - name: upload-results
-      uses: actions/upload-artifact@v3
-      continue-on-error: True
-      with:
-        name: compliance.xml
-        path: compliance.xml
+    # - name: upload-results
+    #   uses: actions/upload-artifact@v3
+    #   continue-on-error: True
+    #   with:
+    #     name: compliance.xml
+    #     path: compliance.xml
 
     - name: check-warns
       run: |

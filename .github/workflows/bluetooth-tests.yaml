@@ -16,8 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bluetooth-test:
-    runs-on: ubuntu-20.04
+  # bluetooth-test:
+  #   runs-on: ubuntu-20.04
+  bluetooth-test-prep:
+    runs-on: self-hosted
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
+  bluetooth-test-build:
+    runs-on: self-hosted
+    needs: bluetooth-test-prep
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.24.5
       options: '--entrypoint /bin/bash'
@@ -65,19 +75,19 @@ jobs:
           RESULTS_FILE=${ZEPHYR_BASE}/${bsim_bt_test_results_file} \
           SEARCH_PATH=tests/bluetooth/bsim_bt/ tests/bluetooth/bsim_bt/run_parallel.sh
 
-      - name: Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: bluetooth-test-results
-          path: |
-            ./bsim_bt_out/bsim_results.xml
-            ${{ github.event_path }}
+      # - name: Upload Test Results
+      #   if: always()
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: bluetooth-test-results
+      #     path: |
+      #       ./bsim_bt_out/bsim_results.xml
+      #       ${{ github.event_path }}
 
-      - name: Upload Event Details
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: event
-          path: |
-            ${{ github.event_path }}
+      # - name: Upload Event Details
+      #   if: always()
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: event
+      #     path: |
+      #       ${{ github.event_path }}
