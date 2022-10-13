@@ -9,7 +9,7 @@ on:
 
 jobs:
   backport:
-    runs-on: ubuntu-18.04
+    runs-on: self-hosted
     name: Backport
     steps:
       - name: Backport

@@ -14,7 +14,7 @@ env:
 jobs:
   track-issues:
     name: "Collect Issue Stats"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.repository == 'zephyrproject-rtos/zephyr'
 
     steps:
@@ -34,12 +34,12 @@ jobs:
         outputPath: ${{ env.OUTPUT_FILE_NAME }}
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: upload-stats
-      uses: actions/upload-artifact@master
-      continue-on-error: True
-      with:
-        name: ${{ env.OUTPUT_FILE_NAME }}
-        path: ${{ env.OUTPUT_FILE_NAME }}
+    # - name: upload-stats
+    #   uses: actions/upload-artifact@master
+    #   continue-on-error: True
+    #   with:
+    #     name: ${{ env.OUTPUT_FILE_NAME }}
+    #     path: ${{ env.OUTPUT_FILE_NAME }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1

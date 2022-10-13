@@ -3,16 +3,8 @@ name: Build with Clang/LLVM
 on: pull_request_target
 
 jobs:
-  clang-build-prep:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.6.0
-        with:
-          access_token: ${{ github.token }}
   clang-build:
     runs-on: self-hosted
-    needs: clang-build-prep
     container:
       image: ghcr.io/zephyrproject-rtos/ci:v0.23.3
       options: '--entrypoint /bin/bash'
@@ -120,17 +112,17 @@ jobs:
         run: |
           ccache -s
 
-      - name: Upload Unit Test Results
-        if: always() && steps.twister.outputs.report_needed != 0
-        uses: actions/upload-artifact@v2
-        with:
-          name: Unit Test Results (Subset ${{ matrix.platform }})
-          path: twister-out/twister.xml
+      # - name: Upload Unit Test Results
+      #   if: always() && steps.twister.outputs.report_needed != 0
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: Unit Test Results (Subset ${{ matrix.platform }})
+      #     path: twister-out/twister.xml
 
   clang-build-results:
     name: "Publish Unit Tests Results"
     needs: clang-build
-    runs-on: ubuntu-20.04
+    runs-on: self-hosted
     if: (success() || failure() ) && needs.clang-build.outputs.report_needed != 0
     steps:
       - name: Download Artifacts
@@ -143,14 +135,14 @@ jobs:
           junitparser merge artifacts/*/twister.xml junit.xml
           junit2html junit.xml junit-clang.html
 
-      - name: Upload Unit Test Results in HTML
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: HTML Unit Test Results
-          if-no-files-found: ignore
-          path: |
-            junit-clang.html
+      # - name: Upload Unit Test Results in HTML
+      #   if: always()
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: HTML Unit Test Results
+      #     if-no-files-found: ignore
+      #     path: |
+      #       junit-clang.html
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1

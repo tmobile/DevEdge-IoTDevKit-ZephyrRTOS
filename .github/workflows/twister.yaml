@@ -15,7 +15,7 @@ on:
 
 jobs:
   twister-build-cleanup:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.6.0
@@ -255,20 +255,20 @@ jobs:
         run: |
           ccache -s
 
-      - name: Upload Unit Test Results
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: Unit Test Results (Subset ${{ matrix.subset }})
-          if-no-files-found: ignore
-          path: |
-            twister-out/twister.xml
-            testplan.json
+      # - name: Upload Unit Test Results
+      #   if: always()
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: Unit Test Results (Subset ${{ matrix.subset }})
+      #     if-no-files-found: ignore
+      #     path: |
+      #       twister-out/twister.xml
+      #       testplan.json
 
   twister-test-results:
     name: "Publish Unit Tests Results"
     needs: twister-build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
       # the build-and-test job might be skipped, we don't need to run this job then
     if: success() || failure()
 
@@ -284,14 +284,14 @@ jobs:
           junitparser merge artifacts/*/*/twister.xml junit.xml
           junit2html junit.xml junit.html
 
-      - name: Upload Unit Test Results in HTML
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: HTML Unit Test Results
-          if-no-files-found: ignore
-          path: |
-            junit.html
+      # - name: Upload Unit Test Results in HTML
+      #   if: always()
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: HTML Unit Test Results
+      #     if-no-files-found: ignore
+      #     path: |
+      #       junit.html
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
