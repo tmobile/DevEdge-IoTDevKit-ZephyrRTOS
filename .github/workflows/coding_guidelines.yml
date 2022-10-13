@@ -12,7 +12,6 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
-
     - name: cache-pip
       uses: actions/cache@v3
       with:
@@ -24,11 +23,10 @@ jobs:
         pip3 install unidiff
         pip3 install wheel
         pip3 install sh
-
     - name: Install Packages
       run: |
         sudo apt-get update
-        sudo apt-get install ocaml-base-nox
+        sudo apt-get install ocaml-base-nox python2 -y
         wget https://launchpad.net/~npalix/+archive/ubuntu/coccinelle/+files/coccinelle_1.0.8~20.04npalix1_amd64.deb
         sudo dpkg -i coccinelle_1.0.8~20.04npalix1_amd64.deb
 
