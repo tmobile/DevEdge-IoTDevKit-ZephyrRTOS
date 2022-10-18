@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   clang-build-prep:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.6.0
