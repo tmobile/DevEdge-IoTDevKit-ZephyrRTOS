@@ -46,6 +46,20 @@ __weak void pm_state_set(enum pm_state state, uint8_t substate_id)
 	case PM_STATE_STANDBY:
 		EMU_EnterEM3(true);
 		break;
+	case PM_STATE_SOFT_OFF:
+		{
+		EMU_EM4Init_TypeDef em4_state = {
+			.em4State = substate_id == 1 ? emuEM4Hibernate : emuEM4Shutoff,
+			.pinRetentionMode = emuPinRetentionEm4Exit,
+			.retainLfrco = true,
+			.retainLfxo = true,
+			.retainUlfrco = true,
+			.vScaleEM4HVoltage = emuVScaleEM4H_LowPower
+		};
+		EMU_EM4Init(&em4_state);
+		EMU_EnterEM4();
+		break;
+		}
 	default:
 		LOG_DBG("Unsupported power state %u", state);
 		break;
