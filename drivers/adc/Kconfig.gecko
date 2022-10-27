@@ -1,0 +1,15 @@
+# Pearl Gecko ADC configuration options
+#
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config ADC_GECKO
+	bool "GECKO ADC driver"
+	default y
+	select SOC_GECKO_ADC
+	help
+	  Enable support for Pearl Gecko ADC driver series.
+
+config SOC_GECKO_ADC
+	bool
+	default n
