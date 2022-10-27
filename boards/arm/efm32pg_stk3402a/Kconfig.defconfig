@@ -2,6 +2,8 @@
 
 # Copyright (c) 2018, Christian Taedcke
 # Copyright (c) 2019  Lemonbeat GmbH
+# Copyright (c) 2022 T-Mobile USA, Inc.
+
 # SPDX-License-Identifier: Apache-2.0
 
 if BOARD_EFM32PG_STK3402A || BOARD_EFM32PG_STK3402A_JG

@@ -1,3 +1,5 @@
+# Copyright (c) 2022 T-Mobile USA, Inc.
+#
 # SPDX-License-Identifier: Apache-2.0
 
 zephyr_library()
