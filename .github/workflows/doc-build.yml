@@ -38,7 +38,7 @@ jobs:
     # runs-on: ubuntu-20.04
     # timeout-minutes: 45
     runs-on: self-hosted
-    timeout-minutes: 30
+    timeout-minutes: 60
     concurrency:
       group: doc-build-html-${{ github.ref }}
       cancel-in-progress: true
@@ -122,7 +122,8 @@ jobs:
     name: "Documentation Build (PDF)"
     runs-on: self-hosted
     container: texlive/texlive:latest
-    timeout-minutes: 45
+    # timeout-minutes: 45
+    timeout-minutes: 60
     concurrency:
       group: doc-build-pdf-${{ github.ref }}
       cancel-in-progress: true
