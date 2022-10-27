@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Intel Corporation.
+ * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,6 +36,7 @@ enum net_request_wifi_cmd {
 	NET_REQUEST_WIFI_CMD_DISCONNECT,
 	NET_REQUEST_WIFI_CMD_AP_ENABLE,
 	NET_REQUEST_WIFI_CMD_AP_DISABLE,
+	NET_REQUEST_WIFI_CMD_STATUS,
 	NET_REQUEST_WIFI_CMD_IFACE_STATUS,
 };
 
@@ -63,6 +65,11 @@ NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_AP_ENABLE);
 
 NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_AP_DISABLE);
 
+#define NET_REQUEST_WIFI_STATUS				\
+	(_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_STATUS)
+
+NET_MGMT_DEFINE_REQUEST_HANDLER(NET_REQUEST_WIFI_STATUS);
+
 #define NET_REQUEST_WIFI_IFACE_STATUS				\
 	(_NET_WIFI_BASE | NET_REQUEST_WIFI_CMD_IFACE_STATUS)
 
@@ -73,6 +80,7 @@ enum net_event_wifi_cmd {
 	NET_EVENT_WIFI_CMD_SCAN_DONE,
 	NET_EVENT_WIFI_CMD_CONNECT_RESULT,
 	NET_EVENT_WIFI_CMD_DISCONNECT_RESULT,
+	NET_EVENT_WIFI_CMD_STATUS_RESULT,
 	NET_EVENT_WIFI_CMD_IFACE_STATUS,
 };
 
@@ -87,6 +95,9 @@ enum net_event_wifi_cmd {
 
 #define NET_EVENT_WIFI_DISCONNECT_RESULT			\
 	(_NET_WIFI_EVENT | NET_EVENT_WIFI_CMD_DISCONNECT_RESULT)
+
+#define NET_EVENT_WIFI_STATUS_RESULT			\
+	(_NET_WIFI_EVENT | NET_EVENT_WIFI_CMD_STATUS_RESULT)
 
 #define NET_EVENT_WIFI_IFACE_STATUS						\
 	(_NET_WIFI_EVENT | NET_EVENT_WIFI_CMD_IFACE_STATUS)
@@ -126,6 +137,22 @@ struct wifi_connect_req_params {
 	int timeout; /* SYS_FOREVER_MS for no timeout */
 };
 
+struct wifi_status_result {
+	bool ap_mode;
+	bool connected;
+
+	uint8_t *ssid;
+	uint8_t ssid_length;
+
+	uint8_t channel;
+	enum wifi_security_type security;
+	int8_t rssi;
+
+	struct in6_addr ip6;
+	struct in_addr ip4;
+};
+
+
 struct wifi_status {
 	int status;
 };
@@ -148,6 +175,9 @@ struct wifi_iface_status {
 
 typedef void (*scan_result_cb_t)(struct net_if *iface, int status,
 				 struct wifi_scan_result *entry);
+
+typedef void (*status_result_cb_t)(struct net_if *iface, int status,
+				 struct wifi_status_result *entry);
 
 struct net_wifi_mgmt_offload {
 	/**
@@ -173,6 +203,7 @@ struct net_wifi_mgmt_offload {
 	int (*ap_enable)(const struct device *dev,
 			 struct wifi_connect_req_params *params);
 	int (*ap_disable)(const struct device *dev);
+	int (*status)(const struct device *dev, status_result_cb_t cb);
 	int (*iface_status)(const struct device *dev, struct wifi_iface_status *status);
 #ifdef CONFIG_NET_STATISTICS_WIFI
 	int (*get_stats)(const struct device *dev, struct net_stats_wifi *stats);
