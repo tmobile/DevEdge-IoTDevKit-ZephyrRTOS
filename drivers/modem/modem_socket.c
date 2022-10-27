@@ -244,6 +244,7 @@ void modem_socket_put(struct modem_socket_config *cfg, int sock_fd)
 	sock->packet_count = 0;
 	k_sem_reset(&sock->sem_data_ready);
 	k_poll_signal_reset(&sock->sig_data_ready);
+	sock->rcvtimeo = K_FOREVER;
 
 	k_sem_give(&cfg->sem_lock);
 }
@@ -386,13 +387,13 @@ int modem_socket_poll_update(struct modem_socket *sock, struct zsock_pollfd *pfd
 	return 0;
 }
 
-void modem_socket_wait_data(struct modem_socket_config *cfg, struct modem_socket *sock)
+int modem_socket_wait_data(struct modem_socket_config *cfg, struct modem_socket *sock)
 {
 	k_sem_take(&cfg->sem_lock, K_FOREVER);
 	sock->is_waiting = true;
 	k_sem_give(&cfg->sem_lock);
 
-	k_sem_take(&sock->sem_data_ready, K_FOREVER);
+	return k_sem_take(&sock->sem_data_ready, sock->rcvtimeo);
 }
 
 void modem_socket_data_ready(struct modem_socket_config *cfg, struct modem_socket *sock)
@@ -417,6 +418,7 @@ int modem_socket_init(struct modem_socket_config *cfg, const struct socket_op_vt
 		k_sem_init(&cfg->sockets[i].sem_data_ready, 0, 1);
 		k_poll_signal_init(&cfg->sockets[i].sig_data_ready);
 		cfg->sockets[i].id = cfg->base_socket_num - 1;
+		cfg->sockets[i].rcvtimeo = K_FOREVER;
 	}
 
 	cfg->vtable = vtable;
