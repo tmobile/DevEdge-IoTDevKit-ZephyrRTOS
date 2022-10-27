@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Nordic Semiconductor ASA
+ * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +11,7 @@
 #include "shell_vt100.h"
 
 #define SHELL_MSG_CMD_NOT_SUPPORTED	"Command not supported.\n"
+#define SHELL_HELP_COMMENT		"Ignore lines beginning with 'rem '"
 #define SHELL_HELP_CLEAR		"Clear screen."
 #define SHELL_HELP_BACKENDS		"List active shell backends.\n"
 #define SHELL_HELP_BACKSPACE_MODE	"Toggle backspace key mode.\n"	      \
@@ -191,6 +193,13 @@ static int terminal_size_get(const struct shell *shell)
 
 	z_cursor_restore(shell);
 	return ret_val;
+}
+
+static int cmd_comment(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argv);
+
+	return 0;
 }
 
 static int cmd_clear(const struct shell *shell, size_t argc, char **argv)
@@ -455,6 +464,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_resize,
 	SHELL_SUBCMD_SET_END
 );
 
+SHELL_COND_CMD_ARG_REGISTER(CONFIG_SHELL_VT100_COMMANDS, rem, NULL,
+			    SHELL_HELP_COMMENT, cmd_comment, 1, 1);
 SHELL_COND_CMD_ARG_REGISTER(CONFIG_SHELL_VT100_COMMANDS, clear, NULL,
 			    SHELL_HELP_CLEAR, cmd_clear, 1, 0);
 SHELL_CMD_REGISTER(shell, &m_sub_shell, SHELL_HELP_SHELL, NULL);
