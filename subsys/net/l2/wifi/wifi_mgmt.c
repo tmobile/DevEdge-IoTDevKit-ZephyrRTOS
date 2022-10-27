@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016 Intel Corporation.
+ * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -157,3 +158,34 @@ static int wifi_ap_disable(uint32_t mgmt_request, struct net_if *iface,
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_AP_DISABLE, wifi_ap_disable);
+
+static void wifi_status_result_cb(struct net_if *iface, int status,
+			    struct wifi_status_result *entry)
+{
+	if (!iface) {
+		return;
+	}
+
+	if (!entry) {
+		return;
+	}
+
+	net_mgmt_event_notify_with_info(NET_EVENT_WIFI_STATUS_RESULT, iface,
+					entry, sizeof(struct wifi_status_result));
+}
+
+static int wifi_get_status(uint32_t mgmt_request, struct net_if *iface,
+		     void *data, size_t len)
+{
+	const struct device *dev = net_if_get_device(iface);
+	struct net_wifi_mgmt_offload *off_api =
+		(struct net_wifi_mgmt_offload *) dev->api;
+
+	if (off_api == NULL || off_api->status == NULL) {
+		return -ENOTSUP;
+	}
+
+	return off_api->status(dev, wifi_status_result_cb);
+}
+
+NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_STATUS, wifi_get_status);
