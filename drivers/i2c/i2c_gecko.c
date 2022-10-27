@@ -118,6 +118,10 @@ static int i2c_gecko_transfer(const struct device *dev, struct i2c_msg *msgs,
 		return 0;
 	}
 
+	if (k_sem_take(&data->device_sync_sem, K_MSEC(CONFIG_I2C_GECKO_XFER_TIMEOUT))) {
+		return -ETIMEDOUT;
+	}
+
 	seq.addr = addr << 1;
 
 	do {
@@ -166,14 +170,18 @@ finish:
 	if (ret != i2cTransferDone) {
 		ret = -EIO;
 	}
+	k_sem_give(&data->device_sync_sem);
 	return ret;
 }
 
 static int i2c_gecko_init(const struct device *dev)
 {
 	const struct i2c_gecko_config *config = dev->config;
+	struct i2c_gecko_data *data = dev->data;
 	uint32_t bitrate_cfg;
 	int error;
+
+	k_sem_init(&data->device_sync_sem, 1, 1);
 
 	CMU_ClockEnable(config->clock, true);
 
