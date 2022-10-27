@@ -1,6 +1,8 @@
 # Silicon Labs Gecko Counter driver config
 
 # Copyright (c) 2019, Piotr Mienkowski
+# Copyright (c) 2022 T-Mobile USA, Inc.
+#
 # SPDX-License-Identifier: Apache-2.0
 
 config COUNTER_GECKO_RTCC
@@ -9,5 +11,18 @@ config COUNTER_GECKO_RTCC
 	select SOC_GECKO_CMU
 	select SOC_GECKO_RTCC
 	help
-	  Enable counter driver based on RTCC module for Silicon Labs Gecko
-	  chips.
+	  Enable counter driver based on RTCC module with the RTCC_CTRL
+	  CNTMODE field set to NORMAL mode running at a 30.5 microsecond rate
+	  overflowing in 36.4 hours for Silicon Labs Gecko chips.
+
+config TIME_GECKO_RTCC
+	bool "Silicon Labs Gecko Time (RTCC) driver"
+	depends on SOC_FAMILY_EXX32
+	select SOC_GECKO_CMU
+	select SOC_GECKO_RTCC
+	select POLL
+	help
+	  Enable time driver based on RTCC module with the RTCC_CTRL
+	  CNTMODE field set to CALENDAR mode running at 1 second rate
+	  overflowing in 136 years for Silicon Labs Gecko chips.
+	  This mode will also synchronize with the Posix time.
