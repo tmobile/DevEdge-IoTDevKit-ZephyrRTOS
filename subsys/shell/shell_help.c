@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Nordic Semiconductor ASA
+ * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -190,6 +191,13 @@ void z_shell_help_cmd_print(const struct shell *shell,
 	z_shell_fprintf(shell, SHELL_NORMAL, "%s%s", cmd->syntax, cmd_sep);
 
 	formatted_text_print(shell, cmd->help, field_width, false);
+}
+
+void z_shell_help_subcmd_print_selitem(const struct shell *shell)
+{
+	struct shell_static_entry *parent = &shell->ctx->active_cmd;
+
+	help_item_print(shell, parent->syntax, strlen(parent->syntax), parent->help);
 }
 
 bool z_shell_help_request(const char *str)
