@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Intel Corporation.
+ * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -153,6 +154,22 @@ struct wifi_connect_req_params {
 	int timeout; /* SYS_FOREVER_MS for no timeout */
 };
 
+struct wifi_status_result {
+	bool ap_mode;
+	bool connected;
+
+	uint8_t *ssid;
+	uint8_t ssid_length;
+
+	uint8_t channel;
+	enum wifi_security_type security;
+	int8_t rssi;
+
+	struct in6_addr ip6;
+	struct in_addr ip4;
+};
+
+
 struct wifi_status {
 	int status;
 };
@@ -235,6 +252,9 @@ struct wifi_ps_config {
 
 typedef void (*scan_result_cb_t)(struct net_if *iface, int status,
 				 struct wifi_scan_result *entry);
+
+typedef void (*status_result_cb_t)(struct net_if *iface, int status,
+				 struct wifi_status_result *entry);
 
 struct net_wifi_mgmt_offload {
 	/**
