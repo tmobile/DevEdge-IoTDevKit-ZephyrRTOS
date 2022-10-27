@@ -64,6 +64,10 @@ struct modem_context {
 	int   *data_rssi;
 	bool  is_automatic_oper;
 
+	/* pin config */
+	struct modem_pin *pins;
+	size_t pins_len;
+
 	/* interface config */
 	struct modem_iface iface;
 
