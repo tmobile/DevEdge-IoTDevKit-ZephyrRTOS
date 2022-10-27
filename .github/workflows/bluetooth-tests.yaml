@@ -45,12 +45,10 @@ jobs:
       - name: Update PATH for west
         run: |
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
       - name: west setup
         env:
           BASE_REF: ${{ github.base_ref }}
