@@ -1,0 +1,12 @@
+# Copyright (c) 2022 T-Mobile USA, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  filter: TOOLCHAIN_HAS_NEWLIB == 1
+sample:
+  name: Gecko RTCC
+tests:
+  sample.basic.gecko_rtcc:
+    build_only: false
+    platform_allow: efm32pg_stk3402a tmo_dev_edge
