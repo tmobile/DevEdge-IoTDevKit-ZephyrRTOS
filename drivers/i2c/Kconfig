@@ -35,6 +35,7 @@ source "drivers/i2c/Kconfig.cc13xx_cc26xx"
 source "drivers/i2c/Kconfig.dw"
 source "drivers/i2c/Kconfig.esp32"
 source "drivers/i2c/slave/Kconfig"
+source "drivers/i2c/Kconfig.gecko"
 source "drivers/i2c/Kconfig.gpio"
 source "drivers/i2c/Kconfig.xec"
 source "drivers/i2c/Kconfig.nrfx"
@@ -63,12 +64,6 @@ module = I2C
 module-str = i2c
 source "subsys/logging/Kconfig.template.log_config"
 
-config I2C_GECKO
-	bool "Gecko I2C driver"
-	depends on HAS_SILABS_GECKO
-	select SOC_GECKO_I2C
-	help
-	  Enable the SiLabs Gecko I2C bus driver.
 
 config I2C_SAM_TWIHS
 	bool "Atmel SAM (TWIHS) I2C driver"
