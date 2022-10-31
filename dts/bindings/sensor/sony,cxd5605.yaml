@@ -1,0 +1,31 @@
+# Copyright (c) 2021 Kim Mansfield <kmansfie@yahoo.com>
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    cxd5605 Digital GNSS Sensor.  See more info at
+    https://www.sony-semicon.com/en/products/lsi-ic/gps.html
+
+compatible: "sony,cxd5605"
+
+include: i2c-device.yaml
+
+properties:
+    alert-gpios:
+      type: phandle-array
+      required: true
+      description: |
+        Identifies the data ready signal, which is active-high when
+        the sensor has data to be read.
+    int-gpios:
+      type: phandle-array
+      required: true
+      description: |
+        Identifies the 1 pulse per second  signal, which is active-high when the one second
+        interval has expired.
+    pwr-gpios:
+      type: phandle-array
+      required: true
+      description: |
+        Controls the power to the GNSS chip.  High on this pin will turn on the GNSS chip
+        low turns it off.
