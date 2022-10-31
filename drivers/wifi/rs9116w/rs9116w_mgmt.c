@@ -509,7 +509,7 @@ static int rs9116w_init(const struct device *dev)
 
 	/* Get the MAC (must be after rsi_wlan_radio_init()) */
 	status = rsi_wlan_get(RSI_MAC_ADDRESS, mac, sizeof(mac));
-	LOG_DBG("rsi_wlan_get after rsi_wireless_init returned %d, mac: "
+	LOG_INF("rsi_wlan_get after rsi_wireless_init returned %d, mac: "
 		"%02x:%02x:%02x:%02x:%02x:%02x",
 		status, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	memcpy(rs9116w_dev->mac, mac, sizeof(mac));
