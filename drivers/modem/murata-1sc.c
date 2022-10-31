@@ -2794,8 +2794,8 @@ static int offload_connect(void *obj, const struct sockaddr *addr,
 			     MDM_CMD_RSP_TIME);
 
 	if (ret < 0) {
-		LOG_ERR("%s ret:%d", at_cmd, ret);
-		LOG_ERR("Closing the socket!!!");
+		LOG_DBG("%s ret:%d", at_cmd, ret);
+		LOG_DBG("Closing the socket!!!");
 		socket_close(sock);
 		errno = -ret;
 		return -1;
@@ -2838,8 +2838,8 @@ static int offload_connect(void *obj, const struct sockaddr *addr,
 				     MDM_CMD_LONG_RSP_TIME);
 		LOG_DBG("%s", at_cmd);
 		if (ret < 0) {
-			LOG_ERR("%s ret: %d", at_cmd, ret);
-			LOG_ERR("Closing the socket!!!");
+			LOG_DBG("%s ret: %d", at_cmd, ret);
+			LOG_DBG("Closing the socket!!!");
 			socket_close(sock);
 			errno = -ret;
 			return -1;
@@ -2855,8 +2855,8 @@ static int offload_connect(void *obj, const struct sockaddr *addr,
 			     &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
 
 	if (ret < 0) {
-		LOG_ERR("%s ret: %d", at_cmd, ret);
-		LOG_ERR("Closing the socket!!!");
+		LOG_DBG("%s ret: %d", at_cmd, ret);
+		LOG_DBG("Closing the socket!!!");
 		socket_close(sock);
 		errno = -ret;
 		return -1;
