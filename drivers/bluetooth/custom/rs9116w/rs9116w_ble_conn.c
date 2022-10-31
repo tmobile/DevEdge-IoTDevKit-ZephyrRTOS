@@ -233,9 +233,7 @@ void notify_disconnected(struct bt_conn *conn)
 		}
 	}
 
-	if (!conn->err) {
-		bt_gatt_disconnected(conn);
-	}
+	bt_gatt_disconnected(conn);
 }
 
 void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
