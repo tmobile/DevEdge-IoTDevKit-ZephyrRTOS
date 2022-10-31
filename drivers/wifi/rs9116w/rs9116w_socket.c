@@ -68,9 +68,14 @@ static int rs9116w_ping_offload(const struct sockaddr *dst, size_t sz)
 			return -EIO;
 		}
 	} else if (dst->sa_family == Z_AF_INET6) {
-		addr = net_sin6(dst)->sin6_addr.s6_addr;
-		stat = rsi_wlan_ping_async(1, addr, sz,
-					   rs9116w_ping_resp_handler);
+		uint32_t addr_raw[4];
+
+		addr = (uint8_t *)addr_raw;
+		addr_raw[0] = ntohl(net_sin6(dst)->sin6_addr.s6_addr32[0]);
+		addr_raw[1] = ntohl(net_sin6(dst)->sin6_addr.s6_addr32[1]);
+		addr_raw[2] = ntohl(net_sin6(dst)->sin6_addr.s6_addr32[2]);
+		addr_raw[3] = ntohl(net_sin6(dst)->sin6_addr.s6_addr32[3]);
+		stat = rsi_wlan_ping_async(1, addr, sz, rs9116w_ping_resp_handler);
 		if (stat) {
 			LOG_WRN("rsi_wlan_ping_async error : %d", stat);
 			return -EIO;
