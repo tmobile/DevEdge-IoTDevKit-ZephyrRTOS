@@ -4279,7 +4279,7 @@ static int get_file_chksum_ability(char *response)
 				 &mdata.sem_response, MDM_CMD_RSP_TIME);
 
 	if (ret < 0) {
-		LOG_ERR("%s ret: %d", at_cmd, ret);
+		LOG_ERR("%s ret: %d", "AT\%GETACFG=filemgr.file.put_fcksum", ret);
 	} else {
 		snprintk(response, CHKSUM_ABILITY_MAX_LEN, "%s", chksum);
 	}

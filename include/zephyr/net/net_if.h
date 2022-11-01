@@ -440,7 +440,7 @@ struct net_traffic_class {
  * @brief A function prototype to create an offloaded socket. The prototype is
  *        compatible with socket() function.
  */
-typedef int (*net_offload_ping_t)(const struct sockaddr*, size_t, uint32_t);
+typedef int (*net_offload_ping_t)(const struct sockaddr*, size_t);
 
 /**
  * @typedef net_socket_create_t
