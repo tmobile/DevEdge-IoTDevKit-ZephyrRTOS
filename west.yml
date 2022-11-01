@@ -253,7 +253,7 @@ manifest:
       revision: e8920192b66db4f909eb9cd3f155d5245c1ae825
       path: modules/lib/uoscore-uedhoc
     - name: wiseconnect
-      revision: eb6374200e76f42392ac4b3ec589fbfd2a8c380a
+      revision: 2a691d7372a467aa3a262512e6f8beb3ddd35f25
       path: modules/hal/silabs_wiseconnect
       url: https://ryanhagen-tmo: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@github.com/tmobile/DevEdge-IoTDevKit-SiLabs-WiseConnect.git
       groups:
