@@ -13,6 +13,8 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_SMS_H_
 #define ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_SMS_H_
 
+#include <zephyr/kernel.h>
+
 #define SMS_PHONE_MAX_LEN 16
 #define SMS_TIME_MAX_LEN  26
 
