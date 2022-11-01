@@ -845,6 +845,6 @@
 # *.rst                                     @nashif
 # /doc/kernel/                              @andyross @nashif
 # *posix*.rst                               @aescolar @daor-oti
-/*                                         @johnlange2 @ryanhagen @ryanhagen-tmo @eniolaodufuwa-tmo @jtbaumann @DRuffer-tmo @jayrickard-tmo @joebairdtmo @atrowbr2-tmo @kimmansfield @wtucker6
-/.github/workflows/                        @ryanhagen @ryanhagen-tmo @eniolaodufuwa-tmo
-/west.yml                                  @ryanhagen @ryanhagen-tmo @eniolaodufuwa-tmo
+/*                                         @johnlange2 @ryanhagen-tmo @eniolaodufuwa-tmo @jtbaumann @DRuffer-tmo @jayrickard-tmo @joebairdtmo @atrowbr2-tmo @kimmansfield @wtucker6
+/.github/workflows/                        @ryanhagen-tmo @eniolaodufuwa-tmo
+/west.yml                                  @ryanhagen-tmo @eniolaodufuwa-tmo
