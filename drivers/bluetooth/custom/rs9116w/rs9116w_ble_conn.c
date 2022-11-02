@@ -23,7 +23,7 @@ uint16_t conn_mtu[CONFIG_BT_MAX_CONN];
  * @param state
  * @return const char* String representation of the state
  */
-static inline const char *state2str(bt_conn_state_t state)
+static inline const char *state2str(enum bt_conn_state_t state)
 {
 	switch (state) {
 	case BT_CONN_DISCONNECTED:
@@ -236,9 +236,9 @@ void notify_disconnected(struct bt_conn *conn)
 	bt_gatt_disconnected(conn);
 }
 
-void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
+void bt_conn_set_state(struct bt_conn *conn, enum bt_conn_state_t state)
 {
-	bt_conn_state_t old_state;
+	enum bt_conn_state_t old_state;
 
 	BT_DBG("%s -> %s", state2str(conn->state), state2str(state));
 

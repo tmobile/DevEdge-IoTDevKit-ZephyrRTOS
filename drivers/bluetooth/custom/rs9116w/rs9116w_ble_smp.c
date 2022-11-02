@@ -7,8 +7,8 @@
  */
 
 #define LOG_MODULE_NAME rsi_bt_smp
-#include "rs9116w_ble_keys.h"
 #include "rs9116w_ble_smp.h"
+#include "rs9116w_ble_keys.h"
 
 #if defined(CONFIG_BT_SIGNING)
 #define SIGN_DIST BT_SMP_DIST_SIGN

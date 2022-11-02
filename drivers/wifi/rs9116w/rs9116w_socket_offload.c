@@ -9,25 +9,26 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-#include "rs9116w.h"
-#include "sockets_internal.h"
-#include "tls_internal.h"
-
-#include <errno.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <errno.h>
 
-#include <device.h>
-#include <kernel.h>
-#include <net/net_pkt.h>
-#include <net/socket_offload.h>
-#include <net/tls_credentials.h>
-#include <rsi_wlan.h>
-#include <rsi_wlan_apis.h>
+#include <zephyr/net/socket_offload.h>
+#include <zephyr/net/tls_credentials.h>
+
+#include "sockets_internal.h"
+#include "tls_internal.h"
+#include "rs9116w.h"
+
 #include <rsi_wlan_common_config.h>
+#include <rsi_wlan_apis.h>
 #include <rsi_wlan_non_rom.h>
-#include <zephyr.h>
+#include <rsi_wlan.h>
+#include <zephyr/net/net_pkt.h>
+
 
 extern struct rs9116w_device s_rs9116w_dev[];
 

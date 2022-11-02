@@ -54,6 +54,18 @@ enum {
 	BT_CONN_NUM_FLAGS,
 };
 
+enum __packed bt_conn_state_t {
+	BT_CONN_DISCONNECTED,
+	BT_CONN_DISCONNECT_COMPLETE,
+	BT_CONN_CONNECT_SCAN,
+	BT_CONN_CONNECT_AUTO,
+	BT_CONN_CONNECT_ADV,
+	BT_CONN_CONNECT_DIR_ADV,
+	BT_CONN_CONNECT,
+	BT_CONN_CONNECTED,
+	BT_CONN_DISCONNECT,
+};
+
 struct bt_conn_le {
 	bt_addr_le_t dst;
 
@@ -97,7 +109,7 @@ struct bt_conn {
 	/* Connection error or reason for disconnect */
 	uint8_t err;
 
-	bt_conn_state_t state;
+	enum bt_conn_state_t state;
 	uint16_t rx_len;
 	struct net_buf *rx;
 
@@ -160,7 +172,7 @@ struct bt_conn *bt_conn_add_le(uint8_t id, const bt_addr_le_t *peer);
 struct bt_conn *bt_conn_new(struct bt_conn *conns, size_t size);
 
 /* Set connection object in certain state and perform action related to state */
-void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state);
+void bt_conn_set_state(struct bt_conn *conn, enum bt_conn_state_t state);
 
 /* Check if a connection object with the peer already exists */
 bool bt_conn_exists_le(uint8_t id, const bt_addr_le_t *peer);
