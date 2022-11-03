@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor/gnss.h>
 #include <drivers/gpio.h>
 
 #define READ_BYTES_SIZE			128
