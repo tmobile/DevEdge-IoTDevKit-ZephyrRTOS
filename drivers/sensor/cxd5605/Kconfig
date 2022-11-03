@@ -1,0 +1,23 @@
+# CXD5605 GNSS/GPS configuration options
+
+# Copyright (c) 2021 Kim Mansfield <kmansfie@yahoo.com>
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-Licnse-Identifiere: Apache-2.0
+#
+
+menuconfig CXD5605
+	bool "CXD5605R GNSS/GPS"
+	depends on I2C
+	select CXD5605_LIB
+	help
+		Enable I2C based driver for the CXD5605 based GNSS/GPS
+
+if CXD5605
+
+config CXD5605_ALERT_INTERRUPTS
+	bool "Allow interrupts to service 1 pulse per second"
+	help
+		This will set up interrupts to service the 1 pulse per second and allow
+		the application to get a callback one time per second.
+
+endif # CXD5605
