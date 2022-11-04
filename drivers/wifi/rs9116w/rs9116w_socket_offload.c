@@ -129,21 +129,19 @@ static int rs9116w_socket(int family, int type, int proto)
 			rsi_proto = PROTOCOL_TLS_1_2;
 			break;
 		}
-	} else if (proto >= IPPROTO_DTLS_1_0 && proto <= IPPROTO_DTLS_1_2) {
-		/* Don't think the 9116 supports DTLS */
-		errno = EPROTONOSUPPORT;
-		return -1;
+	} else {
+		switch (proto) {
+		case IPPROTO_TCP:
+		case IPPROTO_UDP:
+			rsi_proto = 0;
+			break;
+		default:
+			LOG_ERR("unrecognized proto: %d", proto);
+			errno = EPROTONOSUPPORT;
+			return -1;
+		}
 	}
-	switch (proto) {
-	case IPPROTO_TCP:
-	case IPPROTO_UDP:
-		rsi_proto = 0;
-		break;
-	default:
-		LOG_ERR("unrecognized proto: %d", proto);
-		errno = EPROTONOSUPPORT;
-		return -1;
-	}
+
 
 	sd = rsi_socket(family, type, rsi_proto);
 	if (sd >= 0) {
