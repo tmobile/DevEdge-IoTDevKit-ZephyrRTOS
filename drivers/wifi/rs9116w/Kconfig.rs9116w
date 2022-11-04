@@ -47,7 +47,7 @@ if RS9116W_TLS_OFFLOAD
 
 config RS9116W_TLS_PEM_BUF_SZ
 	int "Buffer size to allocate for PEM conversion"
-	default 1500
+	default 2000
 
 endif # RS9116W_TLS_OFFLOAD
 
