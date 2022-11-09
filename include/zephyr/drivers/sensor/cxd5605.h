@@ -165,6 +165,7 @@ struct cxd5605_data {
 	uint32_t i2c_error_count;
 
 	bool got_data;
+	bool lib_got_data;
 	int command;
 };
 
