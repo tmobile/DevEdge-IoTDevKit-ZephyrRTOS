@@ -9,16 +9,33 @@
  * @brief Common SoC initialization for the EXX32
  */
 
-#include <zephyr/kernel.h>
+#include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
+#include <zephyr/arch/cpu.h>
 #include <zephyr/init.h>
-#include <soc.h>
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+#include <em_chip.h>
 #include <em_cmu.h>
 #include <em_emu.h>
-#include <em_chip.h>
-#include <zephyr/arch/cpu.h>
-#include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
+#include <soc.h>
 
-#include <zephyr/logging/log.h>
+#ifdef CONFIG_SOC_GECKO_DEV_INIT
+#include <sl_board_init.h>
+#include <sl_device_init_clocks.h>
+#include <sl_device_init_dcdc.h>
+#include <sl_device_init_dpll.h>
+#include <sl_device_init_emu.h>
+#include <sl_device_init_hfxo.h>
+#include <sl_device_init_lfxo.h>
+#include <sl_device_init_nvic.h>
+
+#ifdef CONFIG_PM
+#include <sl_hfxo_manager.h>
+#include <sl_power_manager.h>
+#endif
+
+#endif
 
 LOG_MODULE_REGISTER(soc, CONFIG_SOC_LOG_LEVEL);
 
@@ -34,6 +51,13 @@ static CMU_HFXOInit_TypeDef hfxoInit = CMU_HFXOINIT_DEFAULT;
 static CMU_LFXOInit_TypeDef lfxoInit = CMU_LFXOINIT_DEFAULT;
 #endif
 
+#ifdef CONFIG_SOC_GECKO_DEV_INIT
+#ifdef CONFIG_PM
+void sl_hfxo_manager_irq_handler(void);
+void initIRQ(void);
+#endif
+#endif
+
 /**
  * @brief Initialize the system clock
  */
@@ -47,13 +71,13 @@ static ALWAYS_INLINE void clock_init(void)
 		 * See AN0016.2
 		 */
 		if ((DEVINFO->MODULEINFO & DEVINFO_MODULEINFO_HFXOCALVAL) ==
-				DEVINFO_MODULEINFO_HFXOCALVAL_VALID) {
-			hfxoInit.ctuneXoAna = (DEVINFO->MODXOCAL
-				& _DEVINFO_MODXOCAL_HFXOCTUNEXOANA_MASK)
-				>> _DEVINFO_MODXOCAL_HFXOCTUNEXOANA_SHIFT;
-			hfxoInit.ctuneXiAna = (DEVINFO->MODXOCAL
-				& _DEVINFO_MODXOCAL_HFXOCTUNEXIANA_MASK)
-				>> _DEVINFO_MODXOCAL_HFXOCTUNEXIANA_SHIFT;
+		    DEVINFO_MODULEINFO_HFXOCALVAL_VALID) {
+			hfxoInit.ctuneXoAna =
+				(DEVINFO->MODXOCAL & _DEVINFO_MODXOCAL_HFXOCTUNEXOANA_MASK) >>
+				_DEVINFO_MODXOCAL_HFXOCTUNEXOANA_SHIFT;
+			hfxoInit.ctuneXiAna =
+				(DEVINFO->MODXOCAL & _DEVINFO_MODXOCAL_HFXOCTUNEXIANA_MASK) >>
+				_DEVINFO_MODXOCAL_HFXOCTUNEXIANA_SHIFT;
 		}
 
 		CMU_HFXOInit(&hfxoInit);
@@ -79,10 +103,10 @@ static ALWAYS_INLINE void clock_init(void)
 		 * See AN0016.2
 		 */
 		if ((DEVINFO->MODULEINFO & DEVINFO_MODULEINFO_LFXOCALVAL) ==
-				DEVINFO_MODULEINFO_LFXOCALVAL_VALID) {
-			lfxoInit.capTune = (DEVINFO->MODXOCAL
-				& _DEVINFO_MODXOCAL_LFXOCAPTUNE_MASK)
-				>> _DEVINFO_MODXOCAL_LFXOCAPTUNE_SHIFT;
+		    DEVINFO_MODULEINFO_LFXOCALVAL_VALID) {
+			lfxoInit.capTune =
+				(DEVINFO->MODXOCAL & _DEVINFO_MODXOCAL_LFXOCAPTUNE_MASK) >>
+				_DEVINFO_MODXOCAL_LFXOCAPTUNE_SHIFT;
 		}
 	}
 
@@ -115,11 +139,11 @@ static ALWAYS_INLINE void clock_init(void)
 #endif
 
 #if defined(_SILICON_LABS_32B_SERIES_2)
-		/* Enable the High Frequency Peripheral Clock */
-		CMU_ClockEnable(cmuClock_PCLK, true);
+	/* Enable the High Frequency Peripheral Clock */
+	CMU_ClockEnable(cmuClock_PCLK, true);
 #else
-		/* Enable the High Frequency Peripheral Clock */
-		CMU_ClockEnable(cmuClock_HFPER, true);
+	/* Enable the High Frequency Peripheral Clock */
+	CMU_ClockEnable(cmuClock_HFPER, true);
 #endif /* _SILICON_LABS_32B_SERIES_2 */
 
 #if defined(CONFIG_GPIO_GECKO) || defined(CONFIG_LOG_BACKEND_SWO)
@@ -161,14 +185,13 @@ static void swo_init(void)
 	/* Enable Serial wire output pin */
 	GPIO->ROUTEPEN |= GPIO_ROUTEPEN_SWVPEN;
 	/* Set SWO location */
-	GPIO->ROUTELOC0 =
-		SWO_LOCATION << _GPIO_ROUTELOC0_SWVLOC_SHIFT;
+	GPIO->ROUTELOC0 = SWO_LOCATION << _GPIO_ROUTELOC0_SWVLOC_SHIFT;
 #else
 	GPIO->ROUTE = GPIO_ROUTE_SWOPEN | (SWO_LOCATION << 8);
 #endif
 #endif /* _SILICON_LABS_32B_SERIES_2 */
 
-	soc_gpio_configure(&pin_swo);
+	GPIO_PinModeSet(pin_swo.port, pin_swo.pin, pin_swo.mode, pin_swo.out);
 }
 #endif /* CONFIG_LOG_BACKEND_SWO */
 
@@ -188,6 +211,28 @@ static int silabs_exx32_init(const struct device *arg)
 
 	/* disable interrupts */
 	oldLevel = irq_lock();
+
+#ifdef CONFIG_SOC_GECKO_DEV_INIT
+	CHIP_Init();
+	sl_board_preinit();
+	sl_device_init_dcdc();
+#ifdef CONFIG_PM
+	sl_device_init_nvic();
+	sl_hfxo_manager_init_hardware();
+#endif
+	sl_device_init_hfxo();
+	sl_device_init_lfxo();
+	sl_device_init_dpll();
+	sl_device_init_clocks();
+	sl_device_init_emu();
+	sl_board_init();
+#ifdef CONFIG_PM
+	sl_power_manager_init();
+	sl_sleeptimer_init();
+	sl_hfxo_manager_init();
+	initIRQ();
+#endif
+#else
 
 	/* handle chip errata */
 	CHIP_Init();
@@ -209,10 +254,21 @@ static int silabs_exx32_init(const struct device *arg)
 	/* Configure SWO debug output */
 	swo_init();
 #endif
-
+#endif
 	/* restore interrupt state */
 	irq_unlock(oldLevel);
 	return 0;
 }
+
+#ifdef CONFIG_SOC_GECKO_DEV_INIT
+#ifdef CONFIG_PM
+void initIRQ(void)
+{
+	IRQ_DIRECT_CONNECT(HFXO0_IRQn, 2, sl_hfxo_manager_irq_handler, 0);
+
+	irq_enable(HFXO0_IRQn);
+}
+#endif
+#endif
 
 SYS_INIT(silabs_exx32_init, PRE_KERNEL_1, 0);

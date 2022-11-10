@@ -37,75 +37,85 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 	uint32_t flags = 0;
 	uint32_t rmu_flags = RMU_ResetCauseGet();
 
+#if IS_ENABLED(RMU_RSTCAUSE_PORST)
 	if (rmu_flags & RMU_RSTCAUSE_PORST) {
 		flags |= RESET_POR;
 	}
+#endif /* RMU_RSTCAUSE_PORST */
 
+#if IS_ENABLED(RMU_RSTCAUSE_EXTRST)
 	if (rmu_flags & RMU_RSTCAUSE_EXTRST) {
 		flags |= RESET_PIN;
 	}
+#endif /* RMU_RSTCAUSE_EXTRST */
 
+#if IS_ENABLED(RMU_RSTCAUSE_SYSREQRST)
 	if (rmu_flags & RMU_RSTCAUSE_SYSREQRST) {
 		flags |= RESET_SOFTWARE;
 	}
+#endif /* RMU_RSTCAUSE_SYSREQRST */
 
+#if IS_ENABLED(RMU_RSTCAUSE_LOCKUPRST)
 	if (rmu_flags & RMU_RSTCAUSE_LOCKUPRST) {
 		flags |= RESET_CPU_LOCKUP;
 	}
+#endif /* RMU_RSTCAUSE_LOCKUPRST */
 
+#if IS_ENABLED(RMU_RSTCAUSE_WDOGRST)
 	if (rmu_flags & RMU_RSTCAUSE_WDOGRST) {
 		flags |= RESET_WATCHDOG;
 	}
+#endif /* RMU_RSTCAUSE_WDOGRST */
 
-#ifdef RMU_RSTCAUSE_EM4WURST
+#if IS_ENABLED(RMU_RSTCAUSE_EM4WURST)
 	if (rmu_flags & RMU_RSTCAUSE_EM4WURST) {
 		flags |= RESET_LOW_POWER_WAKE;
 	}
 #endif /* RMU_RSTCAUSE_EM4WURST */
 
-#ifdef RMU_RSTCAUSE_EM4RST
+#if IS_ENABLED(RMU_RSTCAUSE_EM4RST)
 	if (rmu_flags & RMU_RSTCAUSE_EM4RST) {
 		flags |= RESET_LOW_POWER_WAKE;
 	}
 #endif /* RMU_RSTCAUSE_EM4RST */
 
-#ifdef RMU_RSTCAUSE_BODUNREGRST
+#if IS_ENABLED(RMU_RSTCAUSE_BODUNREGRST)
 	if (rmu_flags & RMU_RSTCAUSE_BODUNREGRST) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_BODUNREGRST */
 
-#ifdef RMU_RSTCAUSE_BODREGRST
+#if IS_ENABLED(RMU_RSTCAUSE_BODREGRST)
 	if (rmu_flags & RMU_RSTCAUSE_BODREGRST) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_BODREGRST */
 
-#ifdef RMU_RSTCAUSE_AVDDBOD
+#if IS_ENABLED(RMU_RSTCAUSE_AVDDBOD)
 	if (rmu_flags & RMU_RSTCAUSE_AVDDBOD) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_AVDDBOD */
 
-#ifdef RMU_RSTCAUSE_DVDDBOD
+#if IS_ENABLED(RMU_RSTCAUSE_DVDDBOD)
 	if (rmu_flags & RMU_RSTCAUSE_DVDDBOD) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_DVDDBOD */
 
-#ifdef RMU_RSTCAUSE_DECBOD
+#if IS_ENABLED(RMU_RSTCAUSE_DECBOD)
 	if (rmu_flags & RMU_RSTCAUSE_DECBOD) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_DECBOD */
 
-#ifdef RMU_RSTCAUSE_BODAVDD0
+#if IS_ENABLED(RMU_RSTCAUSE_BODAVDD0)
 	if (rmu_flags & RMU_RSTCAUSE_BODAVDD0) {
 		flags |= RESET_BROWNOUT;
 	}
 #endif /* RMU_RSTCAUSE_BODAVDD0 */
 
-#ifdef RMU_RSTCAUSE_BODAVDD1
+#if IS_ENABLED(RMU_RSTCAUSE_BODAVDD1)
 	if (rmu_flags & RMU_RSTCAUSE_BODAVDD1) {
 		flags |= RESET_BROWNOUT;
 	}
@@ -136,7 +146,6 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 	if (rmu_flags & RMU_RSTCAUSE_BUMODERST) {
 		flags |= RESET_BROWNOUT;
 	}
-
 #endif /* defined(BU_PRESENT) && defined(_SILICON_LABS_32B_SERIES_0) */
 
 	*cause = flags;

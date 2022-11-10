@@ -235,6 +235,13 @@
 	};
 };
 
+/ {
+	hwinfo: hwinfo {
+		compatible = "silabs,gecko-hwinfo";
+		status = "disabled";
+	};
+};
+
 &nvic {
 	arm,num-irq-priority-bits = <3>;
 };
