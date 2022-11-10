@@ -82,6 +82,8 @@ ATOMIC_DEFINE(closed_socks_map, 10);
 /* for adding nonblocking as a socket option */
 ATOMIC_DEFINE(nb_socks_map, 10);
 
+extern uint8_t rsi_wlan_get_state(void);
+
 static int rs9116w_socket(int family, int type, int proto)
 {
 	int sd;
@@ -142,6 +144,10 @@ static int rs9116w_socket(int family, int type, int proto)
 		}
 	}
 
+	if (rsi_wlan_get_state() < RSI_WLAN_STATE_CONNECTED) {
+		errno = ENETDOWN;
+		return -1;
+	}
 
 	sd = rsi_socket(family, type, rsi_proto);
 	if (sd >= 0) {
@@ -371,8 +377,6 @@ static int rs9116w_listen(void *obj, int backlog)
 
 	return retval;
 }
-
-extern uint8_t rsi_wlan_get_state(void);
 
 static int rs9116w_connect(void *obj, const struct sockaddr *addr,
 			   socklen_t addrlen)
