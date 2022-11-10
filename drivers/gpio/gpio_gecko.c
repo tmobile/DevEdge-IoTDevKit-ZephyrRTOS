@@ -19,6 +19,22 @@
 	CONFIG_GPIO_INIT_PRIORITY.
 #endif
 
+#if DT_NODE_HAS_PROP(id, peripheral_id)
+#define GET_GECKO_GPIO_INDEX(id) DT_INST_PROP(id, peripheral_id)
+#else
+#if defined(CONFIG_SOC_SERIES_EFR32BG22) || defined(CONFIG_SOC_SERIES_EFR32MG21)
+#define GECKO_GPIO_PORT_ADDR_SPACE_SIZE sizeof(GPIO_PORT_TypeDef)
+#else
+#define GECKO_GPIO_PORT_ADDR_SPACE_SIZE sizeof(GPIO_P_TypeDef)
+#endif /* defined(CONFIG_SOC_SERIES_EFM32HG) || defined(CONFIG_SOC_SERIES_EFM32WG) */
+/* Assumption:
+ * 1. Address space of the first GPIO port starts at GPIO peripheral
+ *    base address which is taken from GPIO_BASE HAL macro
+ */
+#define GET_GECKO_GPIO_INDEX(id) (DT_INST_REG_ADDR(id) - GPIO_BASE) \
+	/ GECKO_GPIO_PORT_ADDR_SPACE_SIZE
+#endif /* DT_NODE_HAS_PROP(id, peripheral_id) */
+
 /*
  * Macros to set the GPIO MODE registers
  *
@@ -291,7 +307,7 @@ static int gpio_gecko_pin_interrupt_configure(const struct device *dev,
 			falling_edge = false;
 		} /* default is GPIO_INT_TRIG_BOTH */
 
-		GPIO_IntConfig(config->gpio_index, pin,
+		GPIO_ExtIntConfig(config->gpio_index, pin, pin,
 			       rising_edge, falling_edge, true);
 	}
 
@@ -395,7 +411,7 @@ static const struct gpio_gecko_config gpio_gecko_port##idx##_config = { \
 	.common = { \
 		.port_pin_mask = (gpio_port_pins_t)(-1), \
 	}, \
-	.gpio_index = DT_INST_PROP(idx, peripheral_id), \
+	.gpio_index = GET_GECKO_GPIO_INDEX(idx), \
 }; \
 \
 static struct gpio_gecko_data gpio_gecko_port##idx##_data; \

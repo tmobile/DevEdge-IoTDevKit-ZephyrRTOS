@@ -1,0 +1,8 @@
+# Copyright (c) 2022 Antmicro
+# SPDX-License-Identifier: Apache-2.0
+
+description: Silabs Gecko HW info virtual device
+
+compatible: "silabs,gecko-hwinfo"
+
+include: base.yaml
