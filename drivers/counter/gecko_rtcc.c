@@ -13,19 +13,20 @@
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
-#include <kernel.h>
-#include <device.h>
-#include <drivers/rtc/gecko_rtcc.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/rtc/gecko_rtcc.h>
 #include <syscalls/gecko_rtcc.h>
-#include <posix/time.h>
+#include <zephyr/posix/time.h>
 #include <soc.h>
 #include <em_cmu.h>
 #include <em_rmu.h>
 #include <em_rtcc.h>
-#include <sys/timeutil.h>
-#include <drivers/counter.h>
+#include <zephyr/sys/timeutil.h>
+#include <zephyr/drivers/counter.h>
+#include <zephyr/sys/notify.h>
+#include <zephyr/logging/log.h>
 
-#include <logging/log.h>
 LOG_MODULE_REGISTER(time_gecko, CONFIG_COUNTER_LOG_LEVEL);
 
 #define RTCC_MAX_VALUE       (_RTCC_CNT_MASK)

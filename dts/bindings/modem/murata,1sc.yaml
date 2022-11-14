@@ -8,9 +8,6 @@ compatible: "murata,1sc"
 include: uart-device.yaml
 
 properties:
-    label:
-      required: true
-
     mdm-wake-host-gpios:
       type: phandle-array
       required: true
