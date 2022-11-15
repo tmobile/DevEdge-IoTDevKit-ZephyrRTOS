@@ -703,6 +703,13 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		if (result < 0) {
 			printk("ERROR: I2C interface not working (CXD5605 driver)\n");
 		}
+
+	case PM_DEVICE_ACTION_FORCE_SUSPEND:
+	case PM_DEVICE_ACTION_SUSPEND:
+		cxd5605_sleep(dev, 0);
+		break;
+	case PM_DEVICE_ACTION_RESUME:
+		cxd5605_wake_up(dev);
 		break;
 	case PM_DEVICE_ACTION_TURN_OFF:
 		/*
