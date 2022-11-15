@@ -2685,6 +2685,10 @@ static int offload_socket(int family, int type, int proto)
 	/* defer modem's socket create call to bind() */
 	ret = modem_socket_get(&mdata.socket_config, family, type, proto);
 
+	if (ret == ENOMEM) {
+		ret = ENFILE;
+	}
+
 	if (ret < 0) {
 		errno = -ret;
 		return -1;
@@ -2730,7 +2734,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr,
 		LOG_ERR("Socket is already connected!! socket_id(%d), "
 			"socket_fd:%d",
 			sock->id, sock->sock_fd);
-		errno = EINVAL;
+		errno = EISCONN;
 		return -1;
 	}
 	sock->is_connected = true;
@@ -2897,7 +2901,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 	}
 
 	if (!sock->is_connected) {
-		if (sock->type == SOCK_DGRAM) {
+		if (sock->type == SOCK_DGRAM && tolen != 0 && to != NULL) {
 			/* for unconnected udp, try to connect */
 			ret = offload_connect(obj, to, tolen);
 			if (ret < 0) {
