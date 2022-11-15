@@ -37,8 +37,9 @@ struct rsi_gap_event_s {
 	};
 };
 
-struct rsi_gap_event_s gap_event_queue[CONFIG_RSI_BT_EVENT_QUEUE_SIZE] = {0};
-int gap_event_ptr;
+static struct rsi_gap_event_s gap_event_queue[CONFIG_RSI_BT_EVENT_QUEUE_SIZE] = {0};
+static int gap_event_ptr;
+K_SEM_DEFINE(gap_evt_queue_sem, 1, 1);
 
 /**
  * @brief Get the event slot pointer
@@ -47,6 +48,8 @@ int gap_event_ptr;
  */
 static struct rsi_gap_event_s *get_event_slot(void)
 {
+	k_sem_take(&gap_evt_queue_sem, K_FOREVER);
+
 	int old_event_ptr = gap_event_ptr;
 
 	gap_event_ptr++;
@@ -56,8 +59,10 @@ static struct rsi_gap_event_s *get_event_slot(void)
 	if (target_event->event_type) {
 		gap_event_ptr = old_event_ptr;
 		rsi_bt_raise_evt(); /* Raise event to force processing */
+		k_sem_give(&gap_evt_queue_sem);
 		return NULL;
 	}
+	k_sem_give(&gap_evt_queue_sem);
 	return target_event;
 }
 
@@ -826,7 +831,9 @@ void bt_le_adv_resume(void)
 
 void bt_gap_process(void)
 {
+	k_sem_take(&gap_evt_queue_sem, K_FOREVER);
 	struct rsi_gap_event_s *current_event = &gap_event_queue[gap_event_ptr];
+	k_sem_give(&gap_evt_queue_sem);
 #if !IS_ENABLED(CONFIG_WISECONNECT_USE_OS_BINDINGS)
 	if (current_event->event_type) {
 		force_rx_evt();
@@ -844,11 +851,13 @@ void bt_gap_process(void)
 			break;
 		}
 		}
+		k_sem_take(&gap_evt_queue_sem, K_FOREVER);
 		current_event->event_type = RSI_EVT_NONE;
 		gap_event_ptr--;
 		gap_event_ptr = gap_event_ptr < 0 ? ARRAY_SIZE(gap_event_queue)
 						  : gap_event_ptr;
 		current_event = &gap_event_queue[gap_event_ptr];
+		k_sem_give(&gap_evt_queue_sem);
 	}
 }
 

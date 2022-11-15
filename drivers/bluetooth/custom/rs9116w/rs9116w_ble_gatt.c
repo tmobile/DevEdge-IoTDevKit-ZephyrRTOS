@@ -6,14 +6,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <bluetooth/gatt.h>
+#include <zephyr/bluetooth/gatt.h>
 #include <rsi_ble.h>
 #include <rsi_ble_apis.h>
 #include <rsi_ble_common_config.h>
 #include <rsi_bt_apis.h>
 #include <rsi_bt_common.h>
 #include <rsi_common_apis.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 #define LOG_MODULE_NAME rsi_bt_gatt
 #include "rs9116w_ble_conn.h"
 #if defined(BT_L2CAP_RX_MTU) && defined(BT_L2CAP_TX_MTU)
@@ -139,6 +139,7 @@ struct rsi_event_s {
 
 struct rsi_event_s gatt_event_queue[CONFIG_RSI_BT_EVENT_QUEUE_SIZE] = {0};
 int gatt_event_ptr;
+K_SEM_DEFINE(gatt_evt_queue_sem, 1, 1);
 
 /**
  * @brief Get the event slot pointer
@@ -147,6 +148,7 @@ int gatt_event_ptr;
  */
 static struct rsi_event_s *get_event_slot(void)
 {
+	k_sem_take(&gatt_evt_queue_sem, K_FOREVER);
 	int old_event_ptr = gatt_event_ptr;
 
 	gatt_event_ptr++;
@@ -156,8 +158,10 @@ static struct rsi_event_s *get_event_slot(void)
 	if (target_event->event_type) {
 		gatt_event_ptr = old_event_ptr;
 		rsi_bt_raise_evt(); /* Raise event to force processing */
+		k_sem_give(&gatt_evt_queue_sem);
 		return NULL;
 	}
+	k_sem_give(&gatt_evt_queue_sem);
 	return target_event;
 }
 #if CONFIG_BT_ATT_PREPARE_COUNT > 0
@@ -833,6 +837,7 @@ void bt_gatt_connected(struct bt_conn *conn)
 	}
 	target_event->event_type = RSI_EVT_MTU;
 	memcpy(target_event->addr.val, conn->le.dst.a.val, 6);
+	rsi_bt_raise_evt();
 }
 
 /**
@@ -1089,8 +1094,10 @@ uint16_t bt_gatt_attr_value_handle(const struct bt_gatt_attr *attr)
  */
 void bt_gatt_process(void)
 {
+	k_sem_take(&gatt_evt_queue_sem, K_FOREVER);
 	struct rsi_event_s *current_event = &gatt_event_queue[gatt_event_ptr];
 	const struct bt_gatt_attr *curr_att;
+	k_sem_give(&gatt_evt_queue_sem);
 
 	while (current_event->event_type) {
 		switch (current_event->event_type) {
@@ -1438,10 +1445,12 @@ void bt_gatt_process(void)
 		default:
 			break;
 		}
+		k_sem_take(&gatt_evt_queue_sem, K_FOREVER);
 		current_event->event_type = RSI_EVT_NONE;
 		gatt_event_ptr--;
 		gatt_event_ptr %= ARRAY_SIZE(gatt_event_queue);
 		current_event = &gatt_event_queue[gatt_event_ptr];
+		k_sem_give(&gatt_evt_queue_sem);
 	}
 }
 

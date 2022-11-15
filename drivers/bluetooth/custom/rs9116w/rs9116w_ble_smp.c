@@ -165,8 +165,9 @@ struct bt_smp {
 
 static struct bt_smp bt_smp_pool[CONFIG_BT_MAX_CONN];
 
-struct rsi_smp_event_s smp_event_queue[CONFIG_RSI_BT_EVENT_QUEUE_SIZE] = {0};
-int smp_event_ptr;
+static struct rsi_smp_event_s smp_event_queue[CONFIG_RSI_BT_EVENT_QUEUE_SIZE] = {0};
+static int smp_event_ptr;
+K_SEM_DEFINE(smp_evt_queue_sem, 1, 1);
 
 static enum bt_security_err security_err_get(uint8_t smp_err)
 {
@@ -207,6 +208,7 @@ static enum bt_security_err security_err_get(uint8_t smp_err)
  */
 static struct rsi_smp_event_s *get_event_slot(void)
 {
+	k_sem_take(&smp_evt_queue_sem, K_FOREVER);
 	int old_event_ptr = smp_event_ptr;
 
 	smp_event_ptr++;
@@ -216,8 +218,10 @@ static struct rsi_smp_event_s *get_event_slot(void)
 	if (target_event->event_type) {
 		smp_event_ptr = old_event_ptr;
 		rsi_bt_raise_evt(); /* Raise event to force processing */
+		k_sem_give(&smp_evt_queue_sem);
 		return NULL;
 	}
+	k_sem_give(&smp_evt_queue_sem);
 	return target_event;
 }
 
@@ -576,7 +580,9 @@ int bt_smp_auth_pairing_confirm(struct bt_conn *conn)
  */
 void bt_smp_process(void)
 {
+	k_sem_take(&smp_evt_queue_sem, K_FOREVER);
 	struct rsi_smp_event_s *current_event = &smp_event_queue[smp_event_ptr];
+	k_sem_give(&smp_evt_queue_sem);
 
 	while (current_event->event_type) {
 		BT_DBG("SMP EVT %d", current_event->event_type);
@@ -888,10 +894,12 @@ void bt_smp_process(void)
 			LOG_ERR("UNHANDLED CASE %d", current_event->event_type);
 		}
 		}
+		k_sem_take(&smp_evt_queue_sem, K_FOREVER);
 		current_event->event_type = RSI_EVT_NONE;
 		smp_event_ptr--;
 		smp_event_ptr = smp_event_ptr < 0 ? ARRAY_SIZE(smp_event_queue)
 						  : smp_event_ptr;
 		current_event = &smp_event_queue[smp_event_ptr];
+		k_sem_give(&smp_evt_queue_sem);
 	}
 }
