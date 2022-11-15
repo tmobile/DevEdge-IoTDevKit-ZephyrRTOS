@@ -729,6 +729,10 @@ static ssize_t rs9116w_recvfrom(void *obj, void *buf, size_t len, int flags,
 
 	len = MIN(len, MAX_PAYLOAD_SIZE);
 
+	if (len == 0) {
+		return -EINVAL;
+	}
+
 	/* 1k to account for TLS overhead */
 	size_t per_rcv = MAX_PAYLOAD_SIZE;
 
@@ -859,6 +863,10 @@ static ssize_t rs9116w_sendto(void *obj, const void *buf, size_t len, int flags,
 		retval = rsi_sendto(sd, (int8_t *)buf, len, flags, rsi_addr,
 				    rsi_addrlen);
 	} else {
+		if (rsi_socket_pool[sd].sock_state != RSI_SOCKET_STATE_CONNECTED) {
+			errno = ENOTCONN;
+			return -1;
+		}
 		retval = rsi_send(sd, (int8_t *)buf, len, flags);
 	}
 
