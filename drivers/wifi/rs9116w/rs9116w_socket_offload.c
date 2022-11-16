@@ -6,7 +6,7 @@
 
 #define LOG_MODULE_NAME wifi_rs9116w_socket_offload
 #define LOG_LEVEL	CONFIG_WIFI_LOG_LEVEL
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr/kernel.h>
@@ -500,7 +500,7 @@ static int rs9116w_poll(struct zsock_pollfd *fds, int nfds, int msecs)
 
 #if IS_ENABLED(CONFIG_NET_SOCKETS_SOCKOPT_TLS) &&                              \
 	IS_ENABLED(CONFIG_RS9116W_TLS_OFFLOAD)
-#include <sys/base64.h>
+#include <zephyr/sys/base64.h>
 uint8_t pem[CONFIG_RS9116W_TLS_PEM_BUF_SZ];
 
 static int map_credentials(int sd, const void *optval, socklen_t optlen)

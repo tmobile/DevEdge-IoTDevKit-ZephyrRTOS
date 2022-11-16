@@ -5,7 +5,7 @@
  */
 
 #include "tsl2540.h"
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 
 LOG_MODULE_DECLARE(tsl2540, CONFIG_SENSOR_LOG_LEVEL);
 
