@@ -9,7 +9,7 @@
 
 #include <zephyr/drivers/bluetooth/rs9116w.h>
 
-#include <bluetooth/hci_err.h>
+#include <zephyr/bluetooth/hci_err.h>
 /* Peripheral timeout to initialize Connection Parameter Update procedure */
 #define CONN_UPDATE_TIMEOUT K_MSEC(CONFIG_BT_CONN_PARAM_UPDATE_TIMEOUT)
 

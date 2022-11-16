@@ -9,7 +9,7 @@
 #define LOG_CACHE_DBG 0
 
 #if LOG_CACHE_DBG
-#include <sys/printk.h>
+#include <zephyr/sys/printk.h>
 #define LOG_CACHE_PRINT(...) printk(__VA_ARGS__)
 #define LOG_CACHE_DBG_ENTRY(str, entry) \
 	printk(str " entry(%p) id %p\n", entry, (void *)entry->id)

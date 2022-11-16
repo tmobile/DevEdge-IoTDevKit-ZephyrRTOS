@@ -9,8 +9,8 @@
 #ifndef RS9116W_BLE_GAP_H_
 #define RS9116W_BLE_GAP_H_
 
-#include <bluetooth/bluetooth.h>
-#include <zephyr.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/kernel.h>
 #define LOG_MODULE_NAME rsi_bt_gap
 #include "rs9116w_ble_conn.h"
 
