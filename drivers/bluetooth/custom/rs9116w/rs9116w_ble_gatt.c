@@ -6,14 +6,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <bluetooth/gatt.h>
+#include <zephyr/bluetooth/gatt.h>
 #include <rsi_ble.h>
 #include <rsi_ble_apis.h>
 #include <rsi_ble_common_config.h>
 #include <rsi_bt_apis.h>
 #include <rsi_bt_common.h>
 #include <rsi_common_apis.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 #define LOG_MODULE_NAME rsi_bt_gatt
 #include "rs9116w_ble_conn.h"
 #if defined(BT_L2CAP_RX_MTU) && defined(BT_L2CAP_TX_MTU)

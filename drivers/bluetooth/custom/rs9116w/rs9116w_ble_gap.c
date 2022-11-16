@@ -7,13 +7,14 @@
  */
 #include "rs9116w_ble_gap.h"
 
-#include <bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/bluetooth.h>
 #include <rsi_ble.h>
 #include <rsi_ble_apis.h>
 #include <rsi_bt_apis.h>
 #include <rsi_bt_common.h>
 #include <rsi_bt_common_apis.h>
 #include <rsi_common_apis.h>
+#include <zephyr/types.h>
 #include <sys/types.h>
 
 struct bt_le_ext_adv dev_adv;
