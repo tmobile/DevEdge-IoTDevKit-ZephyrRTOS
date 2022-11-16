@@ -6,16 +6,16 @@
 
 #define LOG_MODULE_NAME wifi_rs9116w_offload
 #define LOG_LEVEL	CONFIG_WIFI_LOG_LEVEL
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include "rs9116w.h"
 #include "rsi_wlan.h"
 
-#include <net/net_context.h>
-#include <net/net_ip.h>
-#include <net/net_offload.h>
-#include <net/net_pkt.h>
+#include <zephyr/net/net_context.h>
+#include <zephyr/net/net_ip.h>
+#include <zephyr/net/net_offload.h>
+#include <zephyr/net/net_pkt.h>
 #include <rsi_wlan_apis.h>
 #undef s6_addr
 #undef s6_addr32

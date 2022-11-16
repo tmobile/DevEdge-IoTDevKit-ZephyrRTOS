@@ -13,7 +13,7 @@ extern "C" {
 
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/gnss.h>
-#include <drivers/gpio.h>
+#include <zephyr/drivers/gpio.h>
 
 #define READ_BYTES_SIZE			128
 #define CXD5605_PACKET_SIZE		74

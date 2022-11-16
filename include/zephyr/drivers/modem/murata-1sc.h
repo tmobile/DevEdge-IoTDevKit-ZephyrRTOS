@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <net/buf.h>
+#include <zephyr/net/buf.h>
 
 #define GSM_MODEM_DEVICE_NAME "murata 1sc"
 

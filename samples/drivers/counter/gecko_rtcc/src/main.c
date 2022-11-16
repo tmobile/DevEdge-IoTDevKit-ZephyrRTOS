@@ -10,11 +10,11 @@
 
 #include <stdio.h>
 
-#include <zephyr.h>
-#include <device.h>
-#include <drivers/counter.h>
-#include <sys/printk.h>
-#include <drivers/rtc/gecko_rtcc.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/counter.h>
+#include <zephyr/sys/printk.h>
+#include <zephyr/drivers/rtc/gecko_rtcc.h>
 
 /* Format times as: YYYY-MM-DD HH:MM:SS DOW DOY */
 static const char *format_time(time_t time,

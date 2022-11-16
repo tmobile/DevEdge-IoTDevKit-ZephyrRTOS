@@ -4,21 +4,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
-#include <drivers/sensor.h>
-#include <drivers/sensor/gnss.h>
-#include <drivers/sensor/cxd5605.h>
-#include <drivers/flash.h>
-#include <device.h>
-#include <devicetree.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor/gnss.h>
+#include <zephyr/drivers/sensor/cxd5605.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
 #include <stdio.h>
-#include <init.h>
-#include <drivers/i2c.h>
-#include <drivers/gpio.h>
+#include <zephyr/init.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/gpio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <drivers/sensor/gnss.h>
-#include <fs/fs.h>
+#include <zephyr/drivers/sensor/gnss.h>
+#include <zephyr/fs/fs.h>
 
 #define	ST_WAIT_FOR_FIX 1
 #define	ST_STOP_GNSS 2
