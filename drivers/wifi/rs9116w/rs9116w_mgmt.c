@@ -541,7 +541,7 @@ static int rs9116w_init(const struct device *dev)
 
 /* TODO: make these asynchronous */
 static const struct net_wifi_mgmt_offload rs9116w_api = {
-	.iface_api.init = rs9116w_iface_init, /* called after device init fcn */
+	.wifi_iface.init = rs9116w_iface_init, /* called after device init fcn */
 	.scan = rs9116w_mgmt_scan,
 	.connect = rs9116w_mgmt_connect,
 	.disconnect = rs9116w_mgmt_disconnect,

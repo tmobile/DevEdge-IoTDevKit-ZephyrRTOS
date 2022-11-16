@@ -683,7 +683,7 @@ int bt_conn_le_param_update(struct bt_conn *conn,
 
 /* BLE SMP */
 #if defined(CONFIG_BT_SMP)
-uint8_t bt_conn_enc_key_size(struct bt_conn *conn)
+uint8_t bt_conn_enc_key_size(const struct bt_conn *conn)
 {
 	return ENC_KEY_DEFAULT_SIZE;
 }
@@ -733,7 +733,7 @@ int bt_conn_set_security(struct bt_conn *conn,
 	return err;
 }
 
-bt_security_t bt_conn_get_security(struct bt_conn *conn)
+bt_security_t bt_conn_get_security(const struct bt_conn *conn)
 {
 	return conn->sec_level;
 }
@@ -749,7 +749,7 @@ void security_changed(struct bt_conn *conn, uint8_t status)
 	}
 }
 #else
-bt_security_t bt_conn_get_security(struct bt_conn *conn)
+bt_security_t bt_conn_get_security(const struct bt_conn *conn)
 {
 	return BT_SECURITY_L1;
 }
