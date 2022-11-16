@@ -1025,10 +1025,6 @@ static int set_psm_timer(struct set_cpsms_params *Parms)
 	char t3324[PSM_TIME_LEN];
 	int ret;
 
-	if (&mctx.iface == NULL) {
-		return -1;
-	}
-
 	strcpy(t3312, (const char *)byte_to_binary_str(Parms->t3312_mask));
 	strcpy(t3314, (const char *)byte_to_binary_str(Parms->t3314_mask));
 	strcpy(t3412, (const char *)byte_to_binary_str(Parms->t3412_mask));
