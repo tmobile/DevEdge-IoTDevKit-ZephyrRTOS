@@ -12,9 +12,9 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#include <devicetree.h>
-#include <drivers/gpio.h>
-#include <random/rand32.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/random/rand32.h>
 
 #if !IS_ENABLED(CONFIG_WIFI_RS9116W)
 /* Buffer for WiSeConnect */

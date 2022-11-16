@@ -7,10 +7,10 @@
 #ifndef ZEPHYR_DRIVERS_WIFI_RS9116W_RS9116W_H_
 #define ZEPHYR_DRIVERS_WIFI_RS9116W_RS9116W_H_
 
-#include <device.h>
-#include <drivers/spi.h>
-#include <net/net_if.h>
-#include <net/wifi_mgmt.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/spi.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/wifi_mgmt.h>
 
 /* Undef macros before redefining to eliminate warnings */
 #undef AF_INET
