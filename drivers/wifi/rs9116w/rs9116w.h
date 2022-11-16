@@ -19,6 +19,7 @@
 #undef PF_INET
 #undef PF_INET6
 #undef TCP_NODELAY
+#undef IP_TOS
 #include <rsi_socket.h>
 #include <rsi_wlan_apis.h>
 
