@@ -7,7 +7,7 @@
  */
 #include "rs9116w_ble_gap.h"
 
-#include <bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/bluetooth.h>
 #include <rsi_ble.h>
 #include <rsi_ble_apis.h>
 #include <rsi_bt_apis.h>

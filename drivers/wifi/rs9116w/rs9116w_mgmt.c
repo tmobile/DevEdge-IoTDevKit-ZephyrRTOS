@@ -7,7 +7,7 @@
 #include <stdio.h>
 #define LOG_MODULE_NAME wifi_rs9116w_mgmt
 #define LOG_LEVEL	CONFIG_WIFI_LOG_LEVEL
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define DT_DRV_COMPAT silabs_rs9116w
@@ -22,16 +22,16 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 
-#include <debug/stack.h>
-#include <device.h>
-#include <kernel.h>
-#include <net/net_context.h>
-#include <net/net_if.h>
-#include <net/net_l2.h>
-#include <net/net_offload.h>
-#include <net/net_pkt.h>
-#include <net/wifi_mgmt.h>
-#include <zephyr.h>
+#include <zephyr/debug/stack.h>
+#include <zephyr/device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/net/net_context.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_l2.h>
+#include <zephyr/net/net_offload.h>
+#include <zephyr/net/net_pkt.h>
+#include <zephyr/net/wifi_mgmt.h>
+#include <zephyr/kernel.h>
 
 #undef s6_addr
 #undef s6_addr32
