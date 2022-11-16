@@ -6,13 +6,16 @@
  */
 
 #include <zephyr/init.h>
+#include <zephyr/kernel.h>
 #include "board.h"
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/printk.h>
 
+#ifdef CONFIG_PWM
 static void powerup_led_on(struct k_timer *timer_id);
 
 K_TIMER_DEFINE(powerup_led_timer, powerup_led_on, NULL);
+#endif /* CONFIG_PWM */
 
 static int tmo_dev_edge(const struct device *dev)
 {
@@ -65,9 +68,14 @@ static int tmo_dev_edge(const struct device *dev)
 
 	gpio_pin_configure(gpiof, BQ_CHIP_ENABLE, GPIO_OUTPUT_LOW);
 
+#ifdef CONFIG_PWM 
 	k_timer_start(&powerup_led_timer, K_SECONDS(1), K_FOREVER);
+#endif /* CONFIG_PWM */
+
 	return 0;
 }
+
+#ifdef CONFIG_PWM 
 
 #include <zephyr/drivers/pwm.h>
 
@@ -80,6 +88,7 @@ static void powerup_led_on(struct k_timer *timer_id)
 	pwm_set(led_pwm, LED_PWM_BLUE, 100000, 5000, 0);
 }
 
+#endif /* CONFIG_PWM */
 
 /* needs to be done after GPIO driver init */
 SYS_INIT(tmo_dev_edge, POST_KERNEL,
