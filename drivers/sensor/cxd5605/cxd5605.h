@@ -10,8 +10,8 @@
 
 #include <stdint.h>
 
-#include <drivers/sensor.h>
-#include <drivers/gpio.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/gpio.h>
 
 int setup_interrupts(const struct device *dev);
 

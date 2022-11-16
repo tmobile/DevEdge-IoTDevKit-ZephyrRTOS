@@ -9,17 +9,17 @@
 #ifndef RS9116W_BLE_CORE_H_
 #define RS9116W_BLE_CORE_H_
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/uuid.h>
 #include <rsi_common_apis.h>
 #include <rsi_bt_common.h>
 #include <rsi_bt_common_apis.h>
 #include <rsi_ble_apis.h>
 #include <rsi_driver.h>
 #include "rsi_ble_config.h"
-#include <zephyr.h>
-#include <logging/log.h>
-#include <sys/byteorder.h>
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
 
 extern uint8_t rsi_bt_random_addr[6];
 

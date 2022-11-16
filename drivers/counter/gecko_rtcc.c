@@ -13,19 +13,19 @@
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
-#include <kernel.h>
-#include <device.h>
-#include <drivers/rtc/gecko_rtcc.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/rtc/gecko_rtcc.h>
 #include <syscalls/gecko_rtcc.h>
-#include <posix/time.h>
+#include <zephyr/posix/time.h>
 #include <soc.h>
 #include <em_cmu.h>
 #include <em_rmu.h>
 #include <em_rtcc.h>
-#include <sys/timeutil.h>
-#include <drivers/counter.h>
+#include <zephyr/sys/timeutil.h>
+#include <zephyr/drivers/counter.h>
 
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(time_gecko, CONFIG_COUNTER_LOG_LEVEL);
 
 #define RTCC_MAX_VALUE       (_RTCC_CNT_MASK)
@@ -1403,7 +1403,7 @@ DEVICE_DT_INST_DEFINE(0, counter_gecko_init, NULL,
 
 #ifdef CONFIG_USERSPACE
 
-#include <syscall_handler.h>
+#include <zephyr/syscall_handler.h>
 
 int z_vrfy_gecko_rtcc_get_syncpoint(const struct device *dev,
 				      struct gecko_rtcc_syncpoint *syncpoint)

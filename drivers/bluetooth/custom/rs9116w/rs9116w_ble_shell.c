@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <bluetooth/bluetooth.h>
-#include <shell/shell.h>
-#include <zephyr.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/kernel.h>
 #define LOG_MODULE_NAME rsi_bt_shell
 #include "rs9116w_ble_conn.h"
 
