@@ -7,10 +7,10 @@
 #ifndef ZEPHYR_DRIVERS_SENSOR_TSL2540_TSL2540_H_
 #define ZEPHYR_DRIVERS_SENSOR_TSL2540_TSL2540_H_
 
-#include <drivers/gpio.h>
-#include <drivers/i2c.h>
-#include <drivers/sensor.h>
-#include <drivers/sensor/tsl2540.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor/tsl2540.h>
 
 #define TSL2540_REG_EN	     0x80
 #define TSL2540_REG_ATIME    0x81

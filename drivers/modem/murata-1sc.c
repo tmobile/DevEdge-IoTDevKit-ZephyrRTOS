@@ -6,7 +6,7 @@
 
 #define DT_DRV_COMPAT murata_1sc
 
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 
 #include "modem_cmd_handler.h"
@@ -21,19 +21,19 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <device.h>
+#include <zephyr/device.h>
 #include <fcntl.h>
-#include <kernel.h>
-#include <net/net_offload.h>
-#include <net/socket_offload.h>
+#include <zephyr/kernel.h>
+#include <zephyr/net/net_offload.h>
+#include <zephyr/net/socket_offload.h>
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 #include "tls_internal.h"
 
-#include <net/tls_credentials.h>
-#include <sys/base64.h>
+#include <zephyr/net/tls_credentials.h>
+#include <zephyr/sys/base64.h>
 #endif
 #if defined(CONFIG_PM_DEVICE)
-#include <pm/device.h>
+#include <zephyr/pm/device.h>
 #endif
 #include <zephyr/drivers/modem/murata-1sc.h>
 

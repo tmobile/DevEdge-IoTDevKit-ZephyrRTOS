@@ -23,7 +23,6 @@
 #include <zephyr/drivers/console/uart_mux.h>
 #include <zephyr/shell/shell.h>
 #include <zephyr/sys/printk.h>
-#include <zephyr/zephyr.h>
 
 struct modem_shell_user_data {
 	const struct shell *shell;

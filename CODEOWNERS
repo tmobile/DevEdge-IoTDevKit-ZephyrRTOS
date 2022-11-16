@@ -8,3 +8,4 @@
 /*                                         @johnlange2 @ryanhagen-tmo @eniolaodufuwa-tmo @jtbaumann @DRuffer-tmo @jayrickard-tmo @joebairdtmo @atrowbr2-tmo @kimmansfield @wtucker6
 /.github/workflows/                        @ryanhagen-tmo @eniolaodufuwa-tmo
 /west.yml                                  @ryanhagen-tmo @eniolaodufuwa-tmo
+include/zephyr/drivers/sensor/tsl2540.h    @jtbaumann
