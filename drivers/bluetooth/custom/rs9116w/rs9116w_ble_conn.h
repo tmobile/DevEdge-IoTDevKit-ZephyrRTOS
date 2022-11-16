@@ -8,9 +8,9 @@
 #ifndef RS9116W_BLE_CONN_H_
 #define RS9116W_BLE_CONN_H_
 
-#include <zephyr.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/conn.h>
+#include <zephyr/kernel.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include <rsi_ble_common_config.h>
 #ifndef LOG_MODULE_NAME
 #define LOG_MODULE_NAME rsi_bt_conn
