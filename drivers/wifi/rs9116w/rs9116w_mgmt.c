@@ -552,8 +552,8 @@ static const struct net_wifi_mgmt_offload rs9116w_api = {
 #if CONFIG_WISECONNECT_BT
 extern int bt_le_adv_stop(void);
 extern void bt_le_adv_resume(void);
-#endif
 #include <rsi_bt_common_apis.h>
+#endif
 static int rs9116w_pm_action(const struct device *dev,
 			     enum pm_device_action action)
 {
