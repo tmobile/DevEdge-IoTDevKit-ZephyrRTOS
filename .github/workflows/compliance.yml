@@ -3,26 +3,6 @@ name: Compliance Checks
 on: pull_request
 
 jobs:
-  maintainer_check:
-    runs-on: ubuntu-20.04
-    name: Check MAINTAINERS file
-    steps:
-    - name: Checkout the code
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.8.10'
-    - name: Run Maintainers Script
-      id: maintainer
-      env:
-        BASE_REF: ${{ github.base_ref }}
-      run: |
-        pip install pyyaml
-        python3 ./scripts/get_maintainer.py path CMakeLists.txt
-
   check_compliance:
     runs-on: ubuntu-20.04
     name: Run compliance checks on patch series (PR)
