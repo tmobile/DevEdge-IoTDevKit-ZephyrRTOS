@@ -232,7 +232,7 @@
 			status = "disabled";
 		};
 
-		timer0: timer@40018000 {
+		timer0: timer@40018000 { /* TIMER0 */
 			compatible = "silabs,gecko-timers";
 			reg = <0x40018000 0x400>;
 			status = "disabled";
@@ -244,25 +244,31 @@
 			};
 		};
 
-		timer1: timer@40018400 {
+		timer1: timer@40018400 { /* TIMER1 */
 			compatible = "silabs,gecko-timers";
 			reg = <0x40018400 0x400>;
 			status = "disabled";
+
+			pwm {
+				compatible = "silabs,gecko-pwm";
+				status = "disabled";
+				#pwm-cells = <3>;
+			};
 		};
 
-		timer2: timer@4001a000 {
+		timer2: timer@4001a000 { /* WTIMER0 */
 			compatible = "silabs,gecko-timers";
 			reg = <0x4001a000 0x400>;
 			status = "disabled";
 		};
 
-		timer3: timer@4001a400 {
+		timer3: timer@4001a400 { /* WTIMER1 */
 			compatible = "silabs,gecko-timers";
 			reg = <0x4001a400 0x400>;
 			status = "disabled";
 		};
 
-		timer4: timer@40046000 {
+		timer4: timer@40046000 { /* LETIMER0 */
 			compatible = "silabs,gecko-timers";
 			reg = <0x40046000 0x400>;
 			status = "disabled";

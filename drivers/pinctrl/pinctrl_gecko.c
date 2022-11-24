@@ -15,7 +15,10 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintp
 	struct soc_gpio_pin txpin = {0, 0, 0, 0};
 	USART_TypeDef *base = (USART_TypeDef *)reg;
 	uint8_t loc;
+#if defined(GPIO_USART_ROUTEEN_RTSPEN) && defined(GPIO_USART_ROUTEEN_CTSPEN) ||\
+    defined(GPIO_USART_ROUTEEN_RXPEN) && defined(GPIO_USART_ROUTEEN_TXPEN)
 	int usart_num = USART_NUM(base);
+#endif
 #endif /* CONFIG_UART_GECKO */
 
 	for (uint8_t i = 0U; i < pin_cnt; i++) {

@@ -15,3 +15,23 @@
 		};
 	};
 };
+
+/ {
+	pinctrl: pin-controller {
+		/* Pin controller is a "virtual" device since SiLabs SoCs do pin
+		 * control in a distributed way (GPIO registers and PSEL
+		 * registers on each peripheral).
+		 */
+		compatible = "silabs,gecko-pinctrl";
+	};
+
+	hwinfo: hwinfo {
+		compatible = "silabs,gecko-hwinfo";
+		status = "disabled";
+	};
+
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};
