@@ -179,11 +179,11 @@
 		reg = <0>;
 		spi-max-frequency = <6400000>;
 		int-gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;                     // input
-		reset-gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;                    // output should be initialized LOW
+		reset-gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;                    // output
 		sleep-wake-indication-gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;    // input
 		wake-on-wireless-gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>;        // input
-		sleep-wake-confirmation-gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>; // output should be initialized HIGH
-		poc-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;                      // output should be initialized LOW
+		sleep-wake-confirmation-gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>; // output
+		poc-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;                      // output
 		status = "okay";
 	};
 };

@@ -68,14 +68,14 @@ static int tmo_dev_edge(const struct device *dev)
 
 	gpio_pin_configure(gpiof, BQ_CHIP_ENABLE, GPIO_OUTPUT_LOW);
 
-#ifdef CONFIG_PWM 
+#ifdef CONFIG_PWM
 	k_timer_start(&powerup_led_timer, K_SECONDS(1), K_FOREVER);
 #endif /* CONFIG_PWM */
 
 	return 0;
 }
 
-#ifdef CONFIG_PWM 
+#ifdef CONFIG_PWM
 
 #include <zephyr/drivers/pwm.h>
 
