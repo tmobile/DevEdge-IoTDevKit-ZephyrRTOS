@@ -1,0 +1,15 @@
+name: "Zephyr Upstream Mirror"
+
+on: [workflow_dispatch]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    name: "Mirror"
+    steps:
+      - uses: pkgstore/github-action-mirror@main
+        with:
+          source_repo: "https://github.com/zephyrproject-rtos/zephyr.git"
+          target_repo: "https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
+          target_user: "${{ secrets.MIRROR_USER }}"
+          target_token: "${{ secrets.MIRROR_TOKEN }}"
