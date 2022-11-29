@@ -7,12 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     name: "Mirror Script"
     steps:
-      run: |
-        SOURCE="https://github.com/zephyrproject-rtos/zephyr.git"
-        TARGET="https://${{ secrets.MIRROR_USER }}:${{ secrets.MIRROR_TOKEN }}@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
+      - name: Script 
+        run: |
+          SOURCE="https://github.com/zephyrproject-rtos/zephyr.git"
+          TARGET="https://${{ secrets.MIRROR_USER }}:${{ secrets.MIRROR_TOKEN }}@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
 
-        ${git} clone --mirror "${SOURCE}" '/root/git/source' \
-          && _pushd '/root/git/source' || exit 1
-        ${git} remote add 'target' "${TARGET}"
-        ${git} push -f --mirror 'target'
-        _popd || exit 1
+          ${git} clone --mirror "${SOURCE}" '/root/git/source' \
+            && _pushd '/root/git/source' || exit 1
+          ${git} remote add 'target' "${TARGET}"
+          ${git} push -f --mirror 'target'
+          _popd || exit 1
