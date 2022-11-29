@@ -5,7 +5,7 @@ on: [workflow_dispatch]
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    name: "Mirror"
+    name: "Mirror Script"
     steps:
       - name: Script 
         run: |
