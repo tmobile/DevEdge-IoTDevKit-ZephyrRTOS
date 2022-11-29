@@ -4,7 +4,7 @@ on: [workflow_dispatch]
 
 jobs:
   mirror:
-    runs-on: ubuntu-latest
+    runs-on: alpine:latest
     name: "Mirror Script"
     steps:
       - name: Script 
