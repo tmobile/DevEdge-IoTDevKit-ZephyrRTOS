@@ -4,11 +4,22 @@ on: [workflow_dispatch]
 
 jobs:
   mirror:
-    runs-on: ubuntu-latest
+    runs-on: alpine:latest
     name: "Mirror Script"
     steps:
       - name: Script 
         run: |
+          apk add --no-cache bash git git-lfs
+
+          _pushd() {
+            command pushd "$@" > /dev/null || exit 1
+          }
+
+          # Popd.
+          _popd() {
+            command popd > /dev/null || exit 1
+          }
+          
           git="$( command -v git )"
           SOURCE="https://github.com/zephyrproject-rtos/zephyr.git"
           TARGET="https://${{ secrets.MIRROR_USER }}:${{ secrets.MIRROR_TOKEN }}@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
