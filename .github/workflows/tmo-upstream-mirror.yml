@@ -1,15 +1,18 @@
-name: "Zephyr Upstream Mirror"
+name: "Manual Zephyr Upstream Mirror"
 
 on: [workflow_dispatch]
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    name: "Mirror"
+    name: "Mirror Script"
     steps:
-      - uses: pkgstore/github-action-mirror@main
-        with:
-          source_repo: "https://github.com/zephyrproject-rtos/zephyr.git"
-          target_repo: "https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
-          target_user: "${{ secrets.MIRROR_USER }}"
-          target_token: "${{ secrets.MIRROR_TOKEN }}"
+      run: |
+        SOURCE="https://github.com/zephyrproject-rtos/zephyr.git"
+        TARGET="https://${{ secrets.MIRROR_USER }}:${{ secrets.MIRROR_TOKEN }}@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
+
+        ${git} clone --mirror "${SOURCE}" '/root/git/source' \
+          && _pushd '/root/git/source' || exit 1
+        ${git} remote add 'target' "${TARGET}"
+        ${git} push -f --mirror 'target'
+        _popd || exit 1
