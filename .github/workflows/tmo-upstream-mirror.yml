@@ -9,6 +9,7 @@ jobs:
     steps:
       - name: Script 
         run: |
+          git="$( command -v git )"
           SOURCE="https://github.com/zephyrproject-rtos/zephyr.git"
           TARGET="https://${{ secrets.MIRROR_USER }}:${{ secrets.MIRROR_TOKEN }}@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git"
 
