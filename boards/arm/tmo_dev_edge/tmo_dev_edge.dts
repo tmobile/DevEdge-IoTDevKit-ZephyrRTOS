@@ -112,7 +112,7 @@
 	location-rx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(5)>;
 	location-tx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(4)>;
 	status = "okay";
-	label = "UART_0";
+	// UART_0
 };
 
 &usart1 {
@@ -124,12 +124,12 @@
 	hw-flow-control;
 	status = "okay";
 
-	label = "UART_1";
+	// UART_1
 
 	murata_1sc: murata_1sc {
-		label = "MODEM";
+		// MODEM
 		compatible = "murata,1sc";
-		label = "murata,1sc";
+		// murata,1sc
 		mdm-wake-host-gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
 		mdm-wake-mdm-gpios  = <&gpiod 15 GPIO_ACTIVE_HIGH>;
 		mdm-rst-done-gpios  = <&gpiod 9 GPIO_ACTIVE_HIGH>;
@@ -151,11 +151,11 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	label = "SPI_1";
+	// SPI_1
 
 	w25q64: w25q64jw@0 {
 		compatible = "jedec,spi-nor";
-		label = "w25q64jw";
+		// w25q64jw
 		reg = <0>;
 		spi-max-frequency = <6400000>;
 		// note size is in bits
@@ -191,12 +191,12 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	label = "SPI_0";
+	// SPI_0
 
 	rs9116w: rs9116w@0 {
 		compatible = "silabs,rs9116w";
 		reg = <0>;
-		label = "RS9116W_0";
+		// RS9116W_0
 		spi-max-frequency = <6400000>;
 		int-gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;                     // input
 		reset-gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;                    // output init LOW
@@ -233,7 +233,7 @@
 		status = "okay";
 		// Note int2 is not used
 		irq-gpios =  <&gpiob 8 GPIO_ACTIVE_HIGH>;
-		label = "LIS2DW12";
+		// LIS2DW12
 	};
 
 	/* Sony GNSS receiver */
@@ -244,7 +244,7 @@
 		alert-gpios = <&gpiof 7 GPIO_ACTIVE_LOW>;
 		int-gpios = <&gpiof 9 GPIO_ACTIVE_HIGH>;
 		pwr-gpios = <&gpiof 10 GPIO_ACTIVE_HIGH>;
-		label = "CXD5605";
+		// CXD5605
 	};
 
 	/* AMS Ambient Light Sensor */
@@ -253,7 +253,7 @@
 		reg = <0x39 0x4>;
 		status = "okay";
 		int-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
-		label = "TSL2540";
+		// TSL2540
 	};
 
 	/*AMS Temperature Sensor */
@@ -262,8 +262,8 @@
 		reg = <0x48 0x4>;
 		status = "okay";
 		alert-gpios = <&gpiof 14 GPIO_ACTIVE_LOW>;
-		label = "AS6212";
-		label = "TEMP_0";
+		// AS6212
+		// TEMP_0
 	};
 
 	/* ST Microelectronics LPS22HH pressure sensor */
@@ -272,7 +272,7 @@
 		reg = <0x5c 0x4>;
 		status = "okay";
 		drdy-gpios =  <&gpiof 15 GPIO_ACTIVE_HIGH>;
-		label = "LPS22HH";
+		// LPS22HH
 	};
 
 	/* TI Switched-Mode Li-Ion Battery Charger */
@@ -287,17 +287,16 @@
 &timer0 {
 
 	status = "okay";
-	label = "TIMER_0";
+	// TIMER_0
 
-	/* Buzzer */
+	// Buzzer
 	pwm0: pwm {
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
-		label = "PWM_0";
+		// PWM_0
 		pin-location = <GECKO_LOCATION(16) GECKO_PORT_C GECKO_PIN(11)>;
 		prescaler = <4>;
-		#pwm-cells = <3>;
 	};
 };
 
@@ -305,44 +304,40 @@
 	status = "okay";
 	label = "TIMER_1";
 
-	/* White LED */
+	// White LED
 	pwm1: pwm {
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
-		label = "PWM_1";
+		// PWM_1
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(7)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Red LED */
+	// Red LED
 	pwm2: pwm {
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
-		label = "PWM_2";
+		// PWM_2
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(8)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Green LED */
+	// Green LED
 	pwm3: pwm {
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
-		label = "PWM_3";
+		// PWM_3
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(9)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Blue LED */
+	// Blue LED
 	pwm4: pwm {
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
-		label = "PWM_4";
+		// PWM_4
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(10)>;
-		#pwm-cells = <3>;
 	};
 };
 

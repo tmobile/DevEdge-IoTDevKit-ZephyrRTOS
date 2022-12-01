@@ -443,7 +443,7 @@ int gecko_rtcc_set_alarm(const struct device *dev,
  */
 int gecko_rtcc_synchronize(const struct device *dev,
 			     struct sys_notify *notify);
-#if !defined(CONFIG_TIME_GECKO_RTCC)
+#if 0
 /** @brief Request to update the synchronization point.
  *
  * This is a variant of gecko_rtcc_synchronize() for use from user

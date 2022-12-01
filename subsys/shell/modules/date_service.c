@@ -231,22 +231,21 @@ static int cmd_date_get(const struct shell *shell, size_t argc, char **argv)
 }
 
 #if defined(CONFIG_COUNTER_GECKO_RTCC)
-#define TIMER DT_LABEL(DT_NODELABEL(rtcc0))
+#define TIMER_COUNTER DT_NODELABEL(rtcc0)
 #endif
 #if defined(CONFIG_TIME_GECKO_RTCC)
-#define TIMER DT_LABEL(DT_NODELABEL(rtcc0))
+#define TIMER_COUNTER DT_NODELABEL(rtcc0)
 #endif
 
 static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **argv)
 {
 #ifdef TIMER
-	const struct device *counter_dev;
+	const struct device *const counter_dev = DEVICE_DT_GET(TIMER_COUNTER);
 	uint32_t ticks;
 	struct tm tm_gm;
 	time_t time_ticks;
 	int err;
 
-	counter_dev = device_get_binding(TIMER);
 	if (counter_dev == NULL) {
 		shell_error(shell_ptr, "Counter not found");
 		return -EINVAL;
