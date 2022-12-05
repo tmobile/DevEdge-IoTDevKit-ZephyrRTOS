@@ -51,6 +51,30 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 	32 + MAX_FILENAME_LEN /* assume filename maxlen = 32 */
 #define PEM_BUFF_SIZE 3002    /* terminate with \" & 0 */
 
+const struct mdmdata_cmd_t cmd_pool[] = {{"APN", apn_e},
+				   {"ASLEEP", awake_e},
+				   {"AWAKE", awake_e},
+				   {"CONN_STS", connsts_e},
+				   {"CONN", connsts_e},
+				   {"EDRX", edrx_e},
+				   {"GOLD", golden_e},
+				   {"GOLDEN", golden_e},
+				   {"ICCID", iccid_e},
+				   {"IMEI", imei_e},
+				   {"IMSI", imsi_e},
+				   {"IP", ip_e},
+				   {"IP6", ip6_e},
+				   {"MSISDN", msisdn_e},
+				   {"PSM", psm_e},
+				   {"SLEEP", sleep_e},
+				   {"SSI", ssi_e},
+				   {"STAT", connsts_e},
+				   {"SIM", sim_info_e},
+				   {"VERSION", version_e},
+				   {"VER", version_e},
+				   {"WAKE", wake_e},
+				   {}};
+
 /**
  * following struct may not have packed memory if it has something like
  * int follow by char then int,
@@ -1561,7 +1585,7 @@ MODEM_CMD_DEFINE(on_cmd_certcmd_dir)
  * @brief check whether filename exists in modem's D:CERTS/USER/ folder
  * @return 0 if file exists on modem; -1 if not
  */
-static int check_mdm_store_file(char *filename)
+static int check_mdm_store_file(const char *filename)
 {
 	int ret = 0;
 	char at_cmd[60];
@@ -3518,22 +3542,22 @@ static int murata_1sc_is_awake(char *rbuf)
 	if (s_hifc_mode == 'A') {
 		if (gpio_pin_get_dt(&wake_host_gpio) &&
 		    gpio_pin_get_dt(&mdm_rx_gpio)) {
-			strcpy(rbuf, "AWAKE");
+			strcpy(rbuf, TMO_MODEM_AWAKE_STR);
 			return 1;
 		} else if (!gpio_pin_get_dt(&wake_host_gpio) &&
 			   !gpio_pin_get_dt(&mdm_rx_gpio)) {
-			strcpy(rbuf, "ASLEEP");
+			strcpy(rbuf, TMO_MODEM_ALSEEP_STR);
 			return 0;
 		}
-		strcpy(rbuf, "UNKNOWN");
+		strcpy(rbuf, TMO_MODEM_UNKNOWN_STR);
 		return -1;
 	} else if (s_hifc_mode == 'B') {
 		int ret = gpio_pin_get_dt(&wake_host_gpio);
 
 		if (ret) {
-			strcpy(rbuf, "AWAKE");
+			strcpy(rbuf, TMO_MODEM_AWAKE_STR);
 		} else {
-			strcpy(rbuf, "ASLEEP");
+			strcpy(rbuf, TMO_MODEM_ALSEEP_STR);
 		}
 		return ret;
 	}
@@ -3582,27 +3606,6 @@ int murata_socket_offload_init(void)
 	socket_offload_dns_register(&murata_dns_ops);
 	return 0;
 }
-
-enum mdmdata_e {
-	apn_e,
-	awake_e,
-	connsts_e,
-	edrx_e,
-	golden_e,
-	iccid_e,
-	imei_e,
-	imsi_e,
-	ip_e,
-	ip6_e,
-	msisdn_e,
-	psm_e,
-	sim_info_e,
-	sleep_e,
-	ssi_e,
-	version_e,
-	wake_e,
-	invalid
-} mdmdata_e;
 
 static int ioctl_query(enum mdmdata_e idx, void *buf)
 {
@@ -3701,44 +3704,11 @@ static int ioctl_query(enum mdmdata_e idx, void *buf)
 
 typedef int (*mdmdata_cb_t)(enum mdmdata_e atcmd, void *user_data);
 
-struct mdmdata_cmd_t {
-	char *str;
-	enum mdmdata_e atcmd;
-};
-
-/**
- * using in_out_str as key to query modem data
- * response will be in in-out-str
- */
-struct mdmdata_cmd_t cmd_pool[] = {{"APN", apn_e},
-				   {"ASLEEP", awake_e},
-				   {"AWAKE", awake_e},
-				   {"CONN_STS", connsts_e},
-				   {"CONN", connsts_e},
-				   {"EDRX", edrx_e},
-				   {"GOLD", golden_e},
-				   {"GOLDEN", golden_e},
-				   {"ICCID", iccid_e},
-				   {"IMEI", imei_e},
-				   {"IMSI", imsi_e},
-				   {"IP", ip_e},
-				   {"IP6", ip6_e},
-				   {"MSISDN", msisdn_e},
-				   {"PSM", psm_e},
-				   {"SLEEP", sleep_e},
-				   {"SSI", ssi_e},
-				   {"STAT", connsts_e},
-				   {"SIM", sim_info_e},
-				   {"VERSION", version_e},
-				   {"VER", version_e},
-				   {"WAKE", wake_e},
-				   {}};
-
 static int get_mdmdata_resp(char *io_str)
 {
 	int ret = -1;
 	int idx = 0;
-	char *cmdStr;
+	const char *cmdStr;
 
 	while (cmd_pool[idx].str != NULL) {
 		cmdStr = cmd_pool[idx].str;
@@ -3900,7 +3870,7 @@ exit:
 	return retval;
 }
 
-static int del_cert(char *filename)
+static int del_cert(const char *filename)
 {
 	int ret;
 	bool certfile_exist = check_mdm_store_file(filename) == 0;
@@ -4437,6 +4407,30 @@ top:;
 	return ret;
 }
 
+
+/**
+ * @brief Most of the ioctls calls are passed a single int va_arg, but need a pointer.
+ * It is the callers responsibility to safely pass the pointer value represented as a
+ * positive integer, this function will decode it back into a pointer.
+ *
+ * It is the callees job to ensure const correctness as this interface has no way to
+ * know if the pointer described was originally a const.
+ *
+ * @param args The va_args argument
+ * @return void* The value as a pointer, NULL if the value cannot be represented
+ */
+static void *ptr_from_va(va_list args)
+{
+	int arg = va_arg(args, int);
+	uintptr_t uiptr;
+
+	if (arg < 0) {
+		return NULL;
+	}
+	uiptr = arg;
+	return (void *) uiptr;
+}
+
 /**
  * @brief ioctl handler to handle various requests
  *
@@ -4457,6 +4451,10 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 	switch (request) {
 	case F_GETFL:
 		return 0; /* Always report that we're a blocking socket */
+
+	/* Note: Poll functions are passed their arguments from a different function that properly
+	 * utilizes va_args instead of assuming int
+	 */
 	case ZFD_IOCTL_POLL_PREPARE: {
 		struct zsock_pollfd *pfd;
 		struct k_poll_event **pev;
@@ -4481,19 +4479,17 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 	}
 
 	case SMS_SEND:
-		ret = send_sms_msg(
-			obj, (struct sms_out *)va_arg(args, struct sms_out *));
+		ret = send_sms_msg(obj, (struct sms_out *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case SMS_RECV:
-		ret = recv_sms_msg(
-			obj, (struct sms_in *)va_arg(args, struct sms_in *));
+		ret = recv_sms_msg(obj, (struct sms_in *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case GET_IPV4_CONF:
-		a_ipv4_addr = va_arg(args, struct aggr_ipv4_addr *);
+		a_ipv4_addr = (struct aggr_ipv4_addr *) ptr_from_va(args);
 		va_end(args);
 		get_ipv4_config();
 		zsock_inet_pton(AF_INET, mdata.mdm_ip, &a_ipv4_addr->ip);
@@ -4503,40 +4499,38 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 		break;
 
 	case GET_ATCMD_RESP:
-		cmd_str = (char *)va_arg(args, char *);
+		cmd_str = (char *) ptr_from_va(args);
 		va_end(args);
 		ret = get_mdmdata_resp(cmd_str);
 		break;
 
 	case INIT_FW_XFER:
-		ret = init_fw_xfer((struct init_fw_data_t *)va_arg(
-			args, struct init_fw_data_t *));
+		ret = init_fw_xfer((struct init_fw_data_t *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case SEND_FW_HEADER:
-		ret = send_fw_header((char *)va_arg(args, char *));
+		ret = send_fw_header((const char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case SEND_FW_DATA:
-		ret = send_fw_data((struct send_fw_data_t *)va_arg(
-			args, struct send_fw_data_t *));
+		ret = send_fw_data((struct send_fw_data_t *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case INIT_FW_UPGRADE:
-		ret = init_fw_upgrade((char *)va_arg(args, char *));
+		ret = init_fw_upgrade((const char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case GET_CHKSUM_ABILITY:
-		ret = get_file_chksum_ability((char *)va_arg(args, char *));
+		ret = get_file_chksum_ability((char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case GET_FILE_MODE:
-		ret = get_file_mode((char *)va_arg(args, char *));
+		ret = get_file_mode((char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
@@ -4545,40 +4539,37 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 		break;
 
 	case AT_MODEM_PSM_SET:
-		ret = set_psm_timer((struct set_cpsms_params *)va_arg(
-			args, struct set_cpsms_params *));
+		ret = set_psm_timer((struct set_cpsms_params *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case AT_MODEM_EDRX_SET:
-		ret = set_edrx_timer((struct set_cedrxs_params *)va_arg(
-			args, struct set_cedrxs_params *));
+		ret = set_edrx_timer((struct set_cedrxs_params *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case AT_MODEM_EDRX_GET:
-		ret = get_edrx((char *)va_arg(args, char *));
+		ret = get_edrx((char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case AT_MODEM_PSM_GET:
-		ret = get_psm((char *)va_arg(args, char *));
+		ret = get_psm((char *) ptr_from_va(args));
 		va_end(args);
 		break;
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 	case STORE_CERT:
-		ret = store_cert((struct murata_cert_params *)va_arg(
-			args, struct murata_cert_params *));
+		ret = store_cert((struct murata_cert_params *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case DEL_CERT:
-		ret = del_cert(va_arg(args, char *));
+		ret = del_cert((const char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case CHECK_CERT:
-		ret = check_mdm_store_file(va_arg(args, char *));
+		ret = check_mdm_store_file((const char *) ptr_from_va(args));
 		va_end(args);
 		break;
 
@@ -4589,8 +4580,7 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 
 	case CREATE_CERT_PROFILE:
 		ret = create_tls_profile(
-			(struct murata_tls_profile_params *)va_arg(
-				args, struct murata_tls_profile_params *));
+			(struct murata_tls_profile_params *) ptr_from_va(args));
 		va_end(args);
 		break;
 #endif
