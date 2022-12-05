@@ -153,3 +153,35 @@ union params_cmd {
 	struct murata_tls_profile_params profile;
 	char response[128];
 };
+
+enum mdmdata_e {
+	apn_e,
+	awake_e,
+	connsts_e,
+	edrx_e,
+	golden_e,
+	iccid_e,
+	imei_e,
+	imsi_e,
+	ip_e,
+	ip6_e,
+	msisdn_e,
+	psm_e,
+	sim_info_e,
+	sleep_e,
+	ssi_e,
+	version_e,
+	wake_e,
+	invalid
+};
+
+struct mdmdata_cmd_t {
+	const char *str;
+	enum mdmdata_e atcmd;
+};
+
+extern const struct mdmdata_cmd_t cmd_pool[];
+
+#define TMO_MODEM_ALSEEP_STR "ASLEEP"
+#define TMO_MODEM_AWAKE_STR "AWAKE"
+#define TMO_MODEM_UNKNOWN_STR "UNKNOWN"
