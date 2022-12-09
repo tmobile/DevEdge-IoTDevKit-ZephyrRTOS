@@ -51,6 +51,16 @@ config EMUL_SBS_GAUGE
 	  It provides readings which follow a simple sequence, thus allowing
 	  test code to check that things are working as expected.
 
+config EMUL_BC12_PI3USB9201
+	bool "Emulate a Pericom PI3USB9201 USB charging detector"
+	default y
+	depends on ZTEST && DT_HAS_DIODES_PI3USB9201_ENABLED
+	help
+	  This is an emulator for the Pericom PI3USB9201 USB charging detector.
+
+	  The backend API allows test code to force the type of the partner
+	  charginging device.
+
 source "subsys/emul/i2c/Kconfig"
 source "subsys/emul/espi/Kconfig"
 
