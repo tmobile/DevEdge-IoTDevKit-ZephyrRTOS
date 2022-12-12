@@ -5,7 +5,7 @@
  */
 
 #include "mock_backend.h"
-#include <ztest.h>
+#include <zephyr/ztest.h>
 #include <zephyr/logging/log_core.h>
 
 void mock_log_backend_reset(const struct log_backend *backend)
@@ -101,7 +101,12 @@ void mock_log_backend_validate(const struct log_backend *backend, bool panic)
 		      "Got: %u, Expected: %u", mock->drop_cnt, mock->exp_drop_cnt);
 	zassert_equal(mock->msg_rec_idx, mock->msg_proc_idx,
 			"%p Recored:%d, Got: %d", mock, mock->msg_rec_idx, mock->msg_proc_idx);
-	zassert_equal(mock->panic, panic, NULL);
+	zassert_equal(mock->panic, panic);
+
+#if defined(CONFIG_LOG_MODE_DEFERRED) && \
+	defined(CONFIG_LOG_PROCESS_THREAD)
+	zassert_true(mock->evt_notified);
+#endif
 }
 
 struct test_str {
@@ -141,13 +146,15 @@ static void process(const struct log_backend *const backend,
 		      "Got: %u, expected: %u",
 #endif
 		      msg->log.hdr.timestamp, exp->timestamp);
-	zassert_equal(msg->log.hdr.desc.level, exp->level, NULL);
-	zassert_equal(msg->log.hdr.desc.domain, exp->domain_id, NULL);
+	zassert_equal(msg->log.hdr.desc.level, exp->level);
+	zassert_equal(msg->log.hdr.desc.domain, exp->domain_id);
 
 	uint32_t source_id;
 	const void *source = msg->log.hdr.source;
 
-	if (source == NULL) {
+	if (exp->level == LOG_LEVEL_INTERNAL_RAW_STRING) {
+		source_id = (uintptr_t)source;
+	} else if (source == NULL) {
 		source_id = 0;
 	} else {
 		source_id = IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) ?
@@ -162,9 +169,9 @@ static void process(const struct log_backend *const backend,
 	uint8_t *data;
 
 	data = log_msg_get_data(&msg->log, &len);
-	zassert_equal(exp->data_len, len, NULL);
+	zassert_equal(exp->data_len, len);
 	if (exp->data_len <= sizeof(exp->data)) {
-		zassert_equal(memcmp(data, exp->data, len), 0, NULL);
+		zassert_equal(memcmp(data, exp->data, len), 0);
 	}
 
 	char str[128];
@@ -200,9 +207,26 @@ static void dropped(const struct log_backend *const backend, uint32_t cnt)
 }
 
 
+#if defined(CONFIG_LOG_MODE_DEFERRED) && \
+	defined(CONFIG_LOG_PROCESS_THREAD)
+static void notify(const struct log_backend *const backend,
+		   enum log_backend_evt event,
+		   union log_backend_evt_arg *arg)
+{
+	struct mock_log_backend *mock = backend->cb->ctx;
+
+	mock->evt_notified = true;
+}
+#endif
+
 const struct log_backend_api mock_log_backend_api = {
 	.process = process,
 	.panic = panic,
 	.init = mock_init,
 	.dropped = IS_ENABLED(CONFIG_LOG_MODE_IMMEDIATE) ? NULL : dropped,
+
+#if defined(CONFIG_LOG_MODE_DEFERRED) && \
+	defined(CONFIG_LOG_PROCESS_THREAD)
+	.notify = notify,
+#endif
 };

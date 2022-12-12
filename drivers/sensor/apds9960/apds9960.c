@@ -377,9 +377,10 @@ static int apds9960_init_interrupt(const struct device *dev)
 		return -EIO;
 	}
 
+	drv_data->dev = dev;
+
 #ifdef CONFIG_APDS9960_TRIGGER
 	drv_data->work.handler = apds9960_work_cb;
-	drv_data->dev = dev;
 	if (i2c_reg_update_byte_dt(&config->i2c,
 				APDS9960_ENABLE_REG,
 				APDS9960_ENABLE_PON,
@@ -391,7 +392,7 @@ static int apds9960_init_interrupt(const struct device *dev)
 #else
 	k_sem_init(&drv_data->data_sem, 0, K_SEM_MAX_LIMIT);
 #endif
-	apds9960_setup_int(drv_data->dev->config, true);
+	apds9960_setup_int(config, true);
 
 	if (gpio_pin_get_dt(&config->int_gpio) > 0) {
 		apds9960_handle_cb(drv_data);
@@ -523,6 +524,6 @@ static struct apds9960_data apds9960_data;
 
 PM_DEVICE_DT_INST_DEFINE(0, apds9960_pm_action);
 
-DEVICE_DT_INST_DEFINE(0, apds9960_init,
+SENSOR_DEVICE_DT_INST_DEFINE(0, apds9960_init,
 	      PM_DEVICE_DT_INST_GET(0), &apds9960_data, &apds9960_config,
 	      POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &apds9960_driver_api);

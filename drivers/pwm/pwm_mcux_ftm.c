@@ -10,14 +10,15 @@
 #include <zephyr/drivers/clock_control.h>
 #include <errno.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/irq.h>
 #include <soc.h>
 #include <fsl_ftm.h>
 #include <fsl_clock.h>
 #include <zephyr/drivers/pinctrl.h>
 
-#define LOG_LEVEL CONFIG_PWM_LOG_LEVEL
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(pwm_mcux_ftm);
+
+LOG_MODULE_REGISTER(pwm_mcux_ftm, CONFIG_PWM_LOG_LEVEL);
 
 #define MAX_CHANNELS ARRAY_SIZE(FTM0->CONTROLS)
 
@@ -404,6 +405,11 @@ static int mcux_ftm_init(const struct device *dev)
 		return -EINVAL;
 	}
 
+	if (!device_is_ready(config->clock_dev)) {
+		LOG_ERR("clock control device not ready");
+		return -ENODEV;
+	}
+
 	if (clock_control_get_rate(config->clock_dev, config->clock_subsys,
 				   &data->clock_freq)) {
 		LOG_ERR("Could not get clock frequency");
@@ -488,7 +494,7 @@ static const struct mcux_ftm_config mcux_ftm_config_##n = { \
 	DEVICE_DT_INST_DEFINE(n, &mcux_ftm_init,		       \
 			    NULL, &mcux_ftm_data_##n, \
 			    &mcux_ftm_config_##n, \
-			    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, \
+			    POST_KERNEL, CONFIG_PWM_INIT_PRIORITY, \
 			    &mcux_ftm_driver_api); \
 	FTM_CONFIG_FUNC(n) \
 	FTM_INIT_CFG(n);

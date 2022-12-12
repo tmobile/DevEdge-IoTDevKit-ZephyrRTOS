@@ -17,8 +17,8 @@
 #define ETH_STM32_HAL_FRAME_SIZE_MAX (ETH_STM32_HAL_MTU + 18)
 
 /* Definition of the Ethernet driver buffers size and count */
-#define ETH_RX_BUF_SIZE	ETH_MAX_PACKET_SIZE /* buffer size for receive */
-#define ETH_TX_BUF_SIZE	ETH_MAX_PACKET_SIZE /* buffer size for transmit */
+#define ETH_STM32_RX_BUF_SIZE	ETH_MAX_PACKET_SIZE /* buffer size for receive */
+#define ETH_STM32_TX_BUF_SIZE	ETH_MAX_PACKET_SIZE /* buffer size for transmit */
 
 /* Device constant configuration parameters */
 struct eth_stm32_hal_dev_cfg {
@@ -26,9 +26,9 @@ struct eth_stm32_hal_dev_cfg {
 	struct stm32_pclken pclken;
 	struct stm32_pclken pclken_rx;
 	struct stm32_pclken pclken_tx;
-#if !defined(CONFIG_SOC_SERIES_STM32H7X)
+#if DT_INST_CLOCKS_HAS_NAME(0, mac_clk_ptp)
 	struct stm32_pclken pclken_ptp;
-#endif /* !defined(CONFIG_SOC_SERIES_STM32H7X) */
+#endif
 	const struct pinctrl_dev_config *pcfg;
 };
 

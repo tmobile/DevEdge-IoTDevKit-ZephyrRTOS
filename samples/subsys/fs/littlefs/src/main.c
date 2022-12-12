@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/fs/littlefs.h>
@@ -247,7 +247,7 @@ static int littlefs_flash_erase(unsigned int id)
 	}
 
 	LOG_PRINTK("Area %u at 0x%x on %s for %u bytes\n",
-		   id, (unsigned int)pfa->fa_off, pfa->fa_dev_name,
+		   id, (unsigned int)pfa->fa_off, pfa->fa_dev->name,
 		   (unsigned int)pfa->fa_size);
 
 	/* Optional wipe flash contents */
@@ -268,7 +268,7 @@ FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(storage);
 static struct fs_mount_t lfs_storage_mnt = {
 	.type = FS_LITTLEFS,
 	.fs_data = &storage,
-	.storage_dev = (void *)FLASH_AREA_ID(storage),
+	.storage_dev = (void *)FIXED_PARTITION_ID(storage_partition),
 	.mnt_point = "/lfs",
 };
 #endif /* PARTITION_NODE */

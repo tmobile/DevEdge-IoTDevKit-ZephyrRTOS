@@ -774,6 +774,22 @@ static int lsm6dsl_init_chip(const struct device *dev)
 		return -EIO;
 	}
 
+	if (data->hw_tf->update_reg(dev,
+				    LSM6DSL_REG_CTRL6_C,
+				    LSM6DSL_MASK_CTRL6_C_XL_HM_MODE,
+				    (1 << LSM6DSL_SHIFT_CTRL6_C_XL_HM_MODE)) < 0) {
+		LOG_DBG("failed to disable accelerometer high performance mode");
+		return -EIO;
+	}
+
+	if (data->hw_tf->update_reg(dev,
+				    LSM6DSL_REG_CTRL7_G,
+				    LSM6DSL_MASK_CTRL7_G_HM_MODE,
+				    (1 << LSM6DSL_SHIFT_CTRL7_G_HM_MODE)) < 0) {
+		LOG_DBG("failed to disable gyroscope high performance mode");
+		return -EIO;
+	}
+
 	return 0;
 }
 
@@ -824,7 +840,7 @@ static int lsm6dsl_init(const struct device *dev)
  */
 
 #define LSM6DSL_DEVICE_INIT(inst)					\
-	DEVICE_DT_INST_DEFINE(inst,					\
+	SENSOR_DEVICE_DT_INST_DEFINE(inst,				\
 			    lsm6dsl_init,				\
 			    NULL,					\
 			    &lsm6dsl_data_##inst,			\

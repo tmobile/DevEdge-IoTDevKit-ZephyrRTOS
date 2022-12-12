@@ -22,8 +22,9 @@
 
 #include <ti/drivers/Power.h>
 #include <ti/drivers/power/PowerCC26XX.h>
+#include <zephyr/irq.h>
 
-#include "gpio_utils.h"
+#include <zephyr/drivers/gpio/gpio_utils.h>
 
 /* bits 16-18 in iocfg registers correspond to interrupt settings */
 #define IOCFG_INT_MASK    0x00070000
@@ -254,7 +255,7 @@ static int gpio_cc13xx_cc26xx_init(const struct device *dev)
 	irq_enable(DT_INST_IRQN(0));
 
 	/* Peripheral should not be accessed until power domain is on. */
-	while (PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) !=
+	while (PRCMPowerDomainsAllOn(PRCM_DOMAIN_PERIPH) !=
 	       PRCM_DOMAIN_POWER_ON) {
 		continue;
 	}

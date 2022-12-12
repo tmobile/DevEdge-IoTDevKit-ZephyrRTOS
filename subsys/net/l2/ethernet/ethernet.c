@@ -240,6 +240,9 @@ static enum net_verdict ethernet_recv(struct net_if *iface,
 		net_pkt_set_family(pkt, AF_INET6);
 		family = AF_INET6;
 		break;
+	case NET_ETH_PTYPE_EAPOL:
+		family = AF_UNSPEC;
+		break;
 #if defined(CONFIG_NET_L2_PTP)
 	case NET_ETH_PTYPE_PTP:
 		family = AF_UNSPEC;
@@ -273,6 +276,8 @@ static enum net_verdict ethernet_recv(struct net_if *iface,
 	lladdr->addr = hdr->dst.addr;
 	lladdr->len = sizeof(struct net_eth_addr);
 	lladdr->type = NET_LINK_ETHERNET;
+
+	net_pkt_set_ll_proto_type(pkt, type);
 
 	if (net_eth_is_vlan_enabled(ctx, iface)) {
 		if (type == NET_ETH_PTYPE_VLAN ||
@@ -503,8 +508,11 @@ static struct net_buf *ethernet_fill_header(struct ethernet_context *ctx,
 {
 	struct net_buf *hdr_frag;
 	struct net_eth_hdr *hdr;
+	size_t hdr_len = IS_ENABLED(CONFIG_NET_VLAN) ?
+			 sizeof(struct net_eth_vlan_hdr) :
+			 sizeof(struct net_eth_hdr);
 
-	hdr_frag = net_pkt_get_frag(pkt, NET_BUF_TIMEOUT);
+	hdr_frag = net_pkt_get_frag(pkt, hdr_len, NET_BUF_TIMEOUT);
 	if (!hdr_frag) {
 		return NULL;
 	}
@@ -1060,10 +1068,10 @@ static void carrier_on_off(struct k_work *work)
 
 	if (eth_carrier_up) {
 		ethernet_mgmt_raise_carrier_on_event(ctx->iface);
-		net_if_up(ctx->iface);
+		net_if_carrier_on(ctx->iface);
 	} else {
 		ethernet_mgmt_raise_carrier_off_event(ctx->iface);
-		net_if_carrier_down(ctx->iface);
+		net_if_carrier_off(ctx->iface);
 	}
 }
 

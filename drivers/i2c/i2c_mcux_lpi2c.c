@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/clock_control.h>
+#include <zephyr/kernel.h>
+#include <zephyr/irq.h>
 #include <fsl_lpi2c.h>
 
 #ifdef CONFIG_PINCTRL
@@ -65,7 +67,7 @@ static int mcux_lpi2c_configure(const struct device *dev,
 	uint32_t baudrate;
 	int ret;
 
-	if (!(I2C_MODE_MASTER & dev_config_raw)) {
+	if (!(I2C_MODE_CONTROLLER & dev_config_raw)) {
 		return -EINVAL;
 	}
 
@@ -273,7 +275,7 @@ static int mcux_lpi2c_recover_bus(const struct device *dev)
 
 	i2c_bitbang_init(&bitbang_ctx, &bitbang_io, (void *)config);
 
-	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate) | I2C_MODE_MASTER;
+	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate) | I2C_MODE_CONTROLLER;
 	error = i2c_bitbang_configure(&bitbang_ctx, bitrate_cfg);
 	if (error != 0) {
 		LOG_ERR("failed to configure I2C bitbang (err %d)", error);
@@ -315,6 +317,12 @@ static int mcux_lpi2c_init(const struct device *dev)
 
 	k_sem_init(&data->lock, 1, 1);
 	k_sem_init(&data->device_sync_sem, 0, K_SEM_MAX_LIMIT);
+
+	if (!device_is_ready(config->clock_dev)) {
+		LOG_ERR("clock control device not ready");
+		return -ENODEV;
+	}
+
 	if (clock_control_get_rate(config->clock_dev, config->clock_subsys,
 				   &clock_freq)) {
 		return -EINVAL;
@@ -329,7 +337,7 @@ static int mcux_lpi2c_init(const struct device *dev)
 
 	bitrate_cfg = i2c_map_dt_bitrate(config->bitrate);
 
-	error = mcux_lpi2c_configure(dev, I2C_MODE_MASTER | bitrate_cfg);
+	error = mcux_lpi2c_configure(dev, I2C_MODE_CONTROLLER | bitrate_cfg);
 	if (error) {
 		return error;
 	}

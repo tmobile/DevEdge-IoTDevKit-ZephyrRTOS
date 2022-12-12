@@ -15,9 +15,9 @@
  * it guarantee that ALL functionality provided is working correctly.
  */
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/__assert.h>
-#include <ztest.h>
+#include <zephyr/ztest.h>
 
 #include <limits.h>
 #include <sys/types.h>
@@ -31,7 +31,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <time.h>
-#include <ztest_error_hook.h>
+#include <zephyr/ztest_error_hook.h>
 #ifdef CONFIG_PICOLIBC
 #include <unistd.h>
 #endif
@@ -73,7 +73,7 @@ volatile long long_one = 1L;
 ZTEST(test_c_lib, test_limits)
 {
 
-	zassert_true((long_max + long_one == LONG_MIN), NULL);
+	zassert_true((long_max + long_one == LONG_MIN));
 }
 
 static ssize_t foobar(void)
@@ -83,7 +83,7 @@ static ssize_t foobar(void)
 
 ZTEST(test_c_lib, test_ssize_t)
 {
-	zassert_true(foobar() < 0, NULL);
+	zassert_true(foobar() < 0);
 }
 
 /**
@@ -135,7 +135,7 @@ volatile uint32_t unsigned_int = 0xffffff00;
  */
 ZTEST(test_c_lib, test_stdint)
 {
-	zassert_true((unsigned_int + unsigned_byte + 1u == 0U), NULL);
+	zassert_true((unsigned_int + unsigned_byte + 1u == 0U));
 
 #if (UINT8_C(1) == 1)			\
 	&& (INT8_C(-1) == -1)		\
@@ -147,7 +147,7 @@ ZTEST(test_c_lib, test_stdint)
 	&& (INT64_C(-8) == -8)		\
 	&& (UINTMAX_C(11) == 11)	\
 	&& (INTMAX_C(-11) == -11)
-	zassert_true(true, NULL);
+	zassert_true(true);
 #else
 	zassert_true(false, "const int expr values ...");
 #endif
@@ -443,64 +443,72 @@ ZTEST(test_c_lib, test_checktype)
 	char *ptr = buf;
 
 	for (int i = 0; i < 128; i++) {
-		if (isalnum(i))
+		if (isalnum(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_alnum), 0, "isalnum error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isalpha(i))
+		if (isalpha(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_alpha), 0, "isalpha error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isdigit(i))
+		if (isdigit(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_digit), 0, "isdigit error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isgraph(i))
+		if (isgraph(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_graph), 0, "isgraph error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isprint(i))
+		if (isprint(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_print), 0, "isprint error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isupper(i))
+		if (isupper(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_upper), 0, "isupper error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isspace(i))
+		if (isspace(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_space), 0, "isspace error");
 
 	ptr = buf;
 	for (int i = 0; i < 128; i++) {
-		if (isxdigit(i))
+		if (isxdigit(i)) {
 			*ptr++ = i;
+		}
 	}
 	*ptr = '\0';
 	zassert_equal(strcmp(buf, exp_xdigit), 0, "isxdigit error");
@@ -624,10 +632,14 @@ ZTEST(test_c_lib, test_str_operate)
 
 	zassert_true(strncat(ncat, str1, 2), "strncat failed");
 	zassert_not_null(strncat(str1, str3, 2), "strncat failed");
+#if defined(__GNUC__) && __GNUC__ >= 7
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
 	zassert_not_null(strncat(str1, str3, 1), "strncat failed");
+#if defined(__GNUC__) && __GNUC__ >= 7
 #pragma GCC diagnostic pop
+#endif
 	zassert_equal(strcmp(ncat, "ddeeaa"), 0, "strncat failed");
 
 	zassert_is_null(strrchr(ncat, 'z'),

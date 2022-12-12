@@ -27,76 +27,137 @@
 #define LIBC_DATA	K_APP_DMEM(z_libc_partition)
 
 #ifdef CONFIG_MMU
-#ifdef CONFIG_USERSPACE
+
+/* When there is an MMU, allocate the heap at startup time */
+
+# if Z_MALLOC_PARTITION_EXISTS
 struct k_mem_partition z_malloc_partition;
-#endif
+# endif
 
-LIBC_BSS static unsigned char *heap_base;
-LIBC_BSS static size_t max_heap_size;
+static LIBC_BSS unsigned char *heap_base;
+static LIBC_BSS size_t max_heap_size;
 
-#define HEAP_BASE		((uintptr_t) heap_base)
-#define MAX_HEAP_SIZE		max_heap_size
-#define USE_MALLOC_PREPARE	1
+# define HEAP_BASE		((uintptr_t) heap_base)
+# define MAX_HEAP_SIZE		max_heap_size
 
-#elif CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE
+# define USE_MALLOC_PREPARE	1
+
+#elif CONFIG_PICOLIBC_HEAP_SIZE == 0
+
+/* No heap at all */
+# define HEAP_BASE	0
+# define MAX_HEAP_SIZE	0
+
+#else /* CONFIG_PICOLIBC_HEAP_SIZE != 0 */
+
+/* Figure out alignment requirement */
+# ifdef Z_MALLOC_PARTITION_EXISTS
+
+#  if defined(CONFIG_MPU_REQUIRES_POWER_OF_TWO_ALIGNMENT)
+#   if CONFIG_PICOLIBC_HEAP_SIZE < 0
+#    error CONFIG_PICOLIBC_HEAP_SIZE must be defined on this target
+#   endif
+#   if (CONFIG_PICOLIBC_HEAP_SIZE & (CONFIG_PICOLIBC_HEAP_SIZE - 1)) != 0
+#    error CONFIG_PICOLIBC_HEAP_SIZE must be power of two on this target
+#   endif
+#   define HEAP_ALIGN	CONFIG_PICOLIBC_HEAP_SIZE
+#  elif defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#   define HEAP_ALIGN	CONFIG_ARM_MPU_REGION_MIN_ALIGN_AND_SIZE
+#  elif defined(CONFIG_ARC)
+#   define HEAP_ALIGN	Z_ARC_MPU_ALIGN
+#  elif defined(CONFIG_RISCV)
+#   define HEAP_ALIGN	Z_RISCV_STACK_GUARD_SIZE
+#  else
+/*
+ * Default to 64-bytes; we'll get a run-time error if this doesn't work.
+ */
+#   define HEAP_ALIGN	64
+#  endif /* CONFIG_<arch> */
+
+# else /* Z_MALLOC_PARTITION_EXISTS */
+
+#  define HEAP_ALIGN	sizeof(double)
+
+# endif /* else Z_MALLOC_PARTITION_EXISTS */
+
+# if CONFIG_PICOLIBC_HEAP_SIZE > 0
+
+/* Static allocation of heap in BSS */
+
+#  ifdef Z_MALLOC_PARTITION_EXISTS
 K_APPMEM_PARTITION_DEFINE(z_malloc_partition);
-#define MALLOC_BSS	K_APP_BMEM(z_malloc_partition)
+#   define MALLOC_BSS	K_APP_BMEM(z_malloc_partition)
+#  else
+#   define MALLOC_BSS	__noinit
+#  endif
 
-/* Compiler will throw an error if the provided value isn't a power of two */
-MALLOC_BSS static unsigned char __aligned(CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE)
-	heap_base[CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE];
+static MALLOC_BSS unsigned char __aligned(HEAP_ALIGN)
+	heap_base[CONFIG_PICOLIBC_HEAP_SIZE];
 
-#define HEAP_BASE	((uintptr_t) heap_base)
-#define MAX_HEAP_SIZE	CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE
+#  define HEAP_BASE	((uintptr_t) heap_base)
+#  define MAX_HEAP_SIZE	CONFIG_PICOLIBC_HEAP_SIZE
 
-#else /* Not MMU or CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE */
-/* Heap base and size are determined based on the available unused SRAM,
- * in the interval from a properly aligned address after the linker symbol
- * `_end`, to the end of SRAM
+# else /* CONFIG_PICOLIBC_HEAP_SIZE > 0 */
+
+/*
+ * Heap base and size are determined based on the available unused SRAM, in the
+ * interval from a properly aligned address after the linker symbol `_end`, to
+ * the end of SRAM
  */
-#define USED_RAM_END_ADDR   POINTER_TO_UINT(&_end)
 
-#ifdef Z_MALLOC_PARTITION_EXISTS
-/* Need to be able to program a memory protection region from HEAP_BASE
- * to the end of RAM so that user threads can get at it.
- * Implies that the base address needs to be suitably aligned since the
- * bounds have to go in a k_mem_partition.
+#  ifdef Z_MALLOC_PARTITION_EXISTS
+/*
+ * Need to be able to program a memory protection region from HEAP_BASE to the
+ * end of RAM so that user threads can get at it.  Implies that the base address
+ * needs to be suitably aligned since the bounds have to go in a
+ * k_mem_partition.
  */
 struct k_mem_partition z_malloc_partition;
-/* TODO: Need a generic Kconfig for the MPU region granularity */
-#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
-#define HEAP_BASE	ROUND_UP(USED_RAM_END_ADDR, \
-				 CONFIG_ARM_MPU_REGION_MIN_ALIGN_AND_SIZE)
-#elif defined(CONFIG_ARC)
-#define HEAP_BASE	ROUND_UP(USED_RAM_END_ADDR, Z_ARC_MPU_ALIGN)
-#elif defined(CONFIG_RISCV)
-#define HEAP_BASE	ROUND_UP(USED_RAM_END_ADDR, Z_RISCV_STACK_GUARD_SIZE)
-#else
-#error "Unsupported platform"
-#endif /* CONFIG_<arch> */
-#else /* !Z_MALLOC_PARTITION_EXISTS */
-/* No partition, heap can just start wherever _end is */
-#define HEAP_BASE	USED_RAM_END_ADDR
-#endif /* Z_MALLOC_PARTITION_EXISTS */
 
-#ifdef CONFIG_XTENSA
+#   define USE_MALLOC_PREPARE	1
+
+#  endif /* Z_MALLOC_PARTITION_EXISTS */
+
+#  define USED_RAM_END_ADDR   POINTER_TO_UINT(&_end)
+
+/*
+ * No partition, heap can just start wherever _end is, with
+ * suitable alignment
+ */
+
+#  define HEAP_BASE	ROUND_UP(USED_RAM_END_ADDR, HEAP_ALIGN)
+
+#  ifdef CONFIG_XTENSA
 extern char _heap_sentry[];
-#define MAX_HEAP_SIZE  (POINTER_TO_UINT(_heap_sentry) - HEAP_BASE)
-#else
-#define MAX_HEAP_SIZE	(KB(CONFIG_SRAM_SIZE) - \
+#   define MAX_HEAP_SIZE  (POINTER_TO_UINT(_heap_sentry) - HEAP_BASE)
+#  else
+#   define MAX_HEAP_SIZE	(KB(CONFIG_SRAM_SIZE) - \
 			 (HEAP_BASE - CONFIG_SRAM_BASE_ADDRESS))
-#endif
+#  endif /* CONFIG_XTENSA */
 
-#endif /* CONFIG_PICOLIBC_ALIGNED_HEAP_SIZE */
+# endif /* CONFIG_PICOLIBC_HEAP_SIZE < 0 */
 
+#endif /* CONFIG_PICOLIBC_HEAP_SIZE == 0 */
+
+#ifdef USE_MALLOC_PREPARE
 
 static int malloc_prepare(const struct device *unused)
 {
 	ARG_UNUSED(unused);
 
 #ifdef CONFIG_MMU
-	max_heap_size = MIN(CONFIG_PICOLIBC_LIBC_MAX_MAPPED_REGION_SIZE,
+
+	/* With an MMU, the heap is allocated at runtime */
+
+# if CONFIG_PICOLIBC_HEAP_SIZE < 0
+#  define MMU_MAX_HEAP_SIZE PTRDIFF_MAX
+# else
+#  define MMU_MAX_HEAP_SIZE CONFIG_PICOLIBC_HEAP_SIZE
+# endif
+	max_heap_size = MIN(MMU_MAX_HEAP_SIZE,
 			    k_mem_free_get());
+
+	max_heap_size &= ~(CONFIG_MMU_PAGE_SIZE-1);
 
 	if (max_heap_size != 0) {
 		heap_base = k_mem_map(max_heap_size, K_MEM_PERM_RW);
@@ -114,11 +175,13 @@ static int malloc_prepare(const struct device *unused)
 	return 0;
 }
 
-SYS_INIT(malloc_prepare, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+SYS_INIT(malloc_prepare, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
 
-LIBC_BSS static uintptr_t heap_sz;
+#endif /* USE_MALLOC_PREPARE */
 
-static int (*_stdout_hook)(int);
+static LIBC_BSS uintptr_t heap_sz;
+
+static LIBC_DATA int (*_stdout_hook)(int);
 
 int z_impl_zephyr_fputc(int a, FILE *out)
 {
@@ -140,8 +203,8 @@ static int picolibc_put(char a, FILE *f)
 	return 0;
 }
 
-static FILE __stdout = FDEV_SETUP_STREAM(picolibc_put, NULL, NULL, 0);
-static FILE __stdin = FDEV_SETUP_STREAM(NULL, NULL, NULL, 0);
+static LIBC_DATA FILE __stdout = FDEV_SETUP_STREAM(picolibc_put, NULL, NULL, 0);
+static LIBC_DATA FILE __stdin = FDEV_SETUP_STREAM(NULL, NULL, NULL, 0);
 
 #ifdef __strong_reference
 #define STDIO_ALIAS(x) __strong_reference(stdout, x);
@@ -193,73 +256,35 @@ int z_impl_zephyr_write_stdout(const void *buffer, int nbytes)
 	return nbytes;
 }
 
-#ifndef CONFIG_POSIX_API
-int _read(int fd, char *buf, int nbytes)
+#include <zephyr/sys/cbprintf.h>
+
+struct cb_bits {
+	FILE f;
+	cbprintf_cb out;
+	void	*ctx;
+};
+
+static int cbputc(char c, FILE *_s)
 {
-	ARG_UNUSED(fd);
+	struct cb_bits *s = (struct cb_bits *) _s;
 
-	return z_impl_zephyr_read_stdin(buf, nbytes);
-}
-__weak FUNC_ALIAS(_read, read, int);
-
-int _write(int fd, const void *buf, int nbytes)
-{
-	ARG_UNUSED(fd);
-
-	return z_impl_zephyr_write_stdout(buf, nbytes);
-}
-__weak FUNC_ALIAS(_write, write, int);
-
-int _open(const char *name, int mode)
-{
-	return -1;
-}
-__weak FUNC_ALIAS(_open, open, int);
-
-int _close(int file)
-{
-	return -1;
-}
-__weak FUNC_ALIAS(_close, close, int);
-
-int _lseek(int file, int ptr, int dir)
-{
+	(*s->out) (c, s->ctx);
 	return 0;
 }
-__weak FUNC_ALIAS(_lseek, lseek, int);
-#else
-extern ssize_t write(int file, const char *buffer, size_t count);
-#define _write	write
-#endif
 
-int _isatty(int file)
+int cbvprintf(cbprintf_cb out, void *ctx, const char *fp, va_list ap)
 {
-	return 1;
+	struct cb_bits	s = {
+		.f = FDEV_SETUP_STREAM(cbputc, NULL, NULL, _FDEV_SETUP_WRITE),
+		.out = out,
+		.ctx = ctx,
+	};
+	return vfprintf(&s.f, fp, ap);
 }
-__weak FUNC_ALIAS(_isatty, isatty, int);
-
-int _kill(int i, int j)
-{
-	return 0;
-}
-__weak FUNC_ALIAS(_kill, kill, int);
-
-int _getpid(void)
-{
-	return 0;
-}
-__weak FUNC_ALIAS(_getpid, getpid, int);
-
-int _fstat(int file, struct stat *st)
-{
-	st->st_mode = S_IFCHR;
-	return 0;
-}
-__weak FUNC_ALIAS(_fstat, fstat, int);
 
 __weak void _exit(int status)
 {
-	_write(1, "exit\n", 5);
+	printk("exit\n");
 	while (1) {
 		;
 	}
@@ -267,7 +292,7 @@ __weak void _exit(int status)
 
 static LIBC_DATA SYS_SEM_DEFINE(heap_sem, 1, 1);
 
-void *_sbrk(intptr_t incr)
+void *sbrk(intptr_t incr)
 {
 	void *ret = (void *) -1;
 	char *brk;
@@ -297,7 +322,6 @@ out:
 
 	return ret;
 }
-__weak FUNC_ALIAS(_sbrk, sbrk, void *);
 
 #ifdef CONFIG_MULTITHREADING
 #define _LOCK_T void *
@@ -423,23 +447,13 @@ void __retarget_lock_release_recursive(_LOCK_T lock)
  */
 __weak FUNC_NORETURN void __chk_fail(void)
 {
-	static const char chk_fail_msg[] = "* buffer overflow detected *\n";
-
-	_write(2, chk_fail_msg, sizeof(chk_fail_msg) - 1);
+	printk("* buffer overflow detected *\n");
 	z_except_reason(K_ERR_STACK_CHK_FAIL);
 	CODE_UNREACHABLE;
 }
 
-int _gettimeofday(struct timeval *__tp, void *__tzp)
-{
-	ARG_UNUSED(__tp);
-	ARG_UNUSED(__tzp);
-
-	return -1;
-}
-
 #include <stdlib.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 
 /* Replace picolibc abort with native Zephyr one */
 void abort(void)

@@ -25,17 +25,20 @@
 #include "lll.h"
 #include "lll/lll_df_types.h"
 #include "lll_conn.h"
+#include "lll_conn_iso.h"
 
 #include "ull_tx_queue.h"
+
+#include "isoal.h"
+#include "ull_iso_types.h"
+#include "ull_conn_iso_types.h"
+#include "ull_conn_iso_internal.h"
 
 #include "ull_conn_types.h"
 #include "ull_llcp.h"
 #include "ull_llcp_internal.h"
 #include "ull_conn_internal.h"
 
-#define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_HCI_DRIVER)
-#define LOG_MODULE_NAME bt_ctlr_ull_llcp_local
-#include "common/log.h"
 #include <soc.h>
 #include "hal/debug.h"
 
@@ -190,6 +193,21 @@ void llcp_lr_rx(struct ll_conn *conn, struct proc_ctx *ctx, struct node_rx_pdu *
 		llcp_lp_comm_rx(conn, ctx, rx);
 		break;
 #endif /* CONFIG_BT_CTLR_DF_CONN_CTE_REQ */
+#if defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO)
+	case PROC_CIS_TERMINATE:
+		llcp_lp_comm_rx(conn, ctx, rx);
+		break;
+#endif /* defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO) */
+#if defined(CONFIG_BT_CTLR_CENTRAL_ISO)
+	case PROC_CIS_CREATE:
+		llcp_lp_cc_rx(conn, ctx, rx);
+		break;
+#endif /* defined(CONFIG_BT_CTLR_CENTRAL_ISO) */
+#if defined(CONFIG_BT_CTLR_SCA_UPDATE)
+	case PROC_SCA_UPDATE:
+		llcp_lp_comm_rx(conn, ctx, rx);
+		break;
+#endif /* CONFIG_BT_CTLR_SCA_UPDATE */
 	default:
 		/* Unknown procedure */
 		LL_ASSERT(0);
@@ -220,10 +238,31 @@ void llcp_lr_tx_ack(struct ll_conn *conn, struct proc_ctx *ctx, struct node_tx *
 		llcp_lp_pu_tx_ack(conn, ctx, tx);
 		break;
 #endif /* CONFIG_BT_CTLR_PHY */
+#if defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO)
+	case PROC_CIS_TERMINATE:
+		llcp_lp_comm_tx_ack(conn, ctx, tx);
+		break;
+#endif /* defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO) */
 	default:
 		break;
 		/* Ignore tx_ack */
 	}
+	lr_check_done(conn, ctx);
+}
+
+void llcp_lr_tx_ntf(struct ll_conn *conn, struct proc_ctx *ctx)
+{
+	switch (ctx->proc) {
+#if defined(CONFIG_BT_CTLR_PHY)
+	case PROC_PHY_UPDATE:
+		llcp_lp_pu_tx_ntf(conn, ctx);
+		break;
+#endif /* CONFIG_BT_CTLR_PHY */
+	default:
+		/* Ignore other procedures */
+		break;
+	}
+
 	lr_check_done(conn, ctx);
 }
 
@@ -281,6 +320,21 @@ static void lr_act_run(struct ll_conn *conn)
 #if defined(CONFIG_BT_CTLR_DF_CONN_CTE_REQ)
 	case PROC_CTE_REQ:
 		/* 3rd partam null? */
+		llcp_lp_comm_run(conn, ctx, NULL);
+		break;
+#endif /* CONFIG_BT_CTLR_DF_CONN_CTE_REQ */
+#if defined(CONFIG_BT_CTLR_CENTRAL_ISO)
+	case PROC_CIS_CREATE:
+		llcp_lp_cc_run(conn, ctx, NULL);
+		break;
+#endif /* CONFIG_BT_CTLR_CENTRAL_ISO */
+#if defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO)
+	case PROC_CIS_TERMINATE:
+		llcp_lp_comm_run(conn, ctx, NULL);
+		break;
+#endif /* defined(CONFIG_BT_CTLR_CENTRAL_ISO) || defined(CONFIG_BT_CTLR_PERIPHERAL_ISO) */
+#if defined(CONFIG_BT_CTLR_SCA_UPDATE)
+	case PROC_SCA_UPDATE:
 		llcp_lp_comm_run(conn, ctx, NULL);
 		break;
 #endif /* CONFIG_BT_CTLR_DF_CONN_CTE_REQ */
@@ -350,8 +404,13 @@ static void lr_st_idle(struct ll_conn *conn, uint8_t evt, void *param)
 	case LR_EVT_RUN:
 		ctx = llcp_lr_peek(conn);
 		if (ctx) {
+			/*
+			 * since the call to lr_act_run may release the context we need to remember
+			 * which procedure we are running
+			 */
+			const enum llcp_proc curr_proc = ctx->proc;
 			lr_act_run(conn);
-			if (ctx->proc != PROC_TERMINATE) {
+			if (curr_proc != PROC_TERMINATE) {
 				lr_set_state(conn, LR_STATE_ACTIVE);
 			} else {
 				lr_set_state(conn, LR_STATE_TERMINATE);

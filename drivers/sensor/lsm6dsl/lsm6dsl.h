@@ -14,6 +14,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/types.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
@@ -527,7 +528,7 @@
 #define LSM6DSL_MASK_MD2_CFG_INT2_SINGLE_TAP		BIT(6)
 #define LSM6DSL_SHIFT_MD2_CFG_INT2_SINGLE_TAP		6
 #define LSM6DSL_MASK_MD2_CFG_INT2_WU			BIT(5)
-#define LSM6DSL_SHIFT_MD2_CFG_INT1_WU			5
+#define LSM6DSL_SHIFT_MD2_CFG_INT2_WU			5
 #define LSM6DSL_MASK_MD2_CFG_INT2_FF			BIT(4)
 #define LSM6DSL_SHIFT_MD2_CFG_INT2_FF			4
 #define LSM6DSL_MASK_MD2_CFG_INT2_DOUBLE_TAP		BIT(3)

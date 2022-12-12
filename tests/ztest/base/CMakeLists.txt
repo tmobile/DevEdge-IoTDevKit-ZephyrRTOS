@@ -2,10 +2,12 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 if(BOARD STREQUAL unit_testing)
-  list(APPEND SOURCES src/main_deprecated.c)
-
-  find_package(ZephyrUnittest REQUIRED HINTS $ENV{ZEPHYR_BASE})
+  find_package(Zephyr COMPONENTS unittest REQUIRED HINTS $ENV{ZEPHYR_BASE})
   project(base)
+
+  # This test suite depends on having this CONFIG_ value, so define it
+  add_definitions( -DCONFIG_BUGxxxxx )
+  target_sources(testbinary PRIVATE src/main.c)
 else()
   find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
   project(base)

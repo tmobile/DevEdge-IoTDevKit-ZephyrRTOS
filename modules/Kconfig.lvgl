@@ -3,17 +3,14 @@
 
 config LVGL
 	bool "LittlevGL GUI library"
+	depends on !CPU_CORTEX_M0 && !CPU_CORTEX_M0PLUS
 	help
 	  This option enables the LittlevGL GUI library.
 
-if !LVGL
+if LVGL
 
 config LV_Z_POINTER_KSCAN
 	bool
-
-config LV_Z_POINTER_KSCAN_DEV_NAME
-	string
-	default "KSCAN"
 
 config LV_Z_POINTER_KSCAN_MSGQ_COUNT
 	int

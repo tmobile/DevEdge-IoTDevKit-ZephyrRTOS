@@ -4,7 +4,7 @@ on: [pull_request]
 
 jobs:
   scancode_job:
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     name: Scan code for licenses
     steps:
     - name: Checkout the code
@@ -14,11 +14,11 @@ jobs:
       uses: zephyrproject-rtos/action_scancode@v4
       with:
         directory-to-scan: 'scan/'
-    # - name: Artifact Upload
-    #   uses: actions/upload-artifact@v1
-    #   with:
-    #     name: scancode
-    #     path: ./artifacts
+    - name: Artifact Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: scancode
+        path: ./artifacts
 
     - name: Verify
       run: |

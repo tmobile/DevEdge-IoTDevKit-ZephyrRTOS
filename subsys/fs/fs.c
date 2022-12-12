@@ -11,6 +11,7 @@
 #include <zephyr/types.h>
 #include <errno.h>
 #include <zephyr/init.h>
+#include <zephyr/kernel.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/fs/fs_sys.h>
 #include <zephyr/sys/check.h>
@@ -121,8 +122,9 @@ static int fs_get_mnt_point(struct fs_mount_t **mnt_pntp,
 	}
 
 	*mnt_pntp = mnt_p;
-	if (match_len)
+	if (match_len) {
 		*match_len = mnt_p->mountp_len;
+	}
 
 	return 0;
 }
@@ -653,6 +655,11 @@ int fs_mount(struct fs_mount_t *mp)
 		return -EINVAL;
 	}
 
+	if (sys_dnode_is_linked(&mp->node)) {
+		LOG_ERR("file system already mounted!!");
+		return -EBUSY;
+	}
+
 	len = strlen(mp->mnt_point);
 
 	if ((len <= 1) || (mp->mnt_point[0] != '/')) {
@@ -725,7 +732,7 @@ int fs_unmount(struct fs_mount_t *mp)
 
 	k_mutex_lock(&mutex, K_FOREVER);
 
-	if (mp->fs == NULL) {
+	if (!sys_dnode_is_linked(&mp->node)) {
 		LOG_ERR("fs not mounted (mp == %p)", mp);
 		goto unmount_err;
 	}

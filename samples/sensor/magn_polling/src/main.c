@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/sys/printk.h>
@@ -12,7 +12,7 @@
 
 void main(void)
 {
-	const struct device *dev = DEVICE_DT_GET_ONE(bosch_bmc150_magn);
+	const struct device *const dev = DEVICE_DT_GET(DT_ALIAS(magn0));
 	struct sensor_value value_x, value_y, value_z;
 	int ret;
 
@@ -20,6 +20,8 @@ void main(void)
 		printk("sensor: device not ready.\n");
 		return;
 	}
+
+	printk("Polling magnetometer data from %s.\n", dev->name);
 
 	while (1) {
 		ret = sensor_sample_fetch(dev);

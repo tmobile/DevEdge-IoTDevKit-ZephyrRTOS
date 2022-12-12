@@ -11,8 +11,7 @@ nRF52840 ARM Cortex-M4F CPU. Arduino sells 2 variants of the board, the
 plain `BLE`_ type and the `BLE Sense`_ type. The "Sense" variant is distinguished by
 the inclusion of more sensors, but otherwise both variants are the same.
 
-.. image:: img/arduino_nano_33_ble_sense.png
-     :width: 500px
+.. image:: img/arduino_nano_33_ble_sense.jpg
      :align: center
      :alt: Arduino Nano 33 BLE (Sense variant)
 
@@ -122,16 +121,40 @@ Then, you can flash the image using the above script.
 
 You should see the the red LED blink.
 
+Debugging
+=========
+
+You can debug an application on the board with a debug adapter that supports
+CMSIS-DAP. This board has the SWD connector for debugging but exposes it as
+a test pad pattern (not a connector) on the back side of the PCB. So, It needs
+bit of difficult soldering. At a minimum, SWDIO and SWCLK need soldering (As
+shown in the picture). GND, 3.3V, and RESET are also available in the DIP
+connector, therefore it may be easier to connect using the DIP connector
+instead of soldering to them.
+
+.. image:: img/nano_33_ble_swd.jpg
+     :align: center
+     :alt: Nano 33 BLE SWD connecting
+
+After connecting the debug adapter, you can debug it the usual way.
+Type the following command will start debugging.
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/basic/blinky
+   :board: arduino_nano_33_ble
+   :maybe-skip-config:
+   :goals: debug
+
 References
 **********
 
 .. target-notes::
 
 .. _BLE:
-    https://store.arduino.cc/usa/nano-33-ble/
+    https://store.arduino.cc/products/arduino-nano-33-ble
 
 .. _BLE SENSE:
-    https://store.arduino.cc/usa/nano-33-ble-sense/
+    https://store.arduino.cc/products/arduino-nano-33-ble-sense
 
 .. _pinouts:
     https://learn.adafruit.com/introducing-the-adafruit-nrf52840-feather/pinouts

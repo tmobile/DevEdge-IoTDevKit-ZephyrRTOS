@@ -7,7 +7,7 @@
 #ifndef SHELL_H__
 #define SHELL_H__
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/shell/shell_types.h>
 #include <zephyr/shell/shell_history.h>
 #include <zephyr/shell/shell_fprintf.h>
@@ -717,14 +717,14 @@ BUILD_ASSERT((sizeof(struct shell_backend_config_flags) == sizeof(uint32_t)),
 /**
  * @internal @brief Default backend configuration.
  */
-#define SHELL_DEFAULT_BACKEND_CONFIG_FLAGS	\
-{						\
-	.insert_mode	= 0,			\
-	.echo		= 1,			\
-	.obscure	= 0,			\
-	.mode_delete	= 1,			\
-	.use_colors	= 1,			\
-	.use_vt100	= 1,			\
+#define SHELL_DEFAULT_BACKEND_CONFIG_FLAGS				\
+{									\
+	.insert_mode	= 0,						\
+	.echo		= 1,						\
+	.obscure	= IS_ENABLED(CONFIG_SHELL_START_OBSCURED),	\
+	.mode_delete	= 1,						\
+	.use_colors	= 1,						\
+	.use_vt100	= 1,						\
 };
 
 struct shell_backend_ctx_flags {
@@ -1152,6 +1152,15 @@ int shell_set_root_cmd(const char *cmd);
  * @param[in] bypass	Bypass callback or null to disable.
  */
 void shell_set_bypass(const struct shell *shell, shell_bypass_cb_t bypass);
+
+/** @brief Get shell readiness to execute commands.
+ *
+ * @param[in] sh	Pointer to the shell instance.
+ *
+ * @retval true		Shell backend is ready to execute commands.
+ * @retval false	Shell backend is not initialized or not started.
+ */
+bool shell_ready(const struct shell *sh);
 
 /**
  * @brief Allow application to control text insert mode.

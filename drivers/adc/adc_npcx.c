@@ -19,6 +19,7 @@
 #include "adc_context.h"
 
 #include <zephyr/logging/log.h>
+#include <zephyr/irq.h>
 LOG_MODULE_REGISTER(adc_npcx, CONFIG_ADC_LOG_LEVEL);
 
 /* ADC speed/delay values during initialization */
@@ -74,7 +75,7 @@ struct adc_npcx_threshold_control {
 	/* Sets the threshold value to which measured data is compared. */
 	uint16_t thrval;
 	/*
-	 * Pointer of work queue thread to be notified when threshold assertion
+	 * Pointer of work queue item to be notified when threshold assertion
 	 * occurs.
 	 */
 	struct k_work *work;
@@ -97,6 +98,11 @@ struct adc_npcx_threshold_data {
 	/* This array holds current configuration for each threshold. */
 	struct adc_npcx_threshold_control
 			control[DT_INST_PROP(0, threshold_count)];
+	/*
+	 * Pointer of work queue thread to be notified when threshold assertion
+	 * occurs.
+	 */
+	struct k_work_q *work_q;
 };
 
 /* Driver data */
@@ -223,9 +229,11 @@ static void adc_npcx_isr(const struct device *dev)
 			/* Clear threshold status */
 			thrcts |= BIT(i);
 			inst->THRCTS = thrcts;
-			/* Notify work thread */
 			if (t_data->control[i].work) {
-				k_work_submit(t_data->control[i].work);
+				/* Notify work thread */
+				k_work_submit_to_queue(t_data->work_q ?
+					t_data->work_q : &k_sys_work_q,
+					t_data->control[i].work);
 			}
 		}
 	}
@@ -726,6 +734,32 @@ static struct adc_npcx_data adc_npcx_data_0 = {
 	ADC_CONTEXT_INIT_SYNC(adc_npcx_data_0, ctx),
 };
 
+#if defined(CONFIG_ADC_CMP_NPCX_WORKQUEUE)
+struct k_work_q adc_npcx_work_q;
+
+static K_KERNEL_STACK_DEFINE(adc_npcx_work_q_stack,
+			CONFIG_ADC_CMP_NPCX_WORKQUEUE_STACK_SIZE);
+
+static int adc_npcx_init_cmp_work_q(const struct device *dev)
+{
+	ARG_UNUSED(dev);
+	struct k_work_queue_config cfg = {
+		.name = "adc_cmp_work",
+		.no_yield = false,
+	};
+
+	k_work_queue_start(&adc_npcx_work_q,
+			   adc_npcx_work_q_stack,
+			   K_KERNEL_STACK_SIZEOF(adc_npcx_work_q_stack),
+			   CONFIG_ADC_CMP_NPCX_WORKQUEUE_PRIORITY, &cfg);
+
+	threshold_data_0.work_q = &adc_npcx_work_q;
+	return 0;
+}
+
+SYS_INIT(adc_npcx_init_cmp_work_q, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY);
+#endif
+
 DEVICE_DT_INST_DEFINE(0,
 		    adc_npcx_init, NULL,
 		    &adc_npcx_data_0, &adc_npcx_cfg_0,
@@ -740,6 +774,11 @@ static int adc_npcx_init(const struct device *dev)
 	struct adc_reg *const inst = HAL_INSTANCE(dev);
 	const struct device *const clk_dev = DEVICE_DT_GET(NPCX_CLK_CTRL_NODE);
 	int prescaler = 0, ret;
+
+	if (!device_is_ready(clk_dev)) {
+		LOG_ERR("clock control device not ready");
+		return -ENODEV;
+	}
 
 	/* Save ADC device in data */
 	data->adc_dev = dev;
@@ -761,8 +800,9 @@ static int adc_npcx_init(const struct device *dev)
 
 	/* Configure the ADC clock */
 	prescaler = ceiling_fraction(data->input_clk, NPCX_ADC_CLK);
-	if (prescaler > 0x40)
+	if (prescaler > 0x40) {
 		prescaler = 0x40;
+	}
 
 	/* Set Core Clock Division Factor in order to obtain the ADC clock */
 	SET_FIELD(inst->ATCTL, NPCX_ATCTL_SCLKDIV_FIELD, prescaler - 1);

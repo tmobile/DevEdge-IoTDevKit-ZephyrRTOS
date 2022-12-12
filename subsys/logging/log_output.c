@@ -125,10 +125,10 @@ static int out_func(int c, void *ctx)
 
 static int cr_out_func(int c, void *ctx)
 {
-	out_func(c, ctx);
 	if (c == '\n') {
 		out_func((int)'\r', ctx);
 	}
+	out_func(c, ctx);
 
 	return 0;
 }
@@ -314,8 +314,11 @@ static void color_postfix(const struct log_output *output,
 }
 
 
-static int ids_print(const struct log_output *output, bool level_on,
-		     bool func_on, uint32_t domain_id, int16_t source_id,
+static int ids_print(const struct log_output *output,
+		     bool level_on,
+		     bool func_on,
+		     const char *domain,
+		     const char *source,
 		     uint32_t level)
 {
 	int total = 0;
@@ -324,12 +327,16 @@ static int ids_print(const struct log_output *output, bool level_on,
 		total += print_formatted(output, "<%s> ", severity[level]);
 	}
 
-	if (source_id >= 0) {
+	if (domain) {
+		total += print_formatted(output, "%s/", domain);
+	}
+
+	if (source) {
 		total += print_formatted(output,
 				(func_on &&
 				((1 << level) & LOG_FUNCTION_PREFIX_MASK)) ?
 				"%s." : "%s: ",
-				log_source_name_get(domain_id, source_id));
+				source);
 	}
 
 	return total;
@@ -383,7 +390,7 @@ static void hexdump_line_print(const struct log_output *output,
 		}
 
 		if (i < length) {
-			char c = (char)data[i];
+			unsigned char c = (unsigned char)data[i];
 
 			print_formatted(output, "%c",
 			      isprint((int)c) ? c : '.');
@@ -394,8 +401,8 @@ static void hexdump_line_print(const struct log_output *output,
 }
 
 static void log_msg_hexdump(const struct log_output *output,
-			     uint8_t *data, uint32_t len,
-			     int prefix_offset, uint32_t flags)
+			    uint8_t *data, uint32_t len,
+			    int prefix_offset, uint32_t flags)
 {
 	size_t length;
 
@@ -410,15 +417,19 @@ static void log_msg_hexdump(const struct log_output *output,
 }
 
 static uint32_t prefix_print(const struct log_output *output,
-			 uint32_t flags, bool func_on, log_timestamp_t timestamp, uint8_t level,
-			 uint8_t domain_id, int16_t source_id)
+			     uint32_t flags,
+			     bool func_on,
+			     log_timestamp_t timestamp,
+			     const char *domain,
+			     const char *source,
+			     uint8_t level)
 {
 	uint32_t length = 0U;
 
 	bool stamp = flags & LOG_OUTPUT_FLAG_TIMESTAMP;
 	bool colors_on = flags & LOG_OUTPUT_FLAG_COLORS;
 	bool level_on = flags & LOG_OUTPUT_FLAG_LEVEL;
-	const char *tag = z_log_get_tag();
+	const char *tag = IS_ENABLED(CONFIG_LOG) ? z_log_get_tag() : NULL;
 
 	if (IS_ENABLED(CONFIG_LOG_BACKEND_NET) &&
 	    flags & LOG_OUTPUT_FLAG_FORMAT_SYSLOG) {
@@ -455,9 +466,7 @@ static uint32_t prefix_print(const struct log_output *output,
 		color_prefix(output, colors_on, level);
 	}
 
-	length += ids_print(output, level_on, func_on,
-			domain_id, source_id, level);
-
+	length += ids_print(output, level_on, func_on, domain, source, level);
 
 	return length;
 }
@@ -470,43 +479,41 @@ static void postfix_print(const struct log_output *output,
 	newline_print(output, flags);
 }
 
-void log_output_msg_process(const struct log_output *output,
-			    struct log_msg *msg, uint32_t flags)
+void log_output_process(const struct log_output *output,
+			log_timestamp_t timestamp,
+			const char *domain,
+			const char *source,
+			uint8_t level,
+			const uint8_t *package,
+			const uint8_t *data,
+			size_t data_len,
+			uint32_t flags)
 {
-	log_timestamp_t timestamp = log_msg_get_timestamp(msg);
-	uint8_t level = log_msg_get_level(msg);
 	bool raw_string = (level == LOG_LEVEL_INTERNAL_RAW_STRING);
 	uint32_t prefix_offset;
+	cbprintf_cb cb;
 
 	if (!raw_string) {
-		void *source = (void *)log_msg_get_source(msg);
-		uint8_t domain_id = log_msg_get_domain(msg);
-		int16_t source_id = source ?
-			(IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) ?
-				log_dynamic_source_id(source) :
-				log_const_source_id(source)) :
-			-1;
-
-		prefix_offset = prefix_print(output, flags, 0, timestamp,
-					 level, domain_id, source_id);
+		prefix_offset = prefix_print(output, flags, 0, timestamp, domain, source, level);
+		cb = out_func;
 	} else {
 		prefix_offset = 0;
+		/* source set to 1 indicates raw string and contrary to printk
+		 * case it should not append anything to the output (printk is
+		 * appending <CR> to the new line character).
+		 */
+		cb = ((uintptr_t)source == 1) ? out_func : cr_out_func;
 	}
 
-	size_t len;
-	uint8_t *data = log_msg_get_package(msg, &len);
-
-	if (len) {
-		int err = cbpprintf(raw_string ? cr_out_func :  out_func,
-				    (void *)output, data);
+	if (package) {
+		int err = cbpprintf(cb, (void *)output, (void *)package);
 
 		(void)err;
 		__ASSERT_NO_MSG(err >= 0);
 	}
 
-	data = log_msg_get_data(msg, &len);
-	if (len) {
-		log_msg_hexdump(output, data, len, prefix_offset, flags);
+	if (data_len) {
+		log_msg_hexdump(output, (uint8_t *)data, data_len, prefix_offset, flags);
 	}
 
 	if (!raw_string) {
@@ -514,6 +521,38 @@ void log_output_msg_process(const struct log_output *output,
 	}
 
 	log_output_flush(output);
+}
+
+void log_output_msg_process(const struct log_output *output,
+			    struct log_msg *msg, uint32_t flags)
+{
+	log_timestamp_t timestamp = log_msg_get_timestamp(msg);
+	uint8_t level = log_msg_get_level(msg);
+	uint8_t domain_id = log_msg_get_domain(msg);
+	int16_t source_id;
+
+	if (IS_ENABLED(CONFIG_LOG_MULTIDOMAIN) && domain_id != Z_LOG_LOCAL_DOMAIN_ID) {
+		/* Remote domain is converting source pointer to ID */
+		source_id = (int16_t)(uintptr_t)log_msg_get_source(msg);
+	} else {
+		void *source = (void *)log_msg_get_source(msg);
+
+		if (source != NULL) {
+			source_id = IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) ?
+					log_dynamic_source_id(source) :
+					log_const_source_id(source);
+		} else {
+			source_id = -1;
+		}
+	}
+
+	const char *sname = source_id >= 0 ? log_source_name_get(domain_id, source_id) : NULL;
+	size_t plen, dlen;
+	uint8_t *package = log_msg_get_package(msg, &plen);
+	uint8_t *data = log_msg_get_data(msg, &dlen);
+
+	log_output_process(output, timestamp, NULL, sname, level,
+			   plen > 0 ? package : NULL, data, dlen, flags);
 }
 
 void log_output_dropped_process(const struct log_output *output, uint32_t cnt)

@@ -10,8 +10,7 @@ The NPCX9M6F_EVB kit is a development platform to evaluate the
 Nuvoton NPCX9 series microcontrollers. This board needs to be mated with
 part number NPCX996F.
 
-.. image:: ./npcx9m6f_evb.png
-     :width: 800px
+.. image:: npcx9m6f_evb.jpg
      :align: center
      :alt: NPCX9M6F Evaluation Board
 
@@ -118,8 +117,7 @@ Build and flash the blinky sample.::
 
   west build -t clean && \
     west build -c -p auto -b npcx9m6f_evb samples/basic/blinky && \
-    west flash --hex-file build/zephyr/zephyr.npcx.hex \
-      --openocd /usr/local/bin/openocd --openocd-search /usr/local/share/openocd/scripts
+    west flash --openocd /usr/local/bin/openocd
 
 Debugging
 =========

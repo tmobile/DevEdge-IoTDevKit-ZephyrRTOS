@@ -18,6 +18,7 @@ config SUPPORT_MINIMAL_LIBC
 config PICOLIBC_SUPPORTED
 	bool
 	depends on ARC || ARM || ARM64 || MIPS || RISCV
+	depends on "$(ZEPHYR_TOOLCHAIN_VARIANT)" != "arcmwdt"
 	default y
 	help
 	  Selected when the target has support for picolibc.
@@ -38,7 +39,7 @@ config MINIMAL_LIBC
 
 config PICOLIBC
 	bool "Picolibc library"
-	select THREAD_LOCAL_STORAGE if ARCH_HAS_THREAD_LOCAL_STORAGE
+	select THREAD_LOCAL_STORAGE if ARCH_HAS_THREAD_LOCAL_STORAGE && TOOLCHAIN_SUPPORTS_THREAD_LOCAL_STORAGE
 	select LIBC_ERRNO if THREAD_LOCAL_STORAGE
 	depends on !NATIVE_APPLICATION
 	help
@@ -81,7 +82,6 @@ if NEWLIB_LIBC
 config NEWLIB_LIBC_NANO
 	bool "Build with newlib-nano C library"
 	depends on HAS_NEWLIB_LIBC_NANO
-	default y
 	help
 	  Build with newlib-nano library, for small embedded apps.
 	  The newlib-nano library for ARM embedded processors is a part of the
@@ -216,6 +216,17 @@ config MINIMAL_LIBC_TIME
 
 	  In order to make use of the non-reentrant gmtime(), it is necessary
 	  to set CONFIG_MINIMAL_LIBC_NON_REENTRANT_FUNCTIONS=y.
+
+config MINIMAL_LIBC_STRING_ERROR_TABLE
+	bool "String error table for strerror() and strerror_r()"
+	help
+	  Select this option to ensure that streror(), strerror_r()
+	  produce strings corresponding to the descriptions in errno.h.
+
+	  The string error table can add ~2kiB to ROM. As such, it is
+	  disabled by default. In this case, strerror() and strerror_r()
+	  symbols are still present, but the functions produce an empty
+	  string.
 
 endif # MINIMAL_LIBC
 

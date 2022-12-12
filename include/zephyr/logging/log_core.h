@@ -31,9 +31,8 @@ extern "C" {
 #define CONFIG_LOG_MAX_LEVEL 0U
 #endif
 
-#if !defined(CONFIG_LOG) || defined(CONFIG_LOG_MODE_MINIMAL)
-#define CONFIG_LOG_DOMAIN_ID 0U
-#endif
+/* Id of local domain. */
+#define Z_LOG_LOCAL_DOMAIN_ID 0
 
 #define LOG_FUNCTION_PREFIX_MASK \
 	(((uint32_t)IS_ENABLED(CONFIG_LOG_FUNC_NAME_PREFIX_ERR) << \
@@ -95,7 +94,7 @@ extern "C" {
 #define _LOG_ZZZZ4U _LOG_YYYY,
 
 /**
- * @def LOG_CURRENT_MODULE_ID
+ *
  * @brief Macro for getting ID of current module.
  */
 #define LOG_CURRENT_MODULE_ID() (__log_level != 0 ? \
@@ -238,8 +237,9 @@ static inline char z_log_minimal_level_to_char(int level)
 	void *_src = IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) ? \
 		(void *)_dsource : (void *)_source; \
 	Z_LOG_MSG2_CREATE(UTIL_NOT(IS_ENABLED(CONFIG_USERSPACE)), _mode, \
-			  CONFIG_LOG_DOMAIN_ID, _src, _level, NULL,\
+				  Z_LOG_LOCAL_DOMAIN_ID, _src, _level, NULL,\
 			  0, __VA_ARGS__); \
+	(void)_mode; \
 	if (false) { \
 		/* Arguments checker present but never evaluated.*/ \
 		/* Placed here to ensure that __VA_ARGS__ are*/ \
@@ -313,7 +313,7 @@ static inline char z_log_minimal_level_to_char(int level)
 	void *_src = IS_ENABLED(CONFIG_LOG_RUNTIME_FILTERING) ? \
 		(void *)_dsource : (void *)_source; \
 	Z_LOG_MSG2_CREATE(UTIL_NOT(IS_ENABLED(CONFIG_USERSPACE)), mode, \
-			  CONFIG_LOG_DOMAIN_ID, _src, _level, \
+				  Z_LOG_LOCAL_DOMAIN_ID, _src, _level, \
 			  _data, _len, \
 			COND_CODE_0(NUM_VA_ARGS_LESS_1(_, ##__VA_ARGS__), \
 				(), \
@@ -390,7 +390,17 @@ static inline char z_log_minimal_level_to_char(int level)
 extern struct log_source_const_data __log_const_start[];
 extern struct log_source_const_data __log_const_end[];
 
-#define Z_LOG_PRINTK(...) do { \
+/** @brief Create message for logging printk-like string or a raw string.
+ *
+ * Part of printk string processing is appending of carriage return after any
+ * new line character found in the string. If it is not desirable then @p _is_raw
+ * can be set to 1 to indicate raw string. This information is stored in the source
+ * field which is not used for its typical purpose in this case.
+ *
+ * @param _is_raw	Set to 1 to indicate raw string, set to 0 to indicate printk.
+ * @param ...		Format string with arguments.
+ */
+#define Z_LOG_PRINTK(_is_raw, ...) do { \
 	if (IS_ENABLED(CONFIG_LOG_MODE_MINIMAL)) { \
 		z_log_minimal_printk(__VA_ARGS__); \
 		break; \
@@ -400,7 +410,7 @@ extern struct log_source_const_data __log_const_end[];
 		z_log_printf_arg_checker(__VA_ARGS__); \
 	} \
 	Z_LOG_MSG2_CREATE(!IS_ENABLED(CONFIG_USERSPACE), _mode, \
-			  CONFIG_LOG_DOMAIN_ID, NULL, \
+			  Z_LOG_LOCAL_DOMAIN_ID, (uintptr_t)_is_raw, \
 			  LOG_LEVEL_INTERNAL_RAW_STRING, NULL, 0, __VA_ARGS__);\
 } while (0)
 
@@ -461,7 +471,7 @@ void z_log_printf_arg_checker(const char *fmt, ...)
  */
 static inline void log2_generic(uint8_t level, const char *fmt, va_list ap)
 {
-	z_log_msg_runtime_vcreate(CONFIG_LOG_DOMAIN_ID, NULL, level,
+	z_log_msg_runtime_vcreate(Z_LOG_LOCAL_DOMAIN_ID, NULL, level,
 				   NULL, 0, 0, fmt, ap);
 }
 

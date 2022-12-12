@@ -6,7 +6,7 @@
 
 #define DT_DRV_COMPAT intel_ibecc
 
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/pcie/pcie.h>
 
@@ -194,7 +194,11 @@ static int inject_error_trigger(const struct device *dev)
 static int ecc_error_log_get(const struct device *dev, uint64_t *value)
 {
 	*value = ibecc_read_reg64(dev, IBECC_ECC_ERROR_LOG);
-	if (*value == 0) {
+	/**
+	 * The ECC Error log register is only valid when ECC_ERROR_CERRSTS
+	 * or ECC_ERROR_MERRSTS error status bits are set
+	 */
+	if ((*value & (ECC_ERROR_MERRSTS | ECC_ERROR_CERRSTS)) == 0) {
 		return -ENODATA;
 	}
 
@@ -245,7 +249,7 @@ static int notify_callback_set(const struct device *dev,
 			       edac_notify_callback_f cb)
 {
 	struct ibecc_data *data = dev->data;
-	int key = irq_lock();
+	unsigned int key = irq_lock();
 
 	data->cb = cb;
 	irq_unlock(key);
@@ -385,7 +389,7 @@ static bool handle_nmi(void)
 
 bool z_x86_do_kernel_nmi(const z_arch_esf_t *esf)
 {
-	const struct device *dev = DEVICE_DT_GET(DEVICE_NODE);
+	const struct device *const dev = DEVICE_DT_GET(DEVICE_NODE);
 	struct ibecc_data *data = dev->data;
 	struct ibecc_error error_data;
 	k_spinlock_key_t key;

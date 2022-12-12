@@ -131,7 +131,7 @@ SECTIONS
    */
   SECTION_PROLOGUE(_RODATA_SECTION_NAME,,)
   {
-    _rodata_start = ABSOLUTE(.);
+    __rodata_region_start = ABSOLUTE(.);
 
     . = ALIGN(4);
     #include <snippets-rodata.ld>
@@ -162,7 +162,7 @@ SECTIONS
     *(.xt_except_desc_end)
     *(.dynamic)
     *(.gnu.version_d)
-    _rodata_end = ABSOLUTE(.);
+    __rodata_region_end = ABSOLUTE(.);
     /* Literals are also RO data. */
     _lit4_start = ABSOLUTE(.);
     *(*.lit4)
@@ -175,6 +175,8 @@ SECTIONS
     *(.tdata.*)
     *(.tbss)
     *(.tbss.*)
+    *(.rodata_wlog)
+    *(.rodata_wlog*)
     _thread_local_end = ABSOLUTE(.);
     _rodata_reserved_end = ABSOLUTE(.);
     . = ALIGN(4);
@@ -274,7 +276,7 @@ SECTIONS
 
 #if defined(CONFIG_ESP32_WIFI_IRAM_OPT)
     *libnet80211.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.*)
-    *libpp.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.*)
+    *libpp.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.* .wifiorslpiram .wifiorslpiram.*)
 #endif
 
 #if defined(CONFIG_ESP32_WIFI_RX_IRAM_OPT)
@@ -319,6 +321,25 @@ SECTIONS
     __bss_end = ABSOLUTE(.);
   } GROUP_LINK_IN(RAMABLE_REGION)
 
+#if defined(CONFIG_ESP_SPIRAM)
+  .ext_ram.bss (NOLOAD):
+  {
+    _ext_ram_bss_start = ABSOLUTE(.);
+
+#if defined(CONFIG_ESP32_WIFI_NET_ALLOC_SPIRAM)
+    *libdrivers__wifi.a:(.noinit .noinit.*)
+    *libsubsys__net__l2__ethernet.a:(.noinit .noinit.*)
+    *libsubsys__net__lib__config.a:(.noinit .noinit.*)
+    *libsubsys__net__ip.a:(.noinit .noinit.*)
+    *libsubsys__net.a:(.noinit .noinit.*)
+#endif
+
+    *(.ext_ram.bss*)
+    . = ALIGN(4);
+    _ext_ram_bss_end = ABSOLUTE(.) + CONFIG_ESP_SPIRAM_SIZE;
+  } > ext_ram_seg
+#endif
+
   SECTION_DATA_PROLOGUE(_NOINIT_SECTION_NAME, (NOLOAD),)
   {
     . = ALIGN(8);
@@ -331,7 +352,7 @@ SECTIONS
 
   .dram0.data :
   {
-    _data_start = ABSOLUTE(.);
+    __data_start = ABSOLUTE(.);
     *(.data)
     *(.data.*)
     *(.gnu.linkonce.d.*)
@@ -381,7 +402,7 @@ SECTIONS
     #include <snippets-rwdata.ld>
     . = ALIGN(4);
     _end = ABSOLUTE(.);
-    _data_end = ABSOLUTE(.);
+    __data_end = ABSOLUTE(.);
   } GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
   .iram0.text_end (NOLOAD) :
@@ -406,7 +427,7 @@ SECTIONS
 
 #if !defined(CONFIG_ESP32_WIFI_IRAM_OPT)
     *libnet80211.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.*)
-    *libpp.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.*)
+    *libpp.a:( .wifi0iram  .wifi0iram.* .wifislpiram .wifislpiram.* .wifiorslpiram .wifiorslpiram.*)
 #endif
 
 #if !defined(CONFIG_ESP32_WIFI_RX_IRAM_OPT)
@@ -456,16 +477,6 @@ SECTIONS
     *rtc_wake_stub*.o(COMMON)
     _rtc_bss_end = ABSOLUTE(.);
   } GROUP_LINK_IN(rtc_slow_seg)
-
-#if defined(CONFIG_ESP_SPIRAM)
-  .ext_ram.bss (NOLOAD):
-  {
-    _ext_ram_bss_start = ABSOLUTE(.);
-    *(.ext_ram.bss*)
-    . = ALIGN(4);
-    _ext_ram_bss_end = ABSOLUTE(.) + CONFIG_ESP_SPIRAM_SIZE;
-  } > ext_ram_seg
-#endif
 
 #ifdef CONFIG_GEN_ISR_TABLES
 #include <zephyr/linker/intlist.ld>

@@ -515,12 +515,15 @@ static uint32_t dhcpv4_rebinding_timeleft(struct net_if *iface, int64_t now)
 	return rem;
 }
 
-static void dhcpv4_enter_requesting(struct net_if *iface)
+static void dhcpv4_enter_requesting(struct net_if *iface, struct dhcp_msg *msg)
 {
 	iface->config.dhcpv4.attempts = 0U;
 	iface->config.dhcpv4.state = NET_DHCPV4_REQUESTING;
 	NET_DBG("enter state=%s",
 		net_dhcpv4_state_name(iface->config.dhcpv4.state));
+
+	memcpy(iface->config.dhcpv4.requested_ip.s4_addr,
+	       msg->yiaddr, sizeof(msg->yiaddr));
 
 	dhcpv4_send_request(iface);
 }
@@ -885,7 +888,8 @@ end:
 	return true;
 }
 
-static inline void dhcpv4_handle_msg_offer(struct net_if *iface)
+static inline void dhcpv4_handle_msg_offer(struct net_if *iface,
+					   struct dhcp_msg *msg)
 {
 	switch (iface->config.dhcpv4.state) {
 	case NET_DHCPV4_DISABLED:
@@ -896,7 +900,7 @@ static inline void dhcpv4_handle_msg_offer(struct net_if *iface)
 	case NET_DHCPV4_BOUND:
 		break;
 	case NET_DHCPV4_SELECTING:
-		dhcpv4_enter_requesting(iface);
+		dhcpv4_enter_requesting(iface, msg);
 		break;
 	}
 }
@@ -941,11 +945,16 @@ static void dhcpv4_handle_msg_nak(struct net_if *iface)
 	case NET_DHCPV4_DISABLED:
 	case NET_DHCPV4_INIT:
 	case NET_DHCPV4_SELECTING:
-	case NET_DHCPV4_RENEWING:
 	case NET_DHCPV4_BOUND:
 		break;
+	case NET_DHCPV4_RENEWING:
 	case NET_DHCPV4_REQUESTING:
 	case NET_DHCPV4_REBINDING:
+		if (!net_if_ipv4_addr_rm(iface,
+					 &iface->config.dhcpv4.requested_ip)) {
+			NET_DBG("Failed to remove addr from iface");
+		}
+
 		/* Restart the configuration process. */
 		dhcpv4_enter_selecting(iface);
 		break;
@@ -954,7 +963,8 @@ static void dhcpv4_handle_msg_nak(struct net_if *iface)
 
 /* Takes and releases lock */
 static void dhcpv4_handle_reply(struct net_if *iface,
-				enum dhcpv4_msg_type msg_type)
+				enum dhcpv4_msg_type msg_type,
+				struct dhcp_msg *msg)
 {
 	NET_DBG("state=%s msg=%s",
 		net_dhcpv4_state_name(iface->config.dhcpv4.state),
@@ -962,7 +972,7 @@ static void dhcpv4_handle_reply(struct net_if *iface,
 
 	switch (msg_type) {
 	case DHCPV4_MSG_TYPE_OFFER:
-		dhcpv4_handle_msg_offer(iface);
+		dhcpv4_handle_msg_offer(iface, msg);
 		break;
 	case DHCPV4_MSG_TYPE_ACK:
 		dhcpv4_handle_msg_ack(iface);
@@ -1055,9 +1065,6 @@ static enum net_verdict net_dhcpv4_input(struct net_conn *conn,
 		goto drop;
 	}
 
-	memcpy(iface->config.dhcpv4.requested_ip.s4_addr,
-	       msg->yiaddr, sizeof(msg->yiaddr));
-
 	net_pkt_acknowledge_data(pkt, &dhcp_access);
 
 	/* SNAME, FILE are not used at the moment, skip it */
@@ -1070,9 +1077,9 @@ static enum net_verdict net_dhcpv4_input(struct net_conn *conn,
 		goto drop;
 	}
 
-	net_pkt_unref(pkt);
+	dhcpv4_handle_reply(iface, msg_type, msg);
 
-	dhcpv4_handle_reply(iface, msg_type);
+	net_pkt_unref(pkt);
 
 	verdict = NET_OK;
 
@@ -1139,10 +1146,10 @@ const char *net_dhcpv4_state_name(enum net_dhcpv4_state state)
 	return name[state];
 }
 
-void net_dhcpv4_start(struct net_if *iface)
+static void dhcpv4_start_internal(struct net_if *iface, bool first_start)
 {
-	uint32_t timeout;
 	uint32_t entropy;
+	uint32_t timeout = 0;
 
 	net_mgmt_event_notify(NET_EVENT_IPV4_DHCP_START, iface);
 
@@ -1166,15 +1173,15 @@ void net_dhcpv4_start(struct net_if *iface)
 		 */
 		iface->config.dhcpv4.xid = entropy;
 
-
-		/* RFC2131 4.1.1 requires we wait a random period
-		 * between 1 and 10 seconds before sending the initial
-		 * discover.
-		 */
-		timeout = entropy %
-				(CONFIG_NET_DHCPV4_INITIAL_DELAY_MAX -
-				  DHCPV4_INITIAL_DELAY_MIN) +
-				DHCPV4_INITIAL_DELAY_MIN;
+		/* Use default */
+		if (first_start) {
+			/* RFC2131 4.1.1 requires we wait a random period
+			 * between 1 and 10 seconds before sending the initial
+			 * discover.
+			 */
+			timeout = entropy % (CONFIG_NET_DHCPV4_INITIAL_DELAY_MAX -
+					DHCPV4_INITIAL_DELAY_MIN) + DHCPV4_INITIAL_DELAY_MIN;
+		}
 
 		NET_DBG("wait timeout=%us", timeout);
 
@@ -1198,6 +1205,11 @@ void net_dhcpv4_start(struct net_if *iface)
 	}
 
 	k_mutex_unlock(&lock);
+}
+
+void net_dhcpv4_start(struct net_if *iface)
+{
+	return dhcpv4_start_internal(iface, true);
 }
 
 void net_dhcpv4_stop(struct net_if *iface)
@@ -1241,6 +1253,12 @@ void net_dhcpv4_stop(struct net_if *iface)
 	net_mgmt_event_notify(NET_EVENT_IPV4_DHCP_STOP, iface);
 
 	k_mutex_unlock(&lock);
+}
+
+void net_dhcpv4_restart(struct net_if *iface)
+{
+	net_dhcpv4_stop(iface);
+	dhcpv4_start_internal(iface, false);
 }
 
 int net_dhcpv4_init(void)

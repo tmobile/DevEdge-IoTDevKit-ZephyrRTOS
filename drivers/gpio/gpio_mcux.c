@@ -11,11 +11,12 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/dt-bindings/gpio/nxp-kinetis-gpio.h>
+#include <zephyr/irq.h>
 #include <soc.h>
 #include <fsl_common.h>
 #include <fsl_port.h>
 
-#include "gpio_utils.h"
+#include <zephyr/drivers/gpio/gpio_utils.h>
 
 struct gpio_mcux_config {
 	/* gpio_driver_config needs to be first */
@@ -304,7 +305,7 @@ static const struct gpio_driver_api gpio_mcux_driver_api = {
 			    DEVICE_DT_INST_GET(n), 0);			\
 									\
 		irq_enable(DT_INST_IRQN(n));				\
-	} while (0)
+	} while (false)
 
 #define GPIO_PORT_BASE_ADDR(n) DT_REG_ADDR(DT_INST_PHANDLE(n, nxp_kinetis_port))
 
