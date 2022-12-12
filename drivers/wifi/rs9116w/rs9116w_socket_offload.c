@@ -150,6 +150,16 @@ static int rs9116w_socket(int family, int type, int proto)
 	}
 
 	sd = rsi_socket(family, type, rsi_proto);
+
+	/* Unfortunately the WiSeConnect config doesn't work quite right, as such
+	 * a check had to be added here.
+	 */
+	if (sd >= CONFIG_WISECONNECT_SOCKETS_COUNT) {
+		(void)rsi_shutdown(sd, 0);
+		errno = ENFILE;
+		return -1;
+	}
+
 	if (sd >= 0) {
 		if (IS_ENABLED(CONFIG_NET_SOCKETS_SOCKOPT_TLS) &&
 		    rsi_proto == 1) {
@@ -1012,7 +1022,7 @@ int rs9116w_socket_create(int family, int type, int proto)
 		atomic_clear_bit(closed_socks_map, sock);
 	}
 
-	LOG_DBG("SOCK CREATE %d", sock);
+	LOG_DBG("rs9116w_socket returned %d", sock);
 	if (sock < 0) {
 		z_free_fd(fd);
 		return -1;
