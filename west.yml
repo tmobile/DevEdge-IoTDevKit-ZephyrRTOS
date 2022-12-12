@@ -248,7 +248,7 @@ manifest:
     - name: wiseconnect
       revision: b5826aa21a3e087d7fbb5cad1e47ebb86f6409ee
       path: modules/hal/silabs_wiseconnect
-      url: git@github.com:tmobile/DevEdge-IoTDevKit-SiLabs-WiseConnect.git
+      url: https://github.com/tmobile/DevEdge-IoTDevKit-SiLabs-WiseConnect.git
       groups:
         - hal
     - name: zcbor
