@@ -766,6 +766,10 @@ static ssize_t rs9116w_recvfrom(void *obj, void *buf, size_t len, int flags,
 	 * Therefore, this is the simplest solution...
 	 */
 	if (flags & ZSOCK_MSG_DONTWAIT) {
+		if (rsi_socket_pool[sd].sock_state < RSI_SOCKET_STATE_BIND) {
+			errno = EAGAIN;
+			return -1;
+		}
 		struct rsi_timeval ptv;
 		rsi_fd_set rfds;
 
