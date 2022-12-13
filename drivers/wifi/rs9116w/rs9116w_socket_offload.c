@@ -734,7 +734,8 @@ static ssize_t rs9116w_recvfrom(void *obj, void *buf, size_t len, int flags,
 	len = MIN(len, MAX_PAYLOAD_SIZE);
 
 	if (len == 0) {
-		return -EINVAL;
+		errno = EINVAL;
+		return -1;
 	}
 
 	/* 1k to account for TLS overhead */
