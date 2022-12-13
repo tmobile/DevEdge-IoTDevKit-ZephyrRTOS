@@ -5,10 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <init.h>
+#include <zephyr/init.h>
 #include "board.h"
-#include <drivers/gpio.h>
-#include <sys/printk.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/printk.h>
+#include <zephyr/kernel.h>
 
 static void powerup_led_on(struct k_timer *timer_id);
 
@@ -69,17 +70,21 @@ static int tmo_dev_edge(const struct device *dev)
 	return 0;
 }
 
-#include <drivers/pwm.h>
+#include <zephyr/drivers/pwm.h>
 
 static void powerup_led_on(struct k_timer *timer_id)
 {
-	const struct device *led_pwm;
+#ifdef CONFIG_PWM
+	const struct device *led_pwm = LED_PWM_DEV;
 
-	led_pwm = device_get_binding(LED_PWM_NAME);
+	if (!led_pwm) {
+		return;
+	}
+
 	pwm_set(led_pwm, LED_PWM_RED, 100000, 10000, 0);
 	pwm_set(led_pwm, LED_PWM_BLUE, 100000, 5000, 0);
+#endif
 }
-
 
 /* needs to be done after GPIO driver init */
 SYS_INIT(tmo_dev_edge, POST_KERNEL,

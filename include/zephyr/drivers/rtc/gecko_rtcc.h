@@ -443,25 +443,7 @@ int gecko_rtcc_set_alarm(const struct device *dev,
  */
 int gecko_rtcc_synchronize(const struct device *dev,
 			     struct sys_notify *notify);
-#if !defined(CONFIG_TIME_GECKO_RTCC)
-/** @brief Request to update the synchronization point.
- *
- * This is a variant of gecko_rtcc_synchronize() for use from user
- * threads.
- *
- * @param dev the RTCC device pointer.
- *
- * @param signal pointer to a valid and ready-to-be-signalled
- * k_poll_signal.  May be NULL to request a synchronization point be
- * collected without notifying when it has been updated.
- *
- * @retval non-negative on success
- * @retval -EBUSY if a synchronization or set is currently in progress
- * @retval -ENOTSUP if the required interrupt is not configured
- */
-__syscall int gecko_rtcc_req_syncpoint(const struct device *dev,
-					 struct k_poll_signal *signal);
-#endif
+
 /** @brief Retrieve the most recent synchronization point.
  *
  * This function returns the synchronization data last captured using

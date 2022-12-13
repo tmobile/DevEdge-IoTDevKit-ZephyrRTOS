@@ -287,7 +287,7 @@
 	// TIMER_0
 	status = "okay";
 
-	/* Buzzer */
+	// Buzzer
 	pwm0: pwm {
 		// PWM_0
 		compatible = "silabs,gecko-pwm";
@@ -295,7 +295,6 @@
 		status = "okay";
 		pin-location = <GECKO_LOCATION(16) GECKO_PORT_C GECKO_PIN(11)>;
 		prescaler = <4>;
-		#pwm-cells = <3>;
 	};
 };
 
@@ -303,44 +302,40 @@
 	// TIMER_1
 	status = "okay";
 
-	/* White LED */
+	// White LED
 	pwm1: pwm {
 		// PWM_1
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(7)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Red LED */
+	// Red LED
 	pwm2: pwm {
 		// PWM_2
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(8)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Green LED */
+	// Green LED
 	pwm3: pwm {
 		// PWM_3
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(9)>;
-		#pwm-cells = <3>;
 	};
 
-	/* Blue LED */
+	// Blue LED
 	pwm4: pwm {
 		// PWM_4
 		compatible = "silabs,gecko-pwm";
 
 		status = "okay";
 		pin-location = <GECKO_LOCATION(12) GECKO_PORT_C GECKO_PIN(10)>;
-		#pwm-cells = <3>;
 	};
 };
 
