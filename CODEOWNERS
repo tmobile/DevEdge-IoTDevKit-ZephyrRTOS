@@ -6,6 +6,7 @@
 # pattern takes the most precedence.
 
 /*                                         @johnlange2 @ryanhagen-tmo @eniolaodufuwa-tmo @jtbaumann @DRuffer-tmo @joebairdtmo @atrowbr2-tmo @kimmansfield @wtucker6
+/boards/arm/efm32pg_stk3402a/pre_dt_board.cmake @jtbaumann @DRuffer-tmo
 /.github/workflows/                        @ryanhagen-tmo @eniolaodufuwa-tmo
 /west.yml                                  @ryanhagen-tmo @eniolaodufuwa-tmo
 include/zephyr/drivers/sensor/tsl2540.h    @jtbaumann
