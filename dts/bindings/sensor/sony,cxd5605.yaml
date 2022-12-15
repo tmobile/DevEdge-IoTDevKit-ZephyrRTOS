@@ -29,3 +29,13 @@ properties:
       description: |
         Controls the power to the GNSS chip.  High on this pin will turn on the GNSS chip
         low turns it off.
+    rst-gpios:
+      type: phandle-array
+      required: true
+      description: |
+        Reset line to the GNSS chip.  High on this pin will reset the GNSS chip.
+    boot-rec-gpios:
+      type: phandle-array
+      required: true
+      description: |
+        Sets the boot mode of the GNSS chip.
