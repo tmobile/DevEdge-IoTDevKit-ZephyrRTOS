@@ -39,7 +39,7 @@ manifest:
     - name: cxd5605_lib
       path:  modules/hal/sony/cxd5605
       url: https://github.com/tmobile/DevEdge-IoTDevKit-Sony-cxd5605.git
-      revision: a72297f68604f05f88989cebf407a9db233c0ed5
+      revision: fd99bda2a06a9f7659b19a11534c5e1f83ffb6f1
       groups:
         - hal
     - name: edtt
