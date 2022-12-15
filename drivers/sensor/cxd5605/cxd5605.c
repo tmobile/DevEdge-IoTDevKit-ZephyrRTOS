@@ -52,6 +52,8 @@ struct cxd5605_config {
 	const struct gpio_dt_spec alert_gpio;
 	const struct gpio_dt_spec int_gpio;
 	const struct gpio_dt_spec pwr_gpio;
+	const struct gpio_dt_spec rst_gpio;
+	const struct gpio_dt_spec boot_rec_gpio;
 };
 
 struct drv_data {
@@ -681,13 +683,6 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 {
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
-	const struct device *gpiof;
-
-	gpiof = device_get_binding("GPIO_F");
-	if (!gpiof) {
-		printk("CXD5605 driver: GPIOF driver error\n");
-		return 1;
-	}
 
 	int result = 0;
 
@@ -716,7 +711,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 * domain this device belongs is suspended.
 		 */
 
-		result = gpio_pin_interrupt_configure(gpiof, GNSS_INT, GPIO_INT_DISABLE);
+		gpio_pin_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
 		break;
 	default:
@@ -736,7 +731,11 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,			\
 						       int_gpios, { 0 }),	\
 		.pwr_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,			\
-							pwr_gpios, { 0 })	\
+							pwr_gpios, { 0 }),	\
+		.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,			\
+							rst_gpios, { 0 }),	\
+		.boot_rec_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,			\
+							boot_rec_gpios, { 0 })	\
 	};									\
 										\
 	PM_DEVICE_DT_INST_DEFINE(inst, cxd5605_driver_pm_action);		\

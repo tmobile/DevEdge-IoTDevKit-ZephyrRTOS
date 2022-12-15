@@ -244,6 +244,8 @@
 		alert-gpios = <&gpiof 7 GPIO_ACTIVE_LOW>;
 		int-gpios = <&gpiof 9 GPIO_ACTIVE_HIGH>;
 		pwr-gpios = <&gpiof 10 GPIO_ACTIVE_HIGH>;
+		rst-gpios = <&gpiof 8 GPIO_ACTIVE_HIGH>;
+		boot-rec-gpios = <&gpiof 6 GPIO_ACTIVE_HIGH>;
 	};
 
 	/* AMS Ambient Light Sensor */
