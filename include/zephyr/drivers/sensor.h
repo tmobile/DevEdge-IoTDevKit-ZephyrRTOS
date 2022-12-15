@@ -312,6 +312,8 @@ enum sensor_attribute {
 	SENSOR_ATTR_FEATURE_MASK,
 	/** Alert threshold or alert enable/disable */
 	SENSOR_ATTR_ALERT,
+	/** user application interrupt callback */
+        SENSOR_ATTR_USER_CALLBACK,
 
 	/**
 	 * Number of all common sensor attributes.
@@ -388,6 +390,16 @@ typedef int (*sensor_sample_fetch_t)(const struct device *dev,
 typedef int (*sensor_channel_get_t)(const struct device *dev,
 				    enum sensor_channel chan,
 				    struct sensor_value *val);
+/**
+ * @typedef sensor_rgeister_get_t
+ * @brief Callback API for getting a reading register value from a sensor
+ *
+ * See sensor_rgeister_get() for argument description
+ */
+typedef int (*sensor_register_t)(const struct device *dev,
+                                    uint8_t reg,
+                                    uint8_t *val,
+				    uint16_t len);
 
 __subsystem struct sensor_driver_api {
 	sensor_attr_set_t attr_set;
@@ -395,6 +407,8 @@ __subsystem struct sensor_driver_api {
 	sensor_trigger_set_t trigger_set;
 	sensor_sample_fetch_t sample_fetch;
 	sensor_channel_get_t channel_get;
+	sensor_register_t register_get;
+	sensor_register_t register_set;
 };
 
 /**
@@ -582,6 +596,58 @@ static inline int z_impl_sensor_channel_get(const struct device *dev,
 		(const struct sensor_driver_api *)dev->api;
 
 	return api->channel_get(dev, chan, val);
+}
+
+/**
+ * @brief Get a register read from a sensor device
+ *
+ * @param dev Pointer to the sensor device
+ * @param register to read
+ * @param val Where to store the value
+ * @param len numbher of bytes to read
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+__syscall int sensor_register_get(const struct device *dev,
+                                  uint8_t reg,
+                                  uint8_t *val,
+				  uint16_t len);
+
+static inline int z_impl_sensor_register_get(const struct device *dev,
+		                             uint8_t reg,
+                                             uint8_t *val,
+                                             uint16_t len)
+{
+        const struct sensor_driver_api *api =
+                (const struct sensor_driver_api *)dev->api;
+
+        return api->register_get(dev, reg, val, len);
+}
+
+/**
+ * @brief Set a register write to a sensor device
+ *
+ * @param dev Pointer to the sensor device
+ * @param register to write
+ * @param val Where the data comes from
+ * @param len numbher of bytes to write
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+__syscall int sensor_register_set(const struct device *dev,
+                                  uint8_t reg,
+                                  uint8_t *val,
+                                  uint16_t len);
+
+static inline int z_impl_sensor_register_set(const struct device *dev,
+                                             uint8_t reg,
+                                             uint8_t *val,
+                                             uint16_t len)
+{
+        const struct sensor_driver_api *api =
+                (const struct sensor_driver_api *)dev->api;
+
+        return api->register_set(dev, reg, val, len);
 }
 
 /**

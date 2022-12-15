@@ -325,6 +325,7 @@ static int lis2dw12_tap_init(const struct device *dev)
 	}
 
 	if (cfg->tap_threshold[0] > 0) {
+
 		LOG_DBG("TAP: tap_x enabled");
 		if (lis2dw12_tap_detection_on_x_set(ctx, 1) < 0) {
 			LOG_ERR("Failed to set tap detection on X axis");

@@ -140,6 +140,26 @@ static int lis2dw12_channel_get(const struct device *dev,
 	return -ENOTSUP;
 }
 
+static int lis2dw12_register_get(const struct device *dev,
+                                 uint8_t reg,
+                                 uint8_t *val,
+				 uint16_t len)
+{
+	const struct lis2dw12_device_config *cfg = dev->config;
+        stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+        return lis2dw12_read_reg(ctx, reg, val, len); 
+}
+
+static int lis2dw12_register_set(const struct device *dev,
+                                 uint8_t reg,
+                                 uint8_t *val,
+                                 uint16_t len)
+{
+        const struct lis2dw12_device_config *cfg = dev->config;
+        stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+        return lis2dw12_write_reg(ctx, reg, val, len);
+}
+
 static int lis2dw12_config(const struct device *dev, enum sensor_channel chan,
 			    enum sensor_attribute attr,
 			    const struct sensor_value *val)
@@ -304,6 +324,8 @@ static const struct sensor_driver_api lis2dw12_driver_api = {
 #endif /* CONFIG_LIS2DW12_TRIGGER */
 	.sample_fetch = lis2dw12_sample_fetch,
 	.channel_get = lis2dw12_channel_get,
+	.register_get = lis2dw12_register_get,
+	.register_set = lis2dw12_register_set,
 };
 
 static int lis2dw12_set_power_mode(const struct device *dev,

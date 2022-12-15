@@ -157,6 +157,21 @@ properties:
         there must not be any overthreshold event. Where 0 equals 2*1/ODR
         and 1LSB = 4*1/ODR.
 
+    ff-duration:
+      type: int
+      required: false
+      default: 30
+      description: |
+        The freefall duration value represented in milliseconds.
+        If the accelerometer readings of the all axes are lower
+        than the freefall threshold value for the freefall duration long,
+        then a freefall trigger occurs. This value is 5 bits long in the
+        register and 1 LSB = 1 * 1/ODR. This value depends on the ODR.
+        if the data rate change in code with SENSOR ATTR SAMPLING FREQUENCY,
+        It must be set again with SENSOR_ATT_FF_DUR attribute. ST propose
+        100Hz ODR and 30ms ff-duration for recognize freefall detection
+        refer to ST DT0100 design tip document.
+
     low-noise:
       type: boolean
       required: false
