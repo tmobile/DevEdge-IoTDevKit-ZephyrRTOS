@@ -488,7 +488,10 @@ static int rs9116w_init(const struct device *dev)
 	/* Initialize the device */
 	status = rsi_device_init(LOAD_NWP_FW);
 
-	LOG_DBG("%s: rsi_device_init returned %d", __func__, status);
+	if (status) {
+		LOG_ERR("%s: rsi_device_init returned %d", __func__, status);
+		return status;
+	}
 
 #if IS_ENABLED(CONFIG_WISECONNECT_USE_OS_BINDINGS)
 	k_thread_create(&driver_task, driver_task_stack,
@@ -549,7 +552,7 @@ static const struct net_wifi_mgmt_offload rs9116w_api = {
 };
 
 #ifdef CONFIG_PM_DEVICE
-#if CONFIG_WISECONNECT_BT
+#if CONFIG_WISECONNECT_BT && CONFIG_BT_RS9116W
 extern int bt_le_adv_stop(void);
 extern void bt_le_adv_resume(void);
 #include <rsi_bt_common_apis.h>
@@ -568,7 +571,7 @@ static int rs9116w_pm_action(const struct device *dev,
 	case PM_DEVICE_ACTION_RESUME:
 		ret = rsi_wlan_power_save_profile(RSI_ACTIVE, RSI_MAX_PSP);
 		k_msleep(50);
-#if CONFIG_WISECONNECT_BT
+#if CONFIG_WISECONNECT_BT && CONFIG_BT_RS9116W
 		bt_le_adv_resume();
 		if (!ret) {
 			ret = rsi_bt_power_save_profile(RSI_ACTIVE,
@@ -581,7 +584,7 @@ static int rs9116w_pm_action(const struct device *dev,
 		ret = rsi_wlan_power_save_profile(RSI_SLEEP_MODE_8,
 						  RSI_MAX_PSP);
 		k_msleep(50);
-#if CONFIG_WISECONNECT_BT
+#if CONFIG_WISECONNECT_BT && CONFIG_BT_RS9116W
 		bt_le_adv_stop();
 		if (!ret) {
 			ret = rsi_bt_power_save_profile(RSI_SLEEP_MODE_8,
@@ -593,7 +596,7 @@ static int rs9116w_pm_action(const struct device *dev,
 		ret = rsi_wlan_power_save_profile(RSI_SLEEP_MODE_10,
 						  RSI_MAX_PSP);
 		k_msleep(50);
-#if CONFIG_WISECONNECT_BT
+#if CONFIG_WISECONNECT_BT && CONFIG_BT_RS9116W
 		bt_le_adv_stop();
 		if (!ret) {
 			ret = rsi_bt_power_save_profile(RSI_SLEEP_MODE_10,
