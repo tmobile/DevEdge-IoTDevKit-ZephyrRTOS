@@ -8,6 +8,7 @@ Peripherals
 
    adc.rst
    audio/index.rst
+   bc12.rst
    canbus/index.rst
    coredump.rst
    counter.rst
