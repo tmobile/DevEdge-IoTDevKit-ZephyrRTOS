@@ -5,6 +5,7 @@
  */
 
 #define DT_DRV_COMPAT murata_1sc
+#define MURATA_1SC_C
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
@@ -45,12 +46,6 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #define MDM_CMD_RSP_TIME      K_SECONDS(2)
 #define MDM_CMD_LONG_RSP_TIME K_SECONDS(6)
 
-#if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
-
-#define CERTCMD_WRITE_SIZE                                                     \
-	32 + MAX_FILENAME_LEN /* assume filename maxlen = 32 */
-#define PEM_BUFF_SIZE 3002    /* terminate with \" & 0 */
-
 const struct mdmdata_cmd_t cmd_pool[] = {{"APN", apn_e},
 				   {"ASLEEP", awake_e},
 				   {"AWAKE", awake_e},
@@ -74,6 +69,12 @@ const struct mdmdata_cmd_t cmd_pool[] = {{"APN", apn_e},
 				   {"VER", version_e},
 				   {"WAKE", wake_e},
 				   {}};
+
+#if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
+
+#define CERTCMD_WRITE_SIZE                                                     \
+	32 + MAX_FILENAME_LEN /* assume filename maxlen = 32 */
+#define PEM_BUFF_SIZE 3002    /* terminate with \" & 0 */
 
 /**
  * following struct may not have packed memory if it has something like
