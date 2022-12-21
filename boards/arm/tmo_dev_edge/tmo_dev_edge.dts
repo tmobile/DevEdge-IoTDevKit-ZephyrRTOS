@@ -233,6 +233,11 @@
 		status = "okay";
 		// Note int2 is not used
 		irq-gpios =  <&gpiob 8 GPIO_ACTIVE_HIGH>;
+		range = <2>;
+		power-mode = <4>;
+		tap-mode = <1>;
+		tap-threshold = <12>, <12>, <14>;
+		tap-latency = <0xF>;
 	};
 
 	/* Sony GNSS receiver */
