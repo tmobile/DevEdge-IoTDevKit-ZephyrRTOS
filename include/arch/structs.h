@@ -25,6 +25,8 @@
 
 #if defined(CONFIG_ARM64)
 #include <arch/arm64/structs.h>
+#elif defined(CONFIG_RISCV)
+#include <arch/riscv/structs.h>
 #else
 
 /* Default definitions when no architecture specific definitions exist. */
