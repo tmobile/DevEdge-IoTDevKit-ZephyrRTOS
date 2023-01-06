@@ -33,6 +33,10 @@ void arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 void z_riscv_secondary_cpu_init(int cpu_num)
 {
 	csr_write(mscratch, &_kernel.cpus[cpu_num]);
+#ifdef CONFIG_SMP
+	_kernel.cpus[cpu_num].arch.hartid = csr_read(mhartid);
+	_kernel.cpus[cpu_num].arch.online = true;
+#endif
 #ifdef CONFIG_THREAD_LOCAL_STORAGE
 	__asm__("mv tp, %0" : : "r" (z_idle_threads[cpu_num].tls));
 #endif
@@ -49,13 +53,9 @@ void z_riscv_secondary_cpu_init(int cpu_num)
 }
 
 #ifdef CONFIG_SMP
-static uintptr_t *get_hart_msip(int hart_id)
+static uint32_t *get_hart_msip(int hart_id)
 {
-#ifdef CONFIG_64BIT
-	return (uintptr_t *)(uint64_t)(RISCV_MSIP_BASE + (hart_id * 4));
-#else
-	return (uintptr_t *)(RISCV_MSIP_BASE + (hart_id * 4));
-#endif
+	return (uint32_t *)(unsigned long)(RISCV_MSIP_BASE + (hart_id * 4));
 }
 
 void arch_sched_ipi(void)
@@ -68,8 +68,8 @@ void arch_sched_ipi(void)
 
 	id = _current_cpu->id;
 	for (i = 0U; i < CONFIG_MP_NUM_CPUS; i++) {
-		if (i != id) {
-			volatile uint32_t *r = (uint32_t *)get_hart_msip(i);
+		if (i != id && _kernel.cpus[i].arch.online) {
+			volatile uint32_t *r = get_hart_msip(_kernel.cpus[i].arch.hartid);
 			*r = 1U;
 		}
 	}
@@ -81,7 +81,7 @@ static void sched_ipi_handler(const void *unused)
 {
 	ARG_UNUSED(unused);
 
-	volatile uint32_t *r = (uint32_t *)get_hart_msip(_current_cpu->id);
+	volatile uint32_t *r = get_hart_msip(csr_read(mhartid));
 	*r = 0U;
 
 	z_sched_ipi();
