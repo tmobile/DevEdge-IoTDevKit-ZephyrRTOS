@@ -273,6 +273,7 @@
 		compatible = "st,lps22hh";
 		reg = <0x5c 0x4>;
 		status = "okay";
+		odr = <1>;
 		drdy-gpios =  <&gpiof 15 GPIO_ACTIVE_HIGH>;
 	};
 
