@@ -20,7 +20,16 @@
 #undef PF_INET6
 #undef TCP_NODELAY
 #undef IP_TOS
+#ifndef ntohs
+#define reset_ntohs
+#endif
 #include <rsi_socket.h>
+#ifdef reset_ntohs
+#undef ntohs
+#undef ntohl
+#undef htons
+#undef htonl
+#endif
 #include <rsi_wlan_apis.h>
 
 /*  NOTE: Zephyr defines AF_INET as 1 and AF_INET6 as 2 */
