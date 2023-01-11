@@ -11,3 +11,5 @@
 /west.yml                                  @ryanhagen-tmo @eniolaodufuwa-tmo
 include/zephyr/drivers/sensor/tsl2540.h    @jtbaumann
 samples/subsys/shell/fs/boards/tmo_dev_edge.conf @jtbaumann
+samples/bluetooth/peripheral_hr/boards/tmo_dev_edge.conf @jtbaumann
+samples/bluetooth/peripheral_ht/boards/tmo_dev_edge.conf @jtbaumann
