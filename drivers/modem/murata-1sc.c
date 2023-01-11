@@ -1752,6 +1752,8 @@ static int get_edrx(char *response)
 		MODEM_CMD("+CEDRXS:", on_cmd_get_edrx, 0U, ","),
 	};
 
+	memset(mdata.mdm_edrx, 0, sizeof(mdata.mdm_edrx));
+
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, data_cmd, ARRAY_SIZE(data_cmd), at_cmd,
 			     &mdata.sem_response, MDM_CMD_RSP_TIME);
 	if (ret < 0) {
