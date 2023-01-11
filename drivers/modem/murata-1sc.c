@@ -1197,6 +1197,22 @@ MODEM_CMD_DEFINE(on_cmd_get_hifc_mode)
 }
 
 /**
+ * @brief Handler for GETACFG=modem_apps.Mode.AtCmdSetPersistence
+ */
+static bool needto_enable_at_persist;
+MODEM_CMD_DEFINE(on_cmd_get_at_persist)
+{
+	char true_false[6];
+	size_t out_len =
+		net_buf_linearize(true_false, sizeof(true_false) - 1, data->rx_buf, 0, len);
+
+	true_false[out_len] = '\0';
+	needto_enable_at_persist = strncmp(true_false, "true", 4);
+
+	return 0;
+}
+
+/**
  * @brief set pm.hifc.mode - sets HIFC mode
  * Supported modes are 'A' and 'C'
  */
@@ -1338,6 +1354,24 @@ static int set_dns_servers(void)
 	}
 	needto_set_dns_servers = false;
 	return 0;
+}
+
+/**
+ * @brief set Mode.AtCmdSetPersistence - sets AtCmdSetPersistence mode
+ */
+static int set_at_persist_mode(void)
+{
+	static const char *at_cmd = "AT%SETACFG=modem_apps.Mode.AtCmdSetPersistence,true";
+
+	int ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, at_cmd,
+				 &mdata.sem_response, MDM_CMD_RSP_TIME);
+
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+	} else {
+		LOG_DBG("Set AtCmdSetPersistence mode to true");
+	}
+	return ret;
 }
 
 /**
@@ -4421,6 +4455,8 @@ static int murata_1sc_setup(void)
 	  SETUP_CMD("AT%GETACFG=pm.conf.max_allowed_pm_mode", "", on_cmd_get_max_pm_mode, 0U, ""),
 	  SETUP_CMD("AT%GETACFG=pm.conf.sleep_mode", "", on_cmd_get_sleep_mode, 0U, ""),
 	  SETUP_CMD("AT%GETACFG=pm.hifc.mode", "", on_cmd_get_hifc_mode, 0U, ""),
+	  SETUP_CMD("AT%GETACFG=modem_apps.Mode.AtCmdSetPersistence", "", on_cmd_get_at_persist,
+			0U, ""),
 #ifdef CONFIG_NET_IPV4
 	  SETUP_CMD("AT%GETACFG=APNTable.Class1.IPv4DnsIP_1", "", on_cmd_get_ipv4_primary, 0U, ""),
 	  SETUP_CMD("AT%GETACFG=APNTable.Class1.IPv4DnsIP_2", "", on_cmd_get_ipv4_secondary, 0U,
@@ -4490,6 +4526,11 @@ top:;
 
 	if (needto_set_dns_servers) {
 		ret = set_dns_servers();
+		needto_reset_modem = true;
+	}
+
+	if (needto_enable_at_persist) {
+		ret = set_at_persist_mode();
 		needto_reset_modem = true;
 	}
 
