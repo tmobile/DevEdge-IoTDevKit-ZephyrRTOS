@@ -11,22 +11,21 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the code & mirror
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: true
-        run: |
-          git checkout main
-          currentBranch=$(git rev-parse --abbrev-ref HEAD)
-          if [ $currentBranch == "main" ];
-          then
-            git remote set-url origin git@github.com:zephyrproject-rtos/zephyr.git
-            git pull
-            git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
-            git push
-          else
-            echo "Not on main branch, exiting."
-            exit 1
-          fi
+      - uses: actions/checkout@v3
+      # with:
+      #   ref: ${{ github.event.pull_request.head.sha }}
+      #   fetch-depth: 0
+      #   persist-credentials: true
+      - run: |
+        git checkout main
+        currentBranch=$(git rev-parse --abbrev-ref HEAD)
+        if [ $currentBranch == "main" ];
+        then
+          git remote set-url origin git@github.com:zephyrproject-rtos/zephyr.git
+          git pull
+          git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+          git push
+        else
+          echo "Not on main branch, exiting."
+          exit 1
+        fi
