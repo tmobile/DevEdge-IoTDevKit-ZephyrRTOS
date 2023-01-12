@@ -17,6 +17,7 @@ jobs:
       #   fetch-depth: 0
       #   persist-credentials: true
       - run: |
+          git fetch
           git checkout main
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
           if [ $currentBranch == "main" ];
