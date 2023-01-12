@@ -11,13 +11,12 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the code
+      - name: Checkout the code & mirror
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: true
-      - name: mirror
         run: |
           git checkout main
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
