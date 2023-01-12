@@ -1,0 +1,16 @@
+on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '00 6 * * *'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: mirror
+        run: |
+          git checkout main
+          git remote set-url origin git@github.com:zephyrproject-rtos/zephyr.git
+          git pull
+          git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+          git push
