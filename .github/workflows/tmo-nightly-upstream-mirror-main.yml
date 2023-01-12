@@ -17,6 +17,8 @@ jobs:
       #   fetch-depth: 0
       #   persist-credentials: true
       - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git fetch
           git checkout main
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
