@@ -13,8 +13,14 @@ jobs:
     steps:
       - name: mirror
         run: |
-          git checkout main
-          git remote set-url origin git@github.com:zephyrproject-rtos/zephyr.git
-          git pull
-          git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
-          git push
+          currentBranch=$(git rev-parse --abbrev-ref HEAD)
+          if [ $currentBranch == "main" ];
+          then
+            git remote set-url origin git@github.com:zephyrproject-rtos/zephyr.git
+            git pull
+            git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+            git push
+          else
+            echo "Not on main branch, exiting."
+            exit 1
+          fi
