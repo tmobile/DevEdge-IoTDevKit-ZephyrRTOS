@@ -1,7 +1,11 @@
+name: Tmo Nightly Main Upstream Mirror
+
 on:
+  workflow_dispatch:
+    branches: [ main ]
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '00 6 * * *'
+    - cron:  '0 6 * * *'
 
 jobs:
   mirror:
