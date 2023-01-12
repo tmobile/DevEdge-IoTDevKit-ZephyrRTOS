@@ -2,7 +2,7 @@ name: Tmo Nightly Main Upstream Mirror
 
 on:
   workflow_dispatch:
-    branches: [ main ]
+    branches: [ tmo-main ]
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 6 * * *'
@@ -19,6 +19,7 @@ jobs:
           persist-credentials: false
       - name: mirror
         run: |
+          git checkout main
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
           if [ $currentBranch == "main" ];
           then
