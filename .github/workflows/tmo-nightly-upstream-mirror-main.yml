@@ -15,7 +15,6 @@ jobs:
       - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-
           git fetch
           git checkout main
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
@@ -23,7 +22,7 @@ jobs:
           then
             git remote set-url origin https://github.com/zephyrproject-rtos/zephyr.git
             git pull
-            git remote set-url origin git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+            git remote set-url origin https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
             git push
           else
             echo "Not on main branch, exiting."
