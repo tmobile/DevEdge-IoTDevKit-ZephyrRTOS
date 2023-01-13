@@ -239,7 +239,6 @@ static int cmd_date_get(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **argv)
 {
-#ifdef TIMER
 	const struct device *const counter_dev = DEVICE_DT_GET(TIMER_COUNTER);
 	uint32_t ticks;
 	struct tm tm_gm;
@@ -264,9 +263,6 @@ static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **ar
 	date_print(shell_ptr, &tm_gm);
 #else
 	shell_print(shell_ptr, "%u", ticks);
-#endif
-#else
-	shell_print(shell_ptr, "Counter not defined");
 #endif
 	return 0;
 }
