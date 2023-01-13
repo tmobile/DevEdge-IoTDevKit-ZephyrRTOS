@@ -17,6 +17,7 @@ jobs:
           git config user.email github-actions@github.com
           git fetch
           git checkout main
+          git rev-parse HEAD
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
           if [ $currentBranch == "main" ];
           then
