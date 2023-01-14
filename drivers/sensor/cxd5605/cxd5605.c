@@ -633,10 +633,8 @@ int setup_interrupts(const struct device *dev)
 	struct cxd5605_data *drv_data = dev->data;
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *int_gpio = &config->int_gpio;
-	char device_type[] = DT_N_P_compatible;
 
-	if (!strcmp("tmo,dev_edge", device_type)) {
-		printk("found tmo_dev_edge device\n");
+	if (config->alert_gpio.port) {
 		/* setup 1pps interrupt */
 		result = gpio_pin_configure_dt(int_gpio, GPIO_INPUT);
 
@@ -661,8 +659,6 @@ int setup_interrupts(const struct device *dev)
 		if (result < 0) {
 			return result;
 		}
-	} else {
-		printk("found tmo_tracker_v2 device\n");
 	}
 
 	return 0;
