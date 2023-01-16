@@ -21,7 +21,7 @@ static uint64_t last_count;
 
 static uint64_t get_hart_mtimecmp(void)
 {
-	return RISCV_MTIMECMP_BASE + (_current_cpu->id * 8);
+	return RISCV_MTIMECMP_BASE + (arch_proc_id() * 8);
 }
 
 static void set_mtimecmp(uint64_t time)
