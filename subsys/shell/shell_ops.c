@@ -52,8 +52,7 @@ bool z_shell_cursor_in_empty_line(const struct shell *shell)
 {
 	return (((shell->ctx->cmd_buff_pos * shell->ctx->cfg.flags.echo) +
 		 z_shell_strlen(shell->ctx->prompt)) %
-			shell->ctx->vt100_ctx.cons.terminal_wid ==
-		0U);
+			shell->ctx->vt100_ctx.cons.terminal_wid == 0U);
 }
 
 void z_shell_op_cond_next_line(const struct shell *shell)
@@ -367,7 +366,29 @@ static void print_prompt(const struct shell *shell)
 
 void z_shell_print_cmd(const struct shell *shell)
 {
-	z_shell_raw_fprintf(shell->fprintf_ctx, "%s", shell->ctx->cmd_buff);
+	int beg_offset = 0;
+	int end_offset = 0;
+	int cmd_width = z_shell_strlen(shell->ctx->cmd_buff);
+	int adjust = shell->ctx->vt100_ctx.cons.name_len;
+	char ch;
+
+	while (cmd_width > shell->ctx->vt100_ctx.cons.terminal_wid - adjust) {
+		end_offset += shell->ctx->vt100_ctx.cons.terminal_wid - adjust;
+		ch = shell->ctx->cmd_buff[end_offset];
+		shell->ctx->cmd_buff[end_offset] = '\0';
+
+		z_shell_raw_fprintf(shell->fprintf_ctx, "%s\n",
+				&shell->ctx->cmd_buff[beg_offset]);
+
+		shell->ctx->cmd_buff[end_offset] = ch;
+		cmd_width -= (shell->ctx->vt100_ctx.cons.terminal_wid - adjust);
+		beg_offset = end_offset;
+		adjust = 0;
+	}
+	if (cmd_width > 0) {
+		z_shell_raw_fprintf(shell->fprintf_ctx, "%s",
+				&shell->ctx->cmd_buff[beg_offset]);
+	}
 }
 
 void z_shell_print_prompt_and_cmd(const struct shell *shell)
