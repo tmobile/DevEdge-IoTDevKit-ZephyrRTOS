@@ -276,7 +276,7 @@ manifest:
       revision: ca070ddabdaf67175a2da901d0bd62e8899371c5
     - name: dfu_gecko
       url: git@github.com:tmobile/DevEdge-IoTDevKit-Zephyr-dfu-gecko.git
-      revision: 37dfdf01da1d97003b7cabdee43811a524518a2b
+      revision: ff3074ade2db045c95e72eb07ab089f70536274f
       path: modules/hal/silabs/gecko/dfu_gecko
 
   self:
