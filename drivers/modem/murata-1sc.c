@@ -2276,6 +2276,8 @@ MODEM_CMD_DEFINE(on_cmd_cmgl)
 
 		memcpy(sms->time, pdu_data.scts, 12);
 		memset(mdata.sms_indices, 0, sizeof(mdata.sms_indices));
+		memset(mdata.sms_csms_indices, 0, sizeof(mdata.sms_csms_indices));
+
 		if (pdu_data.udhl) {
 			char *udh = pdu_data.ud + 2;
 			uint8_t iei, iedl;
@@ -2472,7 +2474,7 @@ decode_msg:
 				MIN((out_buf_avail), pdu_data.udl - pdu_data.udhl));
 	} else if (pdu_data.alphabet == SMS_ALPHABET_UCS2) {
 		uint16_t utf16_chr[3];
-		char *ud = pdu_data.ud + 2 * pdu_data.udhl;
+		char *ud = pdu_data.ud + (pdu_data.udhl ? 2 + 2 * pdu_data.udhl : 0);
 		char *out_buf_ptr = out_buf;
 		uint16_t *nchr;
 		int avail = out_buf_avail;
