@@ -22,79 +22,6 @@
 #ifndef _ASMLANGUAGE
 #include <zephyr/types.h>
 
-#if !defined(RV_FP_TYPE) && defined(CONFIG_FPU) && defined(CONFIG_FPU_SHARING)
-#ifdef CONFIG_CPU_HAS_FPU_DOUBLE_PRECISION
-#define RV_FP_TYPE uint64_t
-#else
-#define RV_FP_TYPE uint32_t
-#endif
-#endif
-
-#ifdef CONFIG_RISCV_PMP
-#ifdef CONFIG_64BIT
-#define	RISCV_PMP_CFG_NUM	(CONFIG_PMP_SLOTS >> 3)
-#else
-#define	RISCV_PMP_CFG_NUM	(CONFIG_PMP_SLOTS >> 2)
-#endif
-#endif
-
-#ifdef CONFIG_PMP_STACK_GUARD
-/*
- * PMP entries:
- *   (1 for interrupt stack guard: None)
- *   4 for stacks guard: None
- *   1 for RAM: RW
- *   1 for other address space: RWX
- */
-#define PMP_REGION_NUM_FOR_STACK_GUARD	6
-#define PMP_CFG_CSR_NUM_FOR_STACK_GUARD	2
-#endif /* CONFIG_PMP_STACK_GUARD */
-
-#ifdef CONFIG_PMP_POWER_OF_TWO_ALIGNMENT
-#ifdef CONFIG_USERSPACE
-#ifdef CONFIG_PMP_STACK_GUARD
-/*
- * 1 for interrupt stack guard: None
- * 1 for core state: R
- * 1 for program and read only data: RX
- * 1 for user thread stack: RW
- */
-#define PMP_REGION_NUM_FOR_U_THREAD	4
-#else /* CONFIG_PMP_STACK_GUARD */
-/*
- * 1 for core state: R
- * 1 for program and read only data: RX
- * 1 for user thread stack: RW
- */
-#define PMP_REGION_NUM_FOR_U_THREAD	3
-#endif /* CONFIG_PMP_STACK_GUARD */
-#define PMP_MAX_DYNAMIC_REGION	(CONFIG_PMP_SLOT - PMP_REGION_NUM_FOR_U_THREAD)
-#endif /* CONFIG_USERSPACE */
-
-#else /* CONFIG_PMP_POWER_OF_TWO_ALIGNMENT */
-
-#ifdef CONFIG_USERSPACE
-#ifdef CONFIG_PMP_STACK_GUARD
-/*
- * 1 for interrupt stack guard: None
- * 1 for core state: R
- * 2 for program and read only data: RX
- * 2 for user thread stack: RW
- */
-#define PMP_REGION_NUM_FOR_U_THREAD	6
-#else /* CONFIG_PMP_STACK_GUARD */
-/*
- * 1 for core state: R
- * 2 for program and read only data: RX
- * 2 for user thread stack: RW
- */
-#define PMP_REGION_NUM_FOR_U_THREAD	5
-#endif /* CONFIG_PMP_STACK_GUARD */
-#define PMP_MAX_DYNAMIC_REGION	((CONFIG_PMP_SLOT - \
-				PMP_REGION_NUM_FOR_U_THREAD) >> 1)
-#endif /* CONFIG_USERSPACE */
-#endif /* CONFIG_PMP_POWER_OF_TWO_ALIGNMENT */
-
 /*
  * The following structure defines the list of registers that need to be
  * saved/restored when a context switch occurs.
@@ -115,28 +42,32 @@ struct _callee_saved {
 	ulong_t s9;	/* saved register */
 	ulong_t s10;	/* saved register */
 	ulong_t s11;	/* saved register */
-
-#if defined(CONFIG_FPU) && defined(CONFIG_FPU_SHARING)
-	uint32_t fcsr;		/* Control and status register */
-	RV_FP_TYPE fs0;		/* saved floating-point register */
-	RV_FP_TYPE fs1;		/* saved floating-point register */
-	RV_FP_TYPE fs2;		/* saved floating-point register */
-	RV_FP_TYPE fs3;		/* saved floating-point register */
-	RV_FP_TYPE fs4;		/* saved floating-point register */
-	RV_FP_TYPE fs5;		/* saved floating-point register */
-	RV_FP_TYPE fs6;		/* saved floating-point register */
-	RV_FP_TYPE fs7;		/* saved floating-point register */
-	RV_FP_TYPE fs8;		/* saved floating-point register */
-	RV_FP_TYPE fs9;		/* saved floating-point register */
-	RV_FP_TYPE fs10;	/* saved floating-point register */
-	RV_FP_TYPE fs11;	/* saved floating-point register */
-#endif
 };
 typedef struct _callee_saved _callee_saved_t;
+
+#if !defined(RV_FP_TYPE)
+#ifdef CONFIG_CPU_HAS_FPU_DOUBLE_PRECISION
+#define RV_FP_TYPE uint64_t
+#else
+#define RV_FP_TYPE uint32_t
+#endif
+#endif
+
+struct z_riscv_fp_context {
+	RV_FP_TYPE fa0, fa1, fa2, fa3, fa4, fa5, fa6, fa7;
+	RV_FP_TYPE ft0, ft1, ft2, ft3, ft4, ft5, ft6, ft7, ft8, ft9, ft10, ft11;
+	RV_FP_TYPE fs0, fs1, fs2, fs3, fs4, fs5, fs6, fs7, fs8, fs9, fs10, fs11;
+	uint32_t fcsr;
+};
+typedef struct z_riscv_fp_context z_riscv_fp_context_t;
 
 #define PMP_M_MODE_SLOTS 8	/* 8 is plenty enough for m-mode */
 
 struct _thread_arch {
+#ifdef CONFIG_FPU_SHARING
+	struct z_riscv_fp_context saved_fp_context;
+	uint8_t exception_depth;
+#endif
 #ifdef CONFIG_USERSPACE
 	ulong_t priv_stack_start;
 	ulong_t u_mode_pmpaddr_regs[CONFIG_PMP_SLOTS];
