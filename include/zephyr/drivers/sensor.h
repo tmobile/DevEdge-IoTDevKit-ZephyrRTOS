@@ -318,8 +318,10 @@ enum sensor_attribute {
 	 *  to the new sampling frequency.
 	 */
 	SENSOR_ATTR_FF_DUR,
-	/** user application interrupt callback */
+
+	/** User application interrupt callback */
 	SENSOR_ATTR_USER_CALLBACK,
+
 	/**
 	 * Number of all common sensor attributes.
 	 */
