@@ -122,6 +122,23 @@ static inline void lis2dw12_channel_get_acc(const struct device *dev,
 	}
 }
 
+static int lis2dw12_get_ambient_temp(const struct device *dev,
+				      enum sensor_channel chan,
+				      struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_temperature_raw_get(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get ambient temp");
+		return -EIO;
+	}
+	return rc;
+}
+
 static int lis2dw12_channel_get(const struct device *dev,
 				 enum sensor_channel chan,
 				 struct sensor_value *val)
@@ -132,6 +149,9 @@ static int lis2dw12_channel_get(const struct device *dev,
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ:
 		lis2dw12_channel_get_acc(dev, chan, val);
+		return 0;
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		lis2dw12_get_ambient_temp(dev, chan, val);
 		return 0;
 	default:
 		LOG_DBG("Channel not supported");
@@ -272,7 +292,148 @@ static int lis2dw12_attr_set_ff_dur(const struct device *dev,
 	}
 	return rc;
 }
+
+static int lis2dw12_attr_set_ff_ths(const struct device *dev,
+					enum sensor_channel chan,
+					enum sensor_attribute attr,
+					const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+	uint8_t ff_ths = (uint8_t)val;
+
+	rc = lis2dw12_ff_threshold_set(ctx, ff_ths);
+	if (rc != 0) {
+		LOG_ERR("Failed to set freefall threhold");
+		return -EIO;
+	}
+	return rc;
+}
+
 #endif
+
+static int lis2dw12_attr_get_status(const struct device *dev,
+					enum sensor_channel chan,
+					enum sensor_attribute attr,
+					const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_status_reg_get(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get status");
+		return -EIO;
+	}
+	return rc;
+}
+
+static int lis2dw12_attr_get_tap_src(const struct device *dev,
+					 enum sensor_channel chan,
+					 enum sensor_attribute attr,
+					 const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_tap_src_get(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get tap src");
+		return -EIO;
+	}
+	return rc;
+}
+
+/* read 5 status registers: STATUS_DUP, WAKE_UP_SRC,
+ *                   TAP_SRC, SIXD_SRC, ALL_INT_SRC
+ */
+static int lis2dw12_attr_get_all_status(const struct device *dev,
+					 enum sensor_channel chan,
+					 enum sensor_attribute attr,
+					 const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_all_sources_get(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get wake up src");
+		return -EIO;
+	}
+	return rc;
+}
+
+
+/* Set CTRL4_int1 for Event interrupt enable. */
+static int lis2dw12_attr_set_event_interrupt(const struct device *dev,
+					 enum sensor_channel chan,
+					 enum sensor_attribute attr,
+					 const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_pin_int1_route_set(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to set event interrupt enable CTRL4_int1");
+		return -EIO;
+	}
+	return rc;
+}
+
+
+/* Set CTRL4_int1 for Event interrupt enable. */
+static int lis2dw12_attr_get_chip_id(const struct device *dev,
+				      enum sensor_channel chan,
+				      enum sensor_attribute attr,
+				      const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	struct lis2dw12_data *lis2dw12 = dev->data;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_device_id_get(ctx, val);
+	if (rc != 0) {
+		LOG_ERR("Failed to set event interrupt enable CTRL4_int1");
+		return -EIO;
+	}
+	return rc;
+}
+
+static int lis2dw12_attr_get(const struct device *dev,
+			      enum sensor_channel chan,
+			      enum sensor_attribute attr,
+			      const struct sensor_value *val)
+{
+	if (attr == SENSOR_ATTR_STATUS) {
+		return lis2dw12_attr_get_status(dev, chan, attr, val);
+	}
+
+	if (attr == SENSOR_ATTR_TAP_SRC) {
+		return lis2dw12_attr_get_tap_src(dev, chan, attr, val);
+	}
+
+	if (attr == SENSOR_ATTR_ALL_WAKE_UP_SRC) {
+		return lis2dw12_attr_get_all_status(dev, chan, attr, val);
+	}
+
+	if (attr == SENSOR_ATTR_CHIP_ID) {
+		return lis2dw12_attr_get_chip_id(dev, chan, attr, val);
+	}
+
+	return -ENOTSUP;
+}
 
 static int lis2dw12_attr_set(const struct device *dev,
 			      enum sensor_channel chan,
@@ -295,6 +456,10 @@ static int lis2dw12_attr_set(const struct device *dev,
 		return lis2dw12_attr_set_ff_dur(dev, chan, attr, val);
 	}
 #endif
+
+	if (attr == SENSOR_ATTR_ENABLE_EVENT_INTERRUPT) {
+		return lis2dw12_attr_set_event_interrupt(dev, chan, attr, val);
+	}
 
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_X:
@@ -340,6 +505,7 @@ static int lis2dw12_sample_fetch(const struct device *dev,
 }
 
 static const struct sensor_driver_api lis2dw12_driver_api = {
+	.attr_get = lis2dw12_attr_get,
 	.attr_set = lis2dw12_attr_set,
 #if CONFIG_LIS2DW12_TRIGGER
 	.trigger_set = lis2dw12_trigger_set,

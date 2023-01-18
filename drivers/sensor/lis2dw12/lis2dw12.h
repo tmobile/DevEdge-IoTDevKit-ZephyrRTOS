@@ -108,6 +108,9 @@ struct lis2dw12_data {
 	 /* output data rate */
 	uint16_t odr;
 
+	/* Temperature output in 12 bit resolution */
+	int16_t temperature;
+
 #ifdef CONFIG_LIS2DW12_TRIGGER
 	const struct device *dev;
 
