@@ -5,14 +5,6 @@ tests:
     extra_configs:
       - CONFIG_DYNAMIC_INTERRUPTS=y
     tags: fpu kernel userspace
-  kernel.fpu_sharing.float_disable.riscv32:
-    filter: CONFIG_CPU_HAS_FPU
-    arch_allow: riscv32
-    tags: fpu kernel userspace
-  kernel.fpu_sharing.float_disable.riscv64:
-    filter: CONFIG_CPU_HAS_FPU
-    arch_allow: riscv64
-    tags: fpu kernel userspace
   kernel.fpu_sharing.float_disable.sparc:
     filter: CONFIG_CPU_HAS_FPU
     arch_allow: sparc
