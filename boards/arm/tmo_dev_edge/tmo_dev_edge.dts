@@ -117,11 +117,11 @@
 
 &usart1 {
 	// UART_1
-	current-speed   = <115200>;
-	location-rx     = <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
-	location-tx     = <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
-	location-cts    = <GECKO_LOCATION(15) GECKO_PORT_D GECKO_PIN(11)>;
-	location-rts    = <GECKO_LOCATION(13) GECKO_PORT_D GECKO_PIN(10)>;
+	current-speed	= <115200>;
+	location-rx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
+	location-tx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
+	location-cts	= <GECKO_LOCATION(15) GECKO_PORT_D GECKO_PIN(11)>;
+	location-rts	= <GECKO_LOCATION(13) GECKO_PORT_D GECKO_PIN(10)>;
 	hw-flow-control;
 	status = "okay";
 
@@ -130,13 +130,13 @@
 		// murata,1sc
 		compatible = "murata,1sc";
 		mdm-wake-host-gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
-		mdm-wake-mdm-gpios  = <&gpiod 15 GPIO_ACTIVE_HIGH>;
-		mdm-rst-done-gpios  = <&gpiod 9 GPIO_ACTIVE_HIGH>;
-		mdm-reset-gpios     = <&gpiod 8 GPIO_ACTIVE_HIGH>;
-		mdm-rx-gpios        = <&gpiod 13 GPIO_ACTIVE_HIGH>;
-		mdm-tx-gpios        = <&gpiod 12 GPIO_ACTIVE_HIGH>;
-		mdm-cts-gpios       = <&gpiod 11 GPIO_ACTIVE_HIGH>;
-		mdm-rts-gpios       = <&gpiod 10 GPIO_ACTIVE_HIGH>;
+		mdm-wake-mdm-gpios	= <&gpiod 15 GPIO_ACTIVE_HIGH>;
+		mdm-rst-done-gpios	= <&gpiod 9 GPIO_ACTIVE_HIGH>;
+		mdm-reset-gpios		= <&gpiod 8 GPIO_ACTIVE_HIGH>;
+		mdm-rx-gpios		= <&gpiod 13 GPIO_ACTIVE_HIGH>;
+		mdm-tx-gpios		= <&gpiod 12 GPIO_ACTIVE_HIGH>;
+		mdm-cts-gpios		= <&gpiod 11 GPIO_ACTIVE_HIGH>;
+		mdm-rts-gpios		= <&gpiod 10 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
@@ -197,12 +197,18 @@
 		compatible = "silabs,rs9116w";
 		reg = <0>;
 		spi-max-frequency = <6400000>;
-		int-gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;                     // input
-		reset-gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;                    // output init LOW
-		sleep-wake-indication-gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;    // input
-		wake-on-wireless-gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>;        // input
-		sleep-wake-confirmation-gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>; // output init HIGH
-		poc-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;                      // output init LOW
+		// input
+		int-gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;
+		// output init LOW
+		reset-gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;
+		// input
+		sleep-wake-indication-gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;
+		// input
+		wake-on-wireless-gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>;
+		// output init HIGH
+		sleep-wake-confirmation-gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
+		// output init LOW
+		poc-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
 		status = "okay";
 	};
 };
@@ -232,7 +238,13 @@
 		reg = <0x18 0x4>;
 		status = "okay";
 		// Note int2 is not used
-		irq-gpios =  <&gpiob 8 GPIO_ACTIVE_HIGH>;
+		irq-gpios =	 <&gpiob 8 GPIO_ACTIVE_HIGH>;
+		range = <2>;
+		power-mode = <4>;
+		tap-mode = <1>;
+		tap-threshold = <12>, <12>, <14>;
+		tap-latency = <0xF>;
+		// label = "LIS2DW12";
 	};
 
 	/* Sony GNSS receiver */

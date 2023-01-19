@@ -16,6 +16,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor/lis2dw12.h>
 
 #if DT_ANY_INST_ON_BUS_STATUS_OKAY(spi)
 #include <zephyr/drivers/spi.h>
@@ -48,8 +49,7 @@ static int lis2dw12_set_range(const struct device *dev, uint8_t fs)
 
 	if (!err) {
 		/* save internally gain for optimization */
-		lis2dw12->gain =
-			LIS2DW12_FS_TO_GAIN(fs, shift_gain);
+		lis2dw12->gain = LIS2DW12_FS_TO_GAIN(fs, shift_gain);
 	}
 
 	return err;
@@ -72,7 +72,7 @@ static int lis2dw12_set_odr(const struct device *dev, uint16_t odr)
 		return lis2dw12_data_rate_set(ctx, LIS2DW12_XL_ODR_OFF);
 	}
 
-	val =  LIS2DW12_ODR_TO_REG(odr);
+	val = LIS2DW12_ODR_TO_REG(odr);
 	if (val > LIS2DW12_XL_ODR_1k6Hz) {
 		LOG_ERR("ODR too high");
 		return -ENOTSUP;
@@ -81,8 +81,7 @@ static int lis2dw12_set_odr(const struct device *dev, uint16_t odr)
 	return lis2dw12_data_rate_set(ctx, val);
 }
 
-static inline void lis2dw12_convert(struct sensor_value *val, int raw_val,
-				    float gain)
+static inline void lis2dw12_convert(struct sensor_value *val, int raw_val, float gain)
 {
 	int64_t dval;
 
@@ -93,9 +92,8 @@ static inline void lis2dw12_convert(struct sensor_value *val, int raw_val,
 	val->val2 = dval % 1000000LL;
 }
 
-static inline void lis2dw12_channel_get_acc(const struct device *dev,
-					     enum sensor_channel chan,
-					     struct sensor_value *val)
+static inline void lis2dw12_channel_get_acc(const struct device *dev, enum sensor_channel chan,
+					    struct sensor_value *val)
 {
 	int i;
 	uint8_t ofs_start, ofs_stop;
@@ -113,18 +111,33 @@ static inline void lis2dw12_channel_get_acc(const struct device *dev,
 		ofs_start = ofs_stop = 2U;
 		break;
 	default:
-		ofs_start = 0U; ofs_stop = 2U;
+		ofs_start = 0U;
+		ofs_stop = 2U;
 		break;
 	}
 
-	for (i = ofs_start; i <= ofs_stop ; i++) {
+	for (i = ofs_start; i <= ofs_stop; i++) {
 		lis2dw12_convert(pval++, lis2dw12->acc[i], lis2dw12->gain);
 	}
 }
 
-static int lis2dw12_channel_get(const struct device *dev,
-				 enum sensor_channel chan,
-				 struct sensor_value *val)
+static int lis2dw12_get_ambient_temp(const struct device *dev, enum sensor_channel chan,
+				     struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_temperature_raw_get(ctx, (int16_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get ambient temp");
+		return -EIO;
+	}
+	return rc;
+}
+
+static int lis2dw12_channel_get(const struct device *dev, enum sensor_channel chan,
+				struct sensor_value *val)
 {
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_X:
@@ -132,6 +145,9 @@ static int lis2dw12_channel_get(const struct device *dev,
 	case SENSOR_CHAN_ACCEL_Z:
 	case SENSOR_CHAN_ACCEL_XYZ:
 		lis2dw12_channel_get_acc(dev, chan, val);
+		return 0;
+	case SENSOR_CHAN_AMBIENT_TEMP:
+		lis2dw12_get_ambient_temp(dev, chan, val);
 		return 0;
 	default:
 		LOG_DBG("Channel not supported");
@@ -142,13 +158,11 @@ static int lis2dw12_channel_get(const struct device *dev,
 }
 
 static int lis2dw12_config(const struct device *dev, enum sensor_channel chan,
-			    enum sensor_attribute attr,
-			    const struct sensor_value *val)
+			   enum sensor_attribute attr, const struct sensor_value *val)
 {
 	switch (attr) {
 	case SENSOR_ATTR_FULL_SCALE:
-		return lis2dw12_set_range(dev,
-				LIS2DW12_FS_TO_REG(sensor_ms2_to_g(val)));
+		return lis2dw12_set_range(dev, LIS2DW12_FS_TO_REG(sensor_ms2_to_g(val)));
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 		return lis2dw12_set_odr(dev, val->val1);
 	default:
@@ -158,7 +172,6 @@ static int lis2dw12_config(const struct device *dev, enum sensor_channel chan,
 
 	return -ENOTSUP;
 }
-
 
 static inline int32_t sensor_ms2_to_mg(const struct sensor_value *ms2)
 {
@@ -176,25 +189,22 @@ static inline int32_t sensor_ms2_to_mg(const struct sensor_value *ms2)
 /* Converts a lis2dw12_fs_t range to its value in milli-g
  * Range can be 2/4/8/16G
  */
-#define FS_RANGE_TO_MG(fs_range)	((2U << fs_range) * 1000U)
+#define FS_RANGE_TO_MG(fs_range) ((2U << fs_range) * 1000U)
 
 /* Converts a range in mg to the lsb value for the WK_THS register
  * For the reg value: 1 LSB = 1/64 of FS
  * Range can be 2/4/8/16G
  */
-#define MG_TO_WK_THS_LSB(range_mg)	(range_mg / 64)
+#define MG_TO_WK_THS_LSB(range_mg) (range_mg / 64)
 
 /* Calculates the WK_THS reg value
  * from the threshold in mg and the lsb value in mg
  * with correct integer rounding
  */
-#define THRESHOLD_MG_TO_WK_THS_REG(thr_mg, lsb_mg) \
-	((thr_mg + (lsb_mg / 2)) / lsb_mg)
+#define THRESHOLD_MG_TO_WK_THS_REG(thr_mg, lsb_mg) ((thr_mg + (lsb_mg / 2)) / lsb_mg)
 
-static int lis2dw12_attr_set_thresh(const struct device *dev,
-					enum sensor_channel chan,
-					enum sensor_attribute attr,
-					const struct sensor_value *val)
+static int lis2dw12_attr_set_thresh(const struct device *dev, enum sensor_channel chan,
+				    enum sensor_attribute attr, const struct sensor_value *val)
 {
 	uint8_t reg;
 	size_t ret;
@@ -231,8 +241,8 @@ static int lis2dw12_attr_set_thresh(const struct device *dev,
 	lsb_mg = MG_TO_WK_THS_LSB(FS_RANGE_TO_MG(range));
 	reg = THRESHOLD_MG_TO_WK_THS_REG(thr_mg, lsb_mg);
 
-	LOG_DBG("Threshold %d mg -> fs: %u mg -> reg = %d LSBs",
-			thr_mg, FS_RANGE_TO_MG(range), reg);
+	LOG_DBG("Threshold %d mg -> fs: %u mg -> reg = %d LSBs", thr_mg, FS_RANGE_TO_MG(range),
+		reg);
 	ret = 0;
 
 	return lis2dw12_wkup_threshold_set(ctx, reg);
@@ -240,10 +250,8 @@ static int lis2dw12_attr_set_thresh(const struct device *dev,
 #endif
 
 #ifdef CONFIG_LIS2DW12_FREEFALL
-static int lis2dw12_attr_set_ff_dur(const struct device *dev,
-					enum sensor_channel chan,
-					enum sensor_attribute attr,
-					const struct sensor_value *val)
+static int lis2dw12_attr_set_ff_dur(const struct device *dev, enum sensor_channel chan,
+				    enum sensor_attribute attr, const struct sensor_value *val)
 {
 	int rc;
 	uint16_t duration;
@@ -272,12 +280,114 @@ static int lis2dw12_attr_set_ff_dur(const struct device *dev,
 	}
 	return rc;
 }
+
 #endif
 
-static int lis2dw12_attr_set(const struct device *dev,
-			      enum sensor_channel chan,
-			      enum sensor_attribute attr,
-			      const struct sensor_value *val)
+static int lis2dw12_attr_get_status(const struct device *dev, enum sensor_channel chan,
+				    enum sensor_attribute attr, const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_status_reg_get(ctx, (lis2dw12_status_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get status");
+		return -EIO;
+	}
+	return rc;
+}
+
+static int lis2dw12_attr_get_tap_src(const struct device *dev, enum sensor_channel chan,
+				     enum sensor_attribute attr, const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_tap_src_get(ctx, (lis2dw12_tap_src_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get tap src");
+		return -EIO;
+	}
+	return rc;
+}
+
+/* read 5 status registers: STATUS_DUP, WAKE_UP_SRC,
+ *					 TAP_SRC, SIXD_SRC, ALL_INT_SRC
+ */
+static int lis2dw12_attr_get_all_status(const struct device *dev, enum sensor_channel chan,
+					enum sensor_attribute attr, const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_all_sources_get(ctx, (lis2dw12_all_sources_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to get wake up src");
+		return -EIO;
+	}
+	return rc;
+}
+
+/* Set CTRL4_int1 for Event interrupt enable. */
+static int lis2dw12_attr_set_event_interrupt(const struct device *dev, enum sensor_channel chan,
+					     enum sensor_attribute attr,
+					     const struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_pin_int1_route_set(ctx, (lis2dw12_ctrl4_int1_pad_ctrl_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to set event interrupt enable CTRL4_int1");
+		return -EIO;
+	}
+	return rc;
+}
+
+/* Set CTRL4_int1 for Event interrupt enable. */
+static int lis2dw12_attr_get_chip_id(const struct device *dev, enum sensor_channel chan,
+				     enum sensor_attribute attr, struct sensor_value *val)
+{
+	int rc;
+	const struct lis2dw12_device_config *cfg = dev->config;
+	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
+
+	rc = lis2dw12_device_id_get(ctx, (uint8_t *)val);
+	if (rc != 0) {
+		LOG_ERR("Failed to set event interrupt enable CTRL4_int1");
+		return -EIO;
+	}
+	return rc;
+}
+
+static int lis2dw12_attr_get(const struct device *dev, enum sensor_channel chan,
+			     enum sensor_attribute attr, struct sensor_value *val)
+{
+	if (attr == (enum sensor_attribute)SENSOR_ATTR_STATUS) {
+		return lis2dw12_attr_get_status(dev, chan, attr, val);
+	}
+
+	if (attr == (enum sensor_attribute)SENSOR_ATTR_TAP_SRC) {
+		return lis2dw12_attr_get_tap_src(dev, chan, attr, val);
+	}
+
+	if (attr == (enum sensor_attribute)SENSOR_ATTR_ALL_WAKE_UP_SRC) {
+		return lis2dw12_attr_get_all_status(dev, chan, attr, val);
+	}
+
+	if (attr == (enum sensor_attribute)SENSOR_ATTR_CHIP_ID) {
+		return lis2dw12_attr_get_chip_id(dev, chan, attr, val);
+	}
+
+	return -ENOTSUP;
+}
+
+static int lis2dw12_attr_set(const struct device *dev, enum sensor_channel chan,
+			     enum sensor_attribute attr, const struct sensor_value *val)
 {
 #if CONFIG_LIS2DW12_THRESHOLD
 	switch (attr) {
@@ -292,9 +402,14 @@ static int lis2dw12_attr_set(const struct device *dev,
 
 #ifdef CONFIG_LIS2DW12_FREEFALL
 	if (attr == SENSOR_ATTR_FF_DUR) {
+		printk("\tFree fall DUR enabled %x\n", (uint8_t)val->val1);
 		return lis2dw12_attr_set_ff_dur(dev, chan, attr, val);
 	}
 #endif
+
+	if (attr == (enum sensor_attribute)SENSOR_ATTR_ENABLE_EVENT_INTERRUPT) {
+		return lis2dw12_attr_set_event_interrupt(dev, chan, attr, val);
+	}
 
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_X:
@@ -310,8 +425,7 @@ static int lis2dw12_attr_set(const struct device *dev,
 	return -ENOTSUP;
 }
 
-static int lis2dw12_sample_fetch(const struct device *dev,
-				 enum sensor_channel chan)
+static int lis2dw12_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct lis2dw12_data *lis2dw12 = dev->data;
 	const struct lis2dw12_device_config *cfg = dev->config;
@@ -340,6 +454,7 @@ static int lis2dw12_sample_fetch(const struct device *dev,
 }
 
 static const struct sensor_driver_api lis2dw12_driver_api = {
+	.attr_get = lis2dw12_attr_get,
 	.attr_set = lis2dw12_attr_set,
 #if CONFIG_LIS2DW12_TRIGGER
 	.trigger_set = lis2dw12_trigger_set,
@@ -348,8 +463,7 @@ static const struct sensor_driver_api lis2dw12_driver_api = {
 	.channel_get = lis2dw12_channel_get,
 };
 
-static int lis2dw12_set_power_mode(const struct device *dev,
-				    lis2dw12_mode_t pm)
+static int lis2dw12_set_power_mode(const struct device *dev, lis2dw12_mode_t pm)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -370,8 +484,7 @@ static int lis2dw12_set_power_mode(const struct device *dev,
 	return lis2dw12_write_reg(ctx, LIS2DW12_CTRL1, &regval, 1);
 }
 
-static int lis2dw12_set_low_noise(const struct device *dev,
-				  bool low_noise)
+static int lis2dw12_set_low_noise(const struct device *dev, bool low_noise)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -468,8 +581,7 @@ static int lis2dw12_init(const struct device *dev)
 	}
 
 	LOG_DBG("high pass filter path is %d", (int)cfg->hp_filter_path);
-	lis2dw12_fds_t fds = cfg->hp_filter_path ?
-		LIS2DW12_HIGH_PASS_ON_OUT : LIS2DW12_LPF_ON_OUT;
+	lis2dw12_fds_t fds = cfg->hp_filter_path ? LIS2DW12_HIGH_PASS_ON_OUT : LIS2DW12_LPF_ON_OUT;
 	ret = lis2dw12_filter_path_set(ctx, fds);
 	if (ret < 0) {
 		LOG_ERR("filter path config error %d", (int)cfg->hp_filter_path);
@@ -488,110 +600,90 @@ static int lis2dw12_init(const struct device *dev)
  * LIS2DW12_DEFINE_I2C().
  */
 
-#define LIS2DW12_DEVICE_INIT(inst)					\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst,				\
-			    lis2dw12_init,				\
-			    NULL,					\
-			    &lis2dw12_data_##inst,			\
-			    &lis2dw12_config_##inst,			\
-			    POST_KERNEL,				\
-			    CONFIG_SENSOR_INIT_PRIORITY,		\
-			    &lis2dw12_driver_api);
+#define LIS2DW12_DEVICE_INIT(inst)                                                                 \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, lis2dw12_init, NULL, &lis2dw12_data_##inst,             \
+				     &lis2dw12_config_##inst, POST_KERNEL,                         \
+				     CONFIG_SENSOR_INIT_PRIORITY, &lis2dw12_driver_api);
 
 /*
  * Instantiation macros used when a device is on a SPI bus.
  */
 
 #ifdef CONFIG_LIS2DW12_TAP
-#define LIS2DW12_CONFIG_TAP(inst)					\
-	.tap_mode = DT_INST_PROP(inst, tap_mode),			\
-	.tap_threshold = DT_INST_PROP(inst, tap_threshold),		\
-	.tap_shock = DT_INST_PROP(inst, tap_shock),			\
-	.tap_latency = DT_INST_PROP(inst, tap_latency),			\
+#define LIS2DW12_CONFIG_TAP(inst)                                                                  \
+	.tap_mode = DT_INST_PROP(inst, tap_mode),                                                  \
+	.tap_threshold = DT_INST_PROP(inst, tap_threshold),                                        \
+	.tap_shock = DT_INST_PROP(inst, tap_shock),                                                \
+	.tap_latency = DT_INST_PROP(inst, tap_latency),                                            \
 	.tap_quiet = DT_INST_PROP(inst, tap_quiet),
 #else
 #define LIS2DW12_CONFIG_TAP(inst)
 #endif /* CONFIG_LIS2DW12_TAP */
 
 #ifdef CONFIG_LIS2DW12_FREEFALL
-#define LIS2DW12_CONFIG_FREEFALL(inst)					\
-	.freefall_duration = DT_INST_PROP(inst, ff_duration),	\
+#define LIS2DW12_CONFIG_FREEFALL(inst)                                                             \
+	.freefall_duration = DT_INST_PROP(inst, ff_duration),                                      \
 	.freefall_threshold = DT_INST_PROP(inst, ff_threshold),
 #else
 #define LIS2DW12_CONFIG_FREEFALL(inst)
 #endif /* CONFIG_LIS2DW12_FREEFALL */
 
 #ifdef CONFIG_LIS2DW12_TRIGGER
-#define LIS2DW12_CFG_IRQ(inst) \
-	.gpio_int = GPIO_DT_SPEC_INST_GET(inst, irq_gpios),		\
-	.int_pin = DT_INST_PROP(inst, int_pin),
+#define LIS2DW12_CFG_IRQ(inst)                                                                     \
+	.gpio_int = GPIO_DT_SPEC_INST_GET(inst, irq_gpios), .int_pin = DT_INST_PROP(inst, int_pin),
 #else
 #define LIS2DW12_CFG_IRQ(inst)
 #endif /* CONFIG_LIS2DW12_TRIGGER */
 
-#define LIS2DW12_SPI_OPERATION (SPI_WORD_SET(8) |			\
-				SPI_OP_MODE_MASTER |			\
-				SPI_MODE_CPOL |				\
-				SPI_MODE_CPHA)				\
+#define LIS2DW12_SPI_OPERATION                                                                     \
+	(SPI_WORD_SET(8) | SPI_OP_MODE_MASTER | SPI_MODE_CPOL | SPI_MODE_CPHA)
 
-#define LIS2DW12_CONFIG_SPI(inst)					\
-	{								\
-		.ctx = {						\
-			.read_reg =					\
-			   (stmdev_read_ptr) stmemsc_spi_read,		\
-			.write_reg =					\
-			   (stmdev_write_ptr) stmemsc_spi_write,	\
-			.handle =					\
-			   (void *)&lis2dw12_config_##inst.stmemsc_cfg,	\
-		},							\
-		.stmemsc_cfg = {					\
-			.spi = SPI_DT_SPEC_INST_GET(inst,		\
-					   LIS2DW12_SPI_OPERATION,	\
-					   0),				\
-		},							\
-		.pm = DT_INST_PROP(inst, power_mode),			\
-		.odr = DT_INST_PROP_OR(inst, odr, 12),			\
-		.range = DT_INST_PROP(inst, range),			\
-		.bw_filt = DT_INST_PROP(inst, bw_filt),      \
-		.low_noise = DT_INST_PROP(inst, low_noise),      \
-		.hp_filter_path = DT_INST_PROP(inst, hp_filter_path),      \
-		.hp_ref_mode = DT_INST_PROP(inst, hp_ref_mode), \
-		.drdy_pulsed = DT_INST_PROP(inst, drdy_pulsed),      \
-		LIS2DW12_CONFIG_TAP(inst)				\
-		LIS2DW12_CONFIG_FREEFALL(inst)		\
-		COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, irq_gpios),	\
-			(LIS2DW12_CFG_IRQ(inst)), ())			\
+#define LIS2DW12_CONFIG_SPI(inst)                                                                  \
+	{                                                                                          \
+		.ctx =                                                                             \
+			{                                                                          \
+				.read_reg = (stmdev_read_ptr)stmemsc_spi_read,                     \
+				.write_reg = (stmdev_write_ptr)stmemsc_spi_write,                  \
+				.handle = (void *)&lis2dw12_config_##inst.stmemsc_cfg,             \
+			},                                                                         \
+		.stmemsc_cfg =                                                                     \
+			{                                                                          \
+				.spi = SPI_DT_SPEC_INST_GET(inst, LIS2DW12_SPI_OPERATION, 0),      \
+			},                                                                         \
+		.pm = DT_INST_PROP(inst, power_mode), .odr = DT_INST_PROP_OR(inst, odr, 12),       \
+		.range = DT_INST_PROP(inst, range), .bw_filt = DT_INST_PROP(inst, bw_filt),        \
+		.low_noise = DT_INST_PROP(inst, low_noise),                                        \
+		.hp_filter_path = DT_INST_PROP(inst, hp_filter_path),                              \
+		.hp_ref_mode = DT_INST_PROP(inst, hp_ref_mode),                                    \
+		.drdy_pulsed = DT_INST_PROP(inst, drdy_pulsed),                                    \
+		LIS2DW12_CONFIG_TAP(inst) LIS2DW12_CONFIG_FREEFALL(inst) COND_CODE_1(              \
+			DT_INST_NODE_HAS_PROP(inst, irq_gpios), (LIS2DW12_CFG_IRQ(inst)), ())      \
 	}
 
 /*
  * Instantiation macros used when a device is on an I2C bus.
  */
 
-#define LIS2DW12_CONFIG_I2C(inst)					\
-	{								\
-		.ctx = {						\
-			.read_reg =					\
-			   (stmdev_read_ptr) stmemsc_i2c_read,		\
-			.write_reg =					\
-			   (stmdev_write_ptr) stmemsc_i2c_write,	\
-			.handle =					\
-			   (void *)&lis2dw12_config_##inst.stmemsc_cfg,	\
-		},							\
-		.stmemsc_cfg = {					\
-			.i2c = I2C_DT_SPEC_INST_GET(inst),		\
-		},							\
-		.pm = DT_INST_PROP(inst, power_mode),			\
-		.odr = DT_INST_PROP_OR(inst, odr, 12),			\
-		.range = DT_INST_PROP(inst, range),			\
-		.bw_filt = DT_INST_PROP(inst, bw_filt),      \
-		.low_noise = DT_INST_PROP(inst, low_noise),      \
-		.hp_filter_path = DT_INST_PROP(inst, hp_filter_path),      \
-		.hp_ref_mode = DT_INST_PROP(inst, hp_ref_mode), \
-		.drdy_pulsed = DT_INST_PROP(inst, drdy_pulsed),      \
-		LIS2DW12_CONFIG_TAP(inst)				\
-		LIS2DW12_CONFIG_FREEFALL(inst)		\
-		COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, irq_gpios),	\
-			(LIS2DW12_CFG_IRQ(inst)), ())			\
+#define LIS2DW12_CONFIG_I2C(inst)                                                                  \
+	{                                                                                          \
+		.ctx =                                                                             \
+			{                                                                          \
+				.read_reg = (stmdev_read_ptr)stmemsc_i2c_read,                     \
+				.write_reg = (stmdev_write_ptr)stmemsc_i2c_write,                  \
+				.handle = (void *)&lis2dw12_config_##inst.stmemsc_cfg,             \
+			},                                                                         \
+		.stmemsc_cfg =                                                                     \
+			{                                                                          \
+				.i2c = I2C_DT_SPEC_INST_GET(inst),                                 \
+			},                                                                         \
+		.pm = DT_INST_PROP(inst, power_mode), .odr = DT_INST_PROP_OR(inst, odr, 12),       \
+		.range = DT_INST_PROP(inst, range), .bw_filt = DT_INST_PROP(inst, bw_filt),        \
+		.low_noise = DT_INST_PROP(inst, low_noise),                                        \
+		.hp_filter_path = DT_INST_PROP(inst, hp_filter_path),                              \
+		.hp_ref_mode = DT_INST_PROP(inst, hp_ref_mode),                                    \
+		.drdy_pulsed = DT_INST_PROP(inst, drdy_pulsed),                                    \
+		LIS2DW12_CONFIG_TAP(inst) LIS2DW12_CONFIG_FREEFALL(inst) COND_CODE_1(              \
+			DT_INST_NODE_HAS_PROP(inst, irq_gpios), (LIS2DW12_CFG_IRQ(inst)), ())      \
 	}
 
 /*
@@ -599,12 +691,11 @@ static int lis2dw12_init(const struct device *dev)
  * bus-specific macro at preprocessor time.
  */
 
-#define LIS2DW12_DEFINE(inst)						\
-	static struct lis2dw12_data lis2dw12_data_##inst;		\
-	static const struct lis2dw12_device_config lis2dw12_config_##inst =	\
-	COND_CODE_1(DT_INST_ON_BUS(inst, spi),				\
-		    (LIS2DW12_CONFIG_SPI(inst)),			\
-		    (LIS2DW12_CONFIG_I2C(inst)));			\
+#define LIS2DW12_DEFINE(inst)                                                                      \
+	static struct lis2dw12_data lis2dw12_data_##inst;                                          \
+	static const struct lis2dw12_device_config lis2dw12_config_##inst =                        \
+		COND_CODE_1(DT_INST_ON_BUS(inst, spi), (LIS2DW12_CONFIG_SPI(inst)),                \
+			    (LIS2DW12_CONFIG_I2C(inst)));                                          \
 	LIS2DW12_DEVICE_INIT(inst)
 
 DT_INST_FOREACH_STATUS_OKAY(LIS2DW12_DEFINE)
