@@ -92,6 +92,19 @@ static inline void lis2dw12_convert(struct sensor_value *val, int raw_val, float
 	val->val2 = dval % 1000000LL;
 }
 
+static inline void lis2dw12_temperature_convert(struct sensor_value *val)
+{
+	int64_t dval;
+
+	/* Temperature output is returned in 12 bit resolution with 16LSB/degrees C scaling. */
+	float deltaT = (((int16_t)val->val1 >> LIS2DW12_SHIFT_TEMP) * LIS2DW12_TEMP_SCALE_FACTOR);
+	/* a value of 0 is biased at 25 degrees C. */
+	float temperature12bit = (25.0 + deltaT);
+	dval = ((float)temperature12bit * 10) ;
+	val->val1 = dval / 10LL;
+	 val->val2 = (dval % 10LL) * 100000;
+}
+
 static inline void lis2dw12_channel_get_acc(const struct device *dev, enum sensor_channel chan,
 					    struct sensor_value *val)
 {
@@ -124,6 +137,7 @@ static inline void lis2dw12_channel_get_acc(const struct device *dev, enum senso
 static int lis2dw12_get_ambient_temp(const struct device *dev, enum sensor_channel chan,
 				     struct sensor_value *val)
 {
+
 	int rc;
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -133,6 +147,9 @@ static int lis2dw12_get_ambient_temp(const struct device *dev, enum sensor_chann
 		LOG_ERR("Failed to get ambient temp");
 		return -EIO;
 	}
+
+	lis2dw12_temperature_convert(val);
+
 	return rc;
 }
 
