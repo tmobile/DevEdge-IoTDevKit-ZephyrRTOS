@@ -674,8 +674,7 @@ void ull_adv_iso_done_complete(struct node_rx_event_done *done)
 	rx->handle = lll->handle;
 	rx->rx_ftr.param = adv_iso;
 
-	ll_rx_put(link, rx);
-	ll_rx_sched();
+	ll_rx_put_sched(link, rx);
 }
 
 void ull_adv_iso_done_terminate(struct node_rx_event_done *done)
@@ -1273,6 +1272,5 @@ static void tx_lll_flush(void *param)
 	rx->hdr.link = NULL;
 
 	/* Enqueue the terminate towards ULL context */
-	ull_rx_put(link, rx);
-	ull_rx_sched();
+	ull_rx_put_sched(link, rx);
 }

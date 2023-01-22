@@ -35,7 +35,7 @@ config BT_LLL_VENDOR_NORDIC
 	select BT_CTLR_CTEINLINE_SUPPORT if HAS_HW_NRF_RADIO_DFE
 	select BT_CTLR_CHAN_SEL_2_SUPPORT
 	select BT_CTLR_MIN_USED_CHAN_SUPPORT
-	select BT_CTLR_SCA_UPDATE_SUPPORT
+	select BT_CTLR_SCA_UPDATE_SUPPORT if !BT_LL_SW_LLCP_LEGACY
 	select BT_CTLR_DTM_HCI_SUPPORT
 	select BT_CTLR_CONN_RSSI_SUPPORT
 
@@ -458,6 +458,28 @@ config BT_CTLR_CENTRAL_SPACING
 	  time, i.e. radio event overheads + 17040 (PDU Tx) + 150 (tIFS) + 4
 	  (active clock jitter) + 17040 (PDU rx) = (radio event overheads +
 	  34234) microseconds.
+
+config BT_CTLR_CENTRAL_RESERVE_MAX
+	bool "Use maximum data PDU size time reservation for Central"
+	depends on BT_CENTRAL
+	default y
+	help
+	  Use the maximum data PDU size time reservation considering the Data
+	  length could be updated from default 27 bytes to maximum support size.
+	  If maximum time reservation is disabled then time reservation
+	  corresponding to the default data length at the time of the
+	  start/enable of Central role is used.
+
+	  Note, currently this value is only used to space multiple central
+	  connections and not for actual ticker time reservations.
+
+config BT_CTLR_SLOT_RESERVATION_UPDATE
+	bool "Update event length reservation after PHY or DLE update"
+	depends on !BT_LL_SW_LLCP_LEGACY && (BT_CTLR_DATA_LENGTH || BT_CTLR_PHY)
+	default y
+	help
+	  Updates the event length reservation after a completed Data Length Update
+	  and/or PHY Update procedure to avoid overlap of radio events
 
 config BT_CTLR_LLL_PRIO
 	int "Lower Link Layer (Radio) IRQ priority" if (BT_CTLR_ULL_LLL_PRIO_SUPPORT && !BT_CTLR_ZLI)

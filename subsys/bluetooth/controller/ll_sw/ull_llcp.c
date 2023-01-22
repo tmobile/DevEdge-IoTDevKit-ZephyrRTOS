@@ -293,6 +293,7 @@ static struct proc_ctx *create_procedure(enum llcp_proc proc, struct llcp_mem_po
 	ctx->collision = 0U;
 	ctx->done = 0U;
 	ctx->rx_greedy = 0U;
+	ctx->tx_ack = NULL;
 
 	/* Clear procedure data */
 	memset((void *)&ctx->data, 0, sizeof(ctx->data));
@@ -528,7 +529,7 @@ void ull_llcp_init(struct ll_conn *conn)
 
 	/* Reset the feature exchange fields */
 	memset(&conn->llcp.fex, 0, sizeof(conn->llcp.fex));
-	conn->llcp.fex.features_used = LL_FEAT;
+	conn->llcp.fex.features_used = ll_feat_get();
 
 #if defined(CONFIG_BT_CTLR_LE_ENC)
 	/* Reset encryption related state */

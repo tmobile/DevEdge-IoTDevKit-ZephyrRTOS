@@ -52,7 +52,8 @@ bool z_shell_cursor_in_empty_line(const struct shell *shell)
 {
 	return (((shell->ctx->cmd_buff_pos * shell->ctx->cfg.flags.echo) +
 		 z_shell_strlen(shell->ctx->prompt)) %
-			shell->ctx->vt100_ctx.cons.terminal_wid == 0U);
+			shell->ctx->vt100_ctx.cons.terminal_wid ==
+		0U);
 }
 
 void z_shell_op_cond_next_line(const struct shell *shell)

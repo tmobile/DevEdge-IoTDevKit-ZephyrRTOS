@@ -565,7 +565,10 @@ static bool update_keys_check(struct bt_smp *smp, struct bt_keys *keys)
 	if (!IS_ENABLED(CONFIG_BT_SMP_ALLOW_UNAUTH_OVERWRITE) &&
 	    (!(keys->flags & BT_KEYS_AUTHENTICATED)
 	     && smp->method == JUST_WORKS)) {
-		return false;
+		if (!IS_ENABLED(CONFIG_BT_ID_ALLOW_UNAUTH_OVERWRITE) ||
+		    (keys->id == smp->chan.chan.conn->id)) {
+			return false;
+		}
 	}
 
 	return true;
@@ -1057,7 +1060,10 @@ static uint8_t smp_br_pairing_req(struct bt_smp_br *smp, struct net_buf *buf)
 	struct net_buf *rsp_buf;
 	uint8_t max_key_size;
 
-	LOG_DBG("");
+	LOG_DBG("req: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		req->io_capability, req->oob_flag, req->auth_req,
+		req->max_key_size, req->init_key_dist, req->resp_key_dist);
 
 	/*
 	 * If a Pairing Request is received over the BR/EDR transport when
@@ -1106,6 +1112,11 @@ static uint8_t smp_br_pairing_req(struct bt_smp_br *smp, struct net_buf *buf)
 	smp->local_dist = rsp->resp_key_dist;
 	smp->remote_dist = rsp->init_key_dist;
 
+	LOG_DBG("rsp: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		rsp->io_capability, rsp->oob_flag, rsp->auth_req,
+		rsp->max_key_size, rsp->init_key_dist, rsp->resp_key_dist);
+
 	smp_br_send(smp, rsp_buf, NULL);
 
 	atomic_set_bit(smp->flags, SMP_FLAG_PAIRING);
@@ -1141,7 +1152,10 @@ static uint8_t smp_br_pairing_rsp(struct bt_smp_br *smp, struct net_buf *buf)
 	struct bt_conn *conn = smp->chan.chan.conn;
 	uint8_t max_key_size;
 
-	LOG_DBG("");
+	LOG_DBG("rsp: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		rsp->io_capability, rsp->oob_flag, rsp->auth_req,
+		rsp->max_key_size, rsp->init_key_dist, rsp->resp_key_dist);
 
 	max_key_size = bt_conn_enc_key_size(conn);
 	if (!max_key_size) {
@@ -2788,7 +2802,10 @@ static uint8_t smp_pairing_req(struct bt_smp *smp, struct net_buf *buf)
 	struct bt_smp_pairing *rsp;
 	uint8_t err;
 
-	LOG_DBG("");
+	LOG_DBG("req: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		req->io_capability, req->oob_flag, req->auth_req,
+		req->max_key_size, req->init_key_dist, req->resp_key_dist);
 
 	if ((req->max_key_size > BT_SMP_MAX_ENC_KEY_SIZE) ||
 	    (req->max_key_size < BT_SMP_MIN_ENC_KEY_SIZE)) {
@@ -2900,6 +2917,12 @@ static uint8_t smp_pairing_req(struct bt_smp *smp, struct net_buf *buf)
 	}
 
 	atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_PUBLIC_KEY);
+
+	LOG_DBG("rsp: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		rsp->io_capability, rsp->oob_flag, rsp->auth_req,
+		rsp->max_key_size, rsp->init_key_dist, rsp->resp_key_dist);
+
 	return send_pairing_rsp(smp);
 }
 #else
@@ -3007,6 +3030,11 @@ static int smp_send_pairing_req(struct bt_conn *conn)
 	smp->preq[0] = BT_SMP_CMD_PAIRING_REQ;
 	memcpy(smp->preq + 1, req, sizeof(*req));
 
+	LOG_DBG("req: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		req->io_capability, req->oob_flag, req->auth_req,
+		req->max_key_size, req->init_key_dist, req->resp_key_dist);
+
 	smp_send(smp, req_buf, NULL, NULL);
 
 	atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_PAIRING_RSP);
@@ -3024,7 +3052,10 @@ static uint8_t smp_pairing_rsp(struct bt_smp *smp, struct net_buf *buf)
 	struct bt_smp_pairing *req = (struct bt_smp_pairing *)&smp->preq[1];
 	uint8_t err;
 
-	LOG_DBG("");
+	LOG_DBG("rsp: io_capability 0x%02X, oob_flag 0x%02X, auth_req 0x%02X, "
+		"max_key_size 0x%02X, init_key_dist 0x%02X, resp_key_dist 0x%02X",
+		rsp->io_capability, rsp->oob_flag, rsp->auth_req,
+		rsp->max_key_size, rsp->init_key_dist, rsp->resp_key_dist);
 
 	if ((rsp->max_key_size > BT_SMP_MAX_ENC_KEY_SIZE) ||
 	    (rsp->max_key_size < BT_SMP_MIN_ENC_KEY_SIZE)) {

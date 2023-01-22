@@ -18,10 +18,10 @@
 #include <zephyr/kernel.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <zephyr/device.h>
-#include <zephyr/drivers/console/uart_mux.h>
 #include <zephyr/shell/shell.h>
+#include <zephyr/drivers/console/uart_mux.h>
+
 #include <zephyr/sys/printk.h>
 
 struct modem_shell_user_data {
@@ -77,11 +77,15 @@ static int cmd_modem_list(const struct shell *shell, size_t argc, char *argv[])
 				"\tAcT:          %d\n"
 #endif
 				"\tRSSI:         %d\n",
-				i, UART_DEV_NAME(mdm_ctx),
-				mdm_ctx->data_manufacturer, mdm_ctx->data_model,
-				mdm_ctx->data_revision, mdm_ctx->data_imei,
+			       i,
+			       UART_DEV_NAME(mdm_ctx),
+			       mdm_ctx->data_manufacturer,
+			       mdm_ctx->data_model,
+			       mdm_ctx->data_revision,
+			       mdm_ctx->data_imei,
 #if defined(CONFIG_MODEM_SIM_NUMBERS)
-				mdm_ctx->data_imsi, mdm_ctx->data_iccid,
+			       mdm_ctx->data_imsi,
+			       mdm_ctx->data_iccid,
 #endif
 #if defined(CONFIG_MODEM_CELL_INFO)
 			       mdm_ctx->data_operator,
@@ -89,7 +93,7 @@ static int cmd_modem_list(const struct shell *shell, size_t argc, char *argv[])
 			       mdm_ctx->data_cellid,
 			       mdm_ctx->data_act,
 #endif
-				mdm_ctx->data_rssi ? *mdm_ctx->data_rssi : 0);
+			       mdm_ctx->data_rssi ? *mdm_ctx->data_rssi : 0);
 		}
 	}
 

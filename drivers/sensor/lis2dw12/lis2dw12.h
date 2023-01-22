@@ -40,8 +40,16 @@
 	 : (_reg > 9)  ? 1600                                                                      \
 		       : (1 << (_reg - 3)) * 25)
 
+/* Return data rate in Hz for given register value */
+#define LIS2DW12_REG_TO_ODR(_reg) \
+	((_reg == 0) ? 0 : \
+	(_reg == 1) ? 1 : \
+	(_reg == 2) ? 12 : \
+	(_reg > 9) ? 1600 : \
+	(1 << (_reg - 3)) * 25)
+
 /* FS reg value from Full Scale */
-#define LIS2DW12_FS_TO_REG(_fs) (30 - __builtin_clz(_fs))
+#define LIS2DW12_FS_TO_REG(_fs)	(30 - __builtin_clz(_fs))
 
 /* Acc Gain value in ug/LSB in High Perf mode */
 #define LIS2DW12_FS_2G_GAIN  244
