@@ -1,4 +1,4 @@
-name: Tmo Nightly Main Upstream Mirror
+name: Tmo Nightly Merge Main Tmo-Main
 
 on:
   workflow_dispatch:
