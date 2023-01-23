@@ -19,10 +19,5 @@ jobs:
           git config user.email github-actions@github.com
           git rev-parse HEAD
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
-          if [ $currentBranch == "tmo-main" ];
-          then
-            git merge -X ours origin/main
-          else
-            echo "Not on main branch, exiting."
-            exit 1
-          fi
+          git checkout tmo-main
+          git merge -X ours origin/main
