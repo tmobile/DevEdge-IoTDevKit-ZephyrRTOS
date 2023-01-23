@@ -1,4 +1,4 @@
-name: Tmo Nightly Merge Main Tmo-Main
+name: Tmo Nightly Merge Main TmoMain
 
 on:
   workflow_dispatch:
