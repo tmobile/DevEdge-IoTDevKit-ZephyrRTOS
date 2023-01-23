@@ -1,0 +1,23 @@
+name: Tmo Nightly Merge Main TmoMain
+
+on:
+  workflow_dispatch:
+    branches: [ tmo-main ]
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 7 * * *'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ssh-key: ${{secrets.MERGE_KEY}}
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git rev-parse HEAD
+          currentBranch=$(git rev-parse --abbrev-ref HEAD)
+          git checkout tmo-main
+          git merge -X ours origin/main
