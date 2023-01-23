@@ -13,6 +13,7 @@
 #include <zephyr/dt-bindings/i2c/i2c.h>
 #include <zephyr/dt-bindings/flash_controller/ospi.h>
 #include <zephyr/dt-bindings/reset/stm32u5_reset.h>
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
 #include <freq.h>
 
 / {
@@ -553,6 +554,14 @@
 				<&rcc STM32_CLOCK_BUS_AHB2 0x00200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		aes: aes@420c0000 {
+			compatible = "st,stm32-aes";
+			reg = <0x420c0000 0x400>;
+			clocks = <&rcc STM32_CLOCK_BUS_AHB2 0x00010000>;
+			interrupts = <93 0>;
 			status = "disabled";
 		};
 
