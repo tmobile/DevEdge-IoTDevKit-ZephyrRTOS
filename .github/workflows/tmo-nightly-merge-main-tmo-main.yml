@@ -18,8 +18,8 @@ jobs:
         with:
           ssh-key: ${{secrets.MERGE_KEY}}
       - run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          git config user.name nightly-merge
+          git config user.email nightly-merge@github.com
           git rev-parse HEAD
           git fetch
           git checkout main
