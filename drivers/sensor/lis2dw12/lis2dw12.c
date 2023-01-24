@@ -96,10 +96,13 @@ static inline void lis2dw12_convert(struct sensor_value *val, int raw_val, float
 static inline void lis2dw12_temperature_convert(struct sensor_value *val)
 {
 	int64_t dval;
+
 	/* Temperature output is returned in 12 bit resolution with 16LSB/degrees C scaling. */
 	float deltaT = (((int16_t)val->val1 >> LIS2DW12_SHIFT_TEMP) * LIS2DW12_TEMP_SCALE_FACTOR);
+
 	/* a value of 0 is biased at 25 degrees C. */
 	float temperature12bit = (25.0 + deltaT);
+
 	dval = ((float)temperature12bit * 10);
 	val->val1 = dval / 10LL;
 	val->val2 = (dval % 10LL) * 100000;
