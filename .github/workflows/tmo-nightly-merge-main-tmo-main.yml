@@ -2,7 +2,7 @@ name: Tmo Nightly Merge Main TmoMain
 
 on:
   workflow_dispatch:
-    branches: [ tmo-main ]
+    branches: [ tmo-workflow-nightly-merge ]
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 7 * * *'
@@ -18,6 +18,6 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git rev-parse HEAD
-          currentBranch=$(git rev-parse --abbrev-ref HEAD)
+          git fetch main
           git checkout tmo-main
-          git merge -X ours origin/main
+          git merge -X ours main
