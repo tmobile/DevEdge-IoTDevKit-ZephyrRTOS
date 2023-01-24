@@ -1,6 +1,9 @@
 name: Tmo Nightly Merge Main TmoMain
 
 on:
+  push:
+    branches:
+      - tmo-workflow-nightly-merge 
   workflow_dispatch:
     branches: [ tmo-workflow-nightly-merge ]
   schedule:
