@@ -409,6 +409,26 @@ static ssize_t send_socket_data(struct modem_socket *sock, const struct sockaddr
 	/* Finish the command */
 	snprintk(&mdata.xlate_buf[written + len * 2], sizeof(mdata.xlate_buf), "\"");
 
+	written += len * 2;
+	written++;
+
+	if (dst_addr) {
+		char addr_buf[NET_IPV6_ADDR_LEN];
+		uint16_t port;
+		void *addr_ptr;
+
+		if (dst_addr->sa_family == AF_INET) {
+			addr_ptr = &net_sin(dst_addr)->sin_addr;
+			port = ntohs(net_sin(dst_addr)->sin_port);
+		} else {
+			addr_ptr = &net_sin6(dst_addr)->sin6_addr;
+			port = ntohs(net_sin6(dst_addr)->sin6_port);
+		}
+		net_addr_ntop(dst_addr->sa_family, addr_ptr, addr_buf, sizeof(addr_buf));
+		written += snprintk(&mdata.xlate_buf[written], sizeof(mdata.xlate_buf) - written,
+			",\"%s\",%d", addr_buf, port);
+	}
+
 	/* Send the command */
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, data_cmd, ARRAY_SIZE(data_cmd),
 			     mdata.xlate_buf, &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
@@ -1649,6 +1669,44 @@ MODEM_CMD_DEFINE(on_cmd_sockopen)
 	return 0;
 }
 
+/**
+ *
+ * @brief Handler for %SOCKETCMD:<socket_id> OK
+ *
+ * @param argv[0] socket_stat
+ * @param argv[1] socket_type
+ * @param argv[2] src_ip
+ * @param argv[3] dst_ip
+ * @param argv[4] src_port
+ * @param argv[5] dst_port
+ *
+ */
+MODEM_CMD_DEFINE(on_cmd_sockinfo)
+{
+	struct modem_socket *sock = NULL;
+
+	for (int i = 0; i < mdata.socket_config.sockets_len; i++) {
+		if (mdata.socket_config.sockets[i].sock_fd == mdata.sock_fd) {
+			sock = &mdata.socket_config.sockets[i];
+			break;
+		}
+	}
+
+	if (sock == NULL) {
+		return -ENOENT;
+	}
+
+	if (sock->family == AF_INET) {
+		net_addr_pton(AF_INET, argv[2], net_sin(&sock->src));
+		net_sin(&sock->src)->sin_port = htons(strtol(argv[4], NULL, 10));
+	} else {
+		net_addr_pton(AF_INET6, argv[2], net_sin6(&sock->src));
+		net_sin6(&sock->src)->sin6_port = htons(strtol(argv[4], NULL, 10));
+	}
+
+	return 0;
+}
+
 static bool got_pdn_flg;
 
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
@@ -1823,7 +1881,7 @@ static void socket_close(struct modem_socket *sock)
 	char at_cmd[40];
 	int ret;
 
-	if (sock->is_connected) {
+	if (sock->sock_fd != -1) {
 
 		/* Tell the modem to close the socket. */
 		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DEACTIVATE\",%d", sock->sock_fd);
@@ -2753,12 +2811,19 @@ exit:
 static int offload_socket(int family, int type, int proto)
 {
 	int ret;
+	struct modem_socket *sock;
 
 	/* defer modem's socket create call to bind() */
 	ret = modem_socket_get(&mdata.socket_config, family, type, proto);
 
-	if (ret == ENOMEM) {
-		ret = ENFILE;
+	if (ret >= 0) {
+		sock = (struct modem_socket *)z_get_fd_obj(ret, NULL, 0);
+
+		sock->sock_fd = -1;
+	}
+
+	if (ret == -ENOMEM) {
+		ret = -ENFILE;
 	}
 
 	if (ret < 0) {
@@ -2777,6 +2842,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 {
 	struct modem_socket *sock = (struct modem_socket *)obj;
 	uint16_t dst_port = 0;
+	uint16_t src_port = 0;
 	char protocol[5];
 	char at_cmd[100];
 	int ret;
@@ -2806,6 +2872,18 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 		errno = EISCONN;
 		return -1;
 	}
+
+	if (sock->sock_fd != -1) {
+		socket_close(sock);
+		modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
+				 &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
+		if (sock->src.sa_family == AF_INET) {
+			src_port = ntohs(net_sin(&sock->src)->sin_port);
+		} else {
+			src_port = ntohs(net_sin6(&sock->src)->sin6_port);
+		}
+	}
+
 	sock->is_connected = true;
 
 	switch (sock->ip_proto) {
@@ -2847,15 +2925,14 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 	if (!murata_sock_tls_info[get_socket_idx(sock)].sni_valid) {
 #endif
 		snprintk(at_cmd, sizeof(at_cmd),
-			 "AT%%SOCKETCMD=\"ALLOCATE\",1,\"%s\",\"OPEN\",\"%s\",%"
-			 "d",
-			 protocol, ip_addr, dst_port);
+			 "AT%%SOCKETCMD=\"ALLOCATE\",1,\"%s\",\"OPEN\",\"%s\",%d,%d",
+			 protocol, ip_addr, dst_port, src_port);
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 	} else {
 		snprintk(at_cmd, sizeof(at_cmd),
-			 "AT%%SOCKETCMD=\"ALLOCATE\",1,\"%s\",\"OPEN\",\"%s\",%"
-			 "d",
-			 protocol, murata_sock_tls_info[get_socket_idx(sock)].host, dst_port);
+			 "AT%%SOCKETCMD=\"ALLOCATE\",1,\"%s\",\"OPEN\",\"%s\",%d,%d",
+			 protocol, murata_sock_tls_info[get_socket_idx(sock)].host, dst_port,
+			 src_port);
 	}
 #endif
 
@@ -2948,6 +3025,12 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 {
 	int ret;
 	struct modem_socket *sock = (struct modem_socket *)obj;
+
+	struct modem_cmd cmd_info[] = {
+		MODEM_CMD("ERROR", on_cmd_error, 0, ","),
+		MODEM_CMD("%SOCKETCMD:", on_cmd_sockinfo, 6U, ","),
+	};
+
 	/* Ensure that valid parameters are passed. */
 	if (!buf || len <= 0) {
 		errno = EINVAL;
@@ -2956,11 +3039,31 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 
 	if (!sock->is_connected) {
 		if (sock->type == SOCK_DGRAM && tolen != 0 && to != NULL) {
-			/* for unconnected udp, try to connect */
-			ret = offload_connect(obj, to, tolen);
-			if (ret < 0) {
-				errno = ret;
-				return -1;
+			if (sock->sock_fd == -1) {
+				char at_cmd[128];
+				uint16_t port;
+				void *addr_ptr;
+
+				if (to->sa_family == AF_INET) {
+					addr_ptr = &net_sin(to)->sin_addr;
+					port = net_sin(to)->sin_port;
+				} else {
+					addr_ptr = &net_sin6(to)->sin6_addr;
+					port = net_sin6(to)->sin6_port;
+				}
+
+				offload_connect(sock, to, tolen);
+
+				sock->is_connected = false;
+
+				snprintk(at_cmd, sizeof(at_cmd),
+					"AT%%SOCKETCMD=\"INFO\",%d",
+					sock->sock_fd);
+
+				ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, cmd_info,
+					ARRAY_SIZE(cmd_info), at_cmd, &mdata.sem_response,
+					MDM_CMD_RSP_TIME);
+
 			}
 		} else {
 			errno = ENOTCONN;
