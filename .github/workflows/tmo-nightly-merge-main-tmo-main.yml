@@ -5,7 +5,7 @@ on:
     branches:
       - tmo-workflow-nightly-merge 
   workflow_dispatch:
-    branches: [ tmo-workflow-nightly-merge ]
+    branches: [ tmo-main ]
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 7 * * *'
@@ -21,8 +21,8 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git rev-parse HEAD
-          git status
           git fetch
           git checkout main
           git checkout tmo-main
           git merge -X ours main
+          git push
