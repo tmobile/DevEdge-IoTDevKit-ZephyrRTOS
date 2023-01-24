@@ -22,6 +22,7 @@ jobs:
           git config user.email github-actions@github.com
           git rev-parse HEAD
           git status
-          git checkout origin/main
+          git fetch
+          git checkout main
           git checkout tmo-main
           git merge -X ours main
