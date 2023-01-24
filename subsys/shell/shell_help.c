@@ -9,7 +9,6 @@
 #include "shell_help.h"
 #include "shell_utils.h"
 
-
 /* Function prints a string on terminal screen with requested margin.
  * It takes care to not divide words.
  *   shell		Pointer to shell instance.
@@ -147,7 +146,7 @@ static void help_item_print(const struct shell *shell, const char *item_name,
 }
 
 /* Function prints all subcommands of the parent command together with their
- * help string
+ * help string.
  */
 void z_shell_help_subcmd_print(const struct shell *shell,
 			       const struct shell_static_entry *parent,
