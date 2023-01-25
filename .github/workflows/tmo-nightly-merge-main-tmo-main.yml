@@ -1,6 +1,7 @@
 name: Tmo Nightly Merge Main TmoMain
 
 on:
+  workflow_dispatch: 
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 7 * * *'
@@ -19,5 +20,5 @@ jobs:
           git fetch
           git checkout main
           git checkout tmo-main
-          git merge -X ours main
+          git merge -X ours main --no-edit
           git push

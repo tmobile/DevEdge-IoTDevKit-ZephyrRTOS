@@ -2,7 +2,6 @@ name: Tmo Nightly Main Upstream Mirror
 
 on:
   workflow_dispatch:
-    branches: [ tmo-main ]
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 6 * * *'
@@ -12,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+            ssh-key: ${{secrets.MERGE_KEY}}
       - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
@@ -21,6 +22,7 @@ jobs:
           currentBranch=$(git rev-parse --abbrev-ref HEAD)
           if [ $currentBranch == "main" ];
           then
+            git config pull.rebase false
             git remote set-url origin https://github.com/zephyrproject-rtos/zephyr.git
             git pull
             git remote set-url origin https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
