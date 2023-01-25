@@ -1,6 +1,7 @@
 name: Tmo Nightly Merge Main TmoMain
 
 on:
+  workflow_dispatch: 
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '0 7 * * *'
