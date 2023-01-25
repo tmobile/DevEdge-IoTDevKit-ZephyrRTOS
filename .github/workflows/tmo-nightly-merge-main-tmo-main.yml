@@ -20,5 +20,5 @@ jobs:
           git fetch
           git checkout main
           git checkout tmo-main
-          git merge -X ours main --no-edit
+          git merge -X ours --no-edit --allow-unrelated-histories main
           git push
