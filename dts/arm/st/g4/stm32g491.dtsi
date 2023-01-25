@@ -63,7 +63,7 @@
 			interrupts = <47 0>;
 			status = "disabled";
 			#io-channel-cells = <1>;
-			has-vref-channel;
+			vref-channel = <18>;
 		};
 	};
 };
