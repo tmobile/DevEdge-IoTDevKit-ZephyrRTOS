@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include <stdlib.h>
 
 #include <zephyr/device.h>
-#include <fcntl.h>
+#include <zephyr/posix/fcntl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/net/net_offload.h>
 #include <zephyr/net/socket_offload.h>
