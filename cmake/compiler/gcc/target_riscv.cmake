@@ -31,5 +31,11 @@ if(CONFIG_COMPRESSED_ISA)
     string(CONCAT riscv_march ${riscv_march} "c")
 endif()
 
+# Be compatible with later Zephyr SDK releases
+if(SDK_VERSION VERSION_GREATER_EQUAL "0.15.0")
+    string(CONCAT riscv_march ${riscv_march} "_zicsr")
+    string(CONCAT riscv_march ${riscv_march} "_zifencei")
+endif()
+
 list(APPEND TOOLCHAIN_C_FLAGS -mabi=${riscv_mabi} -march=${riscv_march})
 list(APPEND TOOLCHAIN_LD_FLAGS NO_SPLIT -mabi=${riscv_mabi} -march=${riscv_march})
