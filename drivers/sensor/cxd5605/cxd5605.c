@@ -430,6 +430,7 @@ static int cxd5605_attr_set(const struct device *dev,
 
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
+	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP && chan != SENSOR_CHAN_ALL) {
 		return -ENOTSUP;
@@ -580,8 +581,10 @@ static int cxd5605_attr_set(const struct device *dev,
 	case SENSOR_ATTR_CXD5605_PWR_CTRL:
 		if (val->val1 == 0) {
 			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
+			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		} else {
 			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
+			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
 		}
 		break;
 
@@ -679,6 +682,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 {
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
+	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
 
 	int result = 0;
 
@@ -689,6 +693,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 * domain this device belongs is resumed.
 		 */
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
+		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
 		k_msleep(3000);	/* wait for GNSS chip to boot */
 		result = init(dev);
 		if (result < 0) {
@@ -709,6 +714,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 
 		gpio_pin_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
+		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		break;
 	default:
 		return -ENOTSUP;
