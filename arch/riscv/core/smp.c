@@ -25,18 +25,25 @@ void arch_start_cpu(int cpu_num, k_thread_stack_t *stack, int sz,
 	riscv_cpu_init[cpu_num].arg = arg;
 
 	riscv_cpu_sp = Z_KERNEL_STACK_BUFFER(stack) + sz;
-	riscv_cpu_wake_flag = cpu_num;
+	riscv_cpu_wake_flag = _kernel.cpus[cpu_num].arch.hartid;
 
 	while (riscv_cpu_wake_flag != 0U) {
 		;
 	}
 }
 
-void z_riscv_secondary_cpu_init(int cpu_num)
+void z_riscv_secondary_cpu_init(int hartid)
 {
+	unsigned int i;
+	unsigned int cpu_num = 0;
+
+	for (i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
+		if (_kernel.cpus[i].arch.hartid == hartid) {
+			cpu_num = i;
+		}
+	}
 	csr_write(mscratch, &_kernel.cpus[cpu_num]);
 #ifdef CONFIG_SMP
-	_kernel.cpus[cpu_num].arch.hartid = csr_read(mhartid);
 	_kernel.cpus[cpu_num].arch.online = true;
 #endif
 #ifdef CONFIG_THREAD_LOCAL_STORAGE
@@ -92,7 +99,7 @@ static void ipi_handler(const void *unused)
 
 	MSIP(csr_read(mhartid)) = 0;
 
-	atomic_val_t pending_ipi = atomic_get(&cpu_pending_ipi[_current_cpu->id]);
+	atomic_val_t pending_ipi = atomic_clear(&cpu_pending_ipi[_current_cpu->id]);
 
 	if (pending_ipi & IPI_SCHED) {
 		z_sched_ipi();

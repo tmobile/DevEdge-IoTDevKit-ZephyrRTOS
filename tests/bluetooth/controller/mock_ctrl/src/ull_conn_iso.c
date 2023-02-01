@@ -20,6 +20,8 @@
 #include "util/mfifo.h"
 #include "ticker/ticker.h"
 
+#include "pdu_df.h"
+#include "lll/pdu_vendor.h"
 #include "pdu.h"
 #include "lll.h"
 #include "lll/lll_df_types.h"
@@ -82,7 +84,8 @@ void ull_conn_iso_cis_stop_by_id(uint8_t cig_id, uint8_t cis_id, uint8_t reason)
 
 }
 
-void ull_conn_iso_start(struct ll_conn *acl, uint32_t ticks_at_expire, uint16_t cis_handle)
+void ull_conn_iso_start(struct ll_conn *acl, uint32_t ticks_at_expire,
+			uint16_t cis_handle, uint16_t instant_latency)
 {
 
 }
