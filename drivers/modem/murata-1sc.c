@@ -520,6 +520,7 @@ exit:
  */
 MODEM_CMD_DEFINE(on_cmd_unsol_sms)
 {
+	LOG_DBG("SMS Received");
 	k_sem_give(&mdata.sem_rcv_sms);
 
 	return 0;
@@ -751,6 +752,15 @@ MODEM_CMD_DEFINE(on_cmd_get_edrx)
 	mdata.mdm_edrx[out_len] = '\0';
 
 	LOG_DBG("EDRX: %s", mdata.mdm_edrx);
+	return 0;
+}
+
+/**
+ * @brief Handler for LTECMD PTW
+ */
+MODEM_CMD_DEFINE(on_cmd_lte_ptw)
+{
+	strcpy(mdata.mdm_edrx, argv[1]);
 	return 0;
 }
 
@@ -1067,6 +1077,50 @@ static int set_edrx_timer(struct set_cedrxs_params *Parms)
 		LOG_ERR("%s ret:%d", at_cmd, ret);
 	}
 	return ret;
+}
+
+/**
+ * @brief Set the edrx paging time window value
+ */
+static int set_edrx_ptw(int *ptw)
+{
+	int ret;
+	char at_cmd[sizeof("AT%CEDRXS=XX")] = {0};
+
+	snprintf(at_cmd, sizeof(at_cmd), "AT%%CEDRXS=%d", *ptw);
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, at_cmd, &mdata.sem_response,
+			     K_SECONDS(6));
+
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+	}
+
+	return ret;
+}
+
+/**
+ * @brief Get the edrx paging time window value
+ */
+static int get_edrx_ptw(int *ptw)
+{
+	int ret;
+	static const char *at_cmd = "AT%LTECMD=2,\"PTW\"";
+	struct modem_cmd data_cmd[] = {
+		MODEM_CMD("%LTECMD:", on_cmd_lte_ptw, 2U, ","),
+	};
+
+	memset(mdata.mdm_edrx, 0, sizeof(mdata.mdm_edrx));
+
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, data_cmd, ARRAY_SIZE(data_cmd), at_cmd,
+			     &mdata.sem_response, MDM_CMD_RSP_TIME);
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+		ret = -1;
+	}
+
+	*ptw = strtol(mdata.mdm_edrx, NULL, 10);
+
+	return 0;
 }
 
 /**
@@ -4795,6 +4849,16 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 
 	case AT_MODEM_EDRX_GET:
 		ret = get_edrx((char *)ptr_from_va(args));
+		va_end(args);
+		break;
+
+	case AT_MODEM_EDRX_PTW_SET:
+		ret = set_edrx_ptw((int *)ptr_from_va(args));
+		va_end(args);
+		break;
+
+	case AT_MODEM_EDRX_PTW_GET:
+		ret = get_edrx_ptw((int *)ptr_from_va(args));
 		va_end(args);
 		break;
 
