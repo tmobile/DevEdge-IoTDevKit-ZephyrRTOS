@@ -12,7 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            ssh-key: ${{secrets.MERGE_KEY}}
+            ssh-key: ${{ secrets.MERGE_KEY }}
+            token: ${{ secrets.MIRROR_TOKEN }}
       - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
