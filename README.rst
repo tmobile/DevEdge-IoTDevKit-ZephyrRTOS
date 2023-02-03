@@ -11,13 +11,9 @@
    </a>
    
    <a
-   href="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-upstream-mirror-main.yml">
+   href="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-upstream-mirror.yml">
    <img
-   src="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-upstream-mirror-main.yml/badge.svg"></a>
-   <a
-   href="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-merge-main-tmo-main.yml">
-   <img
-   src="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-merge-main-tmo-main.yml/badge.svg"></a>
+   src="https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS/actions/workflows/tmo-nightly-upstream-mirror.yml/badge.svg"></a>
 
 The Zephyr Project is a scalable real-time operating system (RTOS) supporting
 multiple hardware architectures, optimized for resource constrained devices,
