@@ -42,18 +42,22 @@ __weak void pm_state_set(enum pm_state state, uint8_t substate_id)
 		break;
 	case PM_STATE_SUSPEND_TO_IDLE:
 		EMU_EnterEM2(true);
+		/* Deep Sleep Flag is not properly cleared on Wake */
+		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 		break;
 	case PM_STATE_STANDBY:
 		EMU_EnterEM3(true);
+		/* Deep Sleep Flag is not properly cleared on Wake */
+		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 		break;
 	case PM_STATE_SOFT_OFF:
 		{
 		EMU_EM4Init_TypeDef em4_state = {
 			.em4State = substate_id == 1 ? emuEM4Hibernate : emuEM4Shutoff,
 			.pinRetentionMode = emuPinRetentionEm4Exit,
-			.retainLfrco = true,
-			.retainLfxo = true,
-			.retainUlfrco = true,
+			.retainLfrco = (substate_id == 1),
+			.retainLfxo = (substate_id == 1),
+			.retainUlfrco = (substate_id == 1),
 			.vScaleEM4HVoltage = emuVScaleEM4H_LowPower
 		};
 		EMU_EM4Init(&em4_state);
