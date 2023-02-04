@@ -12,6 +12,9 @@
 #include <zephyr/posix/time.h>
 #include <zephyr/sys/timeutil.h>
 #include <zephyr/drivers/counter.h>
+#if defined(CONFIG_COUNTER_GECKO_RTCC)
+#include <em_rtcc.h>
+#endif
 #if defined(CONFIG_TIME_GECKO_RTCC)
 #include <em_rtcc.h>
 #endif
@@ -210,6 +213,9 @@ static int cmd_date_set(const struct shell *shell, size_t argc, char **argv)
 	RTCC_TimeSet(time_set);
 	RTCC_DateSet(date_set);
 #endif
+#if defined(CONFIG_COUNTER_GECKO_RTCC)
+	RTCC_CounterSet(tp.tv_sec);
+#endif
 
 	date_print(shell, &tm);
 
@@ -239,10 +245,10 @@ static int cmd_date_get(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **argv)
 {
+#ifdef TIMER_COUNTER
 	const struct device *const counter_dev = DEVICE_DT_GET(TIMER_COUNTER);
 	uint32_t ticks;
 	struct tm tm_gm;
-	time_t time_ticks;
 	int err;
 
 	if (counter_dev == NULL) {
@@ -252,17 +258,26 @@ static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **ar
 
 	err = counter_get_value(counter_dev, &ticks);
 	if (err) {
-		shell_error(shell_ptr, "Failed to read counter value (err %d)", err);
+	  shell_error(shell_ptr, "Failed to read counter value (err %d)", err);
 		return -EINVAL;
 	}
 
 #if defined(CONFIG_TIME_GECKO_RTCC)
-	time_ticks = (time_t)ticks;
+	time_t time_ticks = (time_t)ticks;
 	gmtime_r(&time_ticks, &tm_gm);
 
 	date_print(shell_ptr, &tm_gm);
 #else
-	shell_print(shell_ptr, "%u", ticks);
+	struct timespec tp;
+
+	tp.tv_sec = ticks;
+
+	gmtime_r(&tp.tv_sec, &tm_gm);
+
+	date_print(shell_ptr, &tm_gm);
+#endif
+#else
+	shell_print(shell_ptr, "Counter not defined");
 #endif
 	return 0;
 }

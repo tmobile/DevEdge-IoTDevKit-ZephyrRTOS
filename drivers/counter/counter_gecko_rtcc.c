@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, Piotr Mienkowski
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,9 +12,12 @@
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/posix/time.h>
 #include <soc.h>
 #include <em_cmu.h>
+#include <em_rmu.h>
 #include <em_rtcc.h>
+#include <zephyr/sys/timeutil.h>
 #include <zephyr/drivers/counter.h>
 
 #include <zephyr/logging/log.h>
@@ -219,12 +223,27 @@ static uint32_t counter_gecko_get_pending_int(const struct device *dev)
 	return 0;
 }
 
+static int update_posix()
+{
+	struct timespec tp;
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	tp.tv_sec = RTCC_CounterGet();
+
+	return clock_settime(CLOCK_REALTIME, &tp);
+}
+
+/* Pin bootloader definitions. */
+#define LB_CLW0           (*((volatile uint32_t *)(LOCKBITS_BASE)+122))
+#define LB_CLW0_PINBOOTLOADER    (1 << 1)
+
 static int counter_gecko_init(const struct device *dev)
 {
 	const struct counter_gecko_config *const dev_cfg = dev->config;
+	int rc;
 
 	RTCC_Init_TypeDef rtcc_config = {
-		false,                /* Don't start counting */
+		true,                 /* Start counting when initialization is done */
 		false,                /* Disable RTC during debug halt. */
 		false,                /* Don't wrap prescaler on CCV0 */
 		true,                 /* Counter wrap on CCV1 */
@@ -279,6 +298,15 @@ static int counter_gecko_init(const struct device *dev)
 	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFXO);
 #endif
 
+	/* Turn off the bootloader enable bit to prevent RTCC changes */
+	LB_CLW0 &= !LB_CLW0_PINBOOTLOADER;
+
+	/* Turn on reset limited mode to preserve RTCC counts */
+	RMU_ResetControl(rmuResetWdog, rmuResetModeLimited);
+	RMU_ResetControl(rmuResetCoreLockup, rmuResetModeLimited);
+	RMU_ResetControl(rmuResetSys, rmuResetModeLimited);
+	RMU_ResetControl(rmuResetPin, rmuResetModeLimited);
+
 	/* Enable RTCC module clock */
 	CMU_ClockEnable(cmuClock_RTCC, true);
 
@@ -294,15 +322,17 @@ static int counter_gecko_init(const struct device *dev)
 	RTCC_IntDisable(_RTCC_IF_MASK);
 	RTCC_IntClear(_RTCC_IF_MASK);
 
-	/* Clear the counter */
-	RTCC->CNT = 0;
-
 	/* Configure & enable module interrupts */
 	dev_cfg->irq_config();
 
+	rc = update_posix();
+	if (rc < 0) {
+		LOG_WRN("Failed to set date: %d", rc);
+	}
+
 	LOG_INF("Device %s initialized", dev->name);
 
-	return 0;
+	return rc;
 }
 
 static const struct counter_driver_api counter_gecko_driver_api = {
