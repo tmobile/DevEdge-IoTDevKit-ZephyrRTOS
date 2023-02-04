@@ -572,8 +572,10 @@ sync_aux_prepare_done:
 		radio_disable();
 
 		return -ECANCELED;
-	}
-#endif /* !CONFIG_BT_CTLR_XTAL_ADVANCED */
+	} else
+#endif /* CONFIG_BT_CTLR_XTAL_ADVANCED */
+	{
+		uint32_t ret;
 
 #if defined(CONFIG_BT_CENTRAL) && defined(CONFIG_BT_CTLR_SCHED_ADVANCED)
 	/* calc end of group in us for the anchor where next connection

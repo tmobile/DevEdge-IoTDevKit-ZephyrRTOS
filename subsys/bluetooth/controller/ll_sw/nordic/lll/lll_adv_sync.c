@@ -250,7 +250,7 @@ static int prepare_cb(struct lll_prepare_param *p)
 		radio_disable();
 
 		return -ECANCELED;
-	}
+	} else
 #endif /* CONFIG_BT_CTLR_XTAL_ADVANCED */
 
 #if defined(CONFIG_BT_CTLR_ADV_ISO) && defined(CONFIG_BT_TICKER_EXT_EXPIRE_INFO)

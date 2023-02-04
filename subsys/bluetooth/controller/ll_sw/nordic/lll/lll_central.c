@@ -252,6 +252,12 @@ static int prepare_cb(struct lll_prepare_param *p)
 		radio_disable();
 
 		return -ECANCELED;
+	} else
+#endif /* CONFIG_BT_CTLR_XTAL_ADVANCED */
+	{
+		uint32_t ret;
+
+		return -ECANCELED;
 	}
 #endif /* !CONFIG_BT_CTLR_XTAL_ADVANCED */
 
