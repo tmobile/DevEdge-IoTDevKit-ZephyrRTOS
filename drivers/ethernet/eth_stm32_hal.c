@@ -80,8 +80,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 	    DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_dtcm), okay)
 #define __eth_stm32_desc __dtcm_noinit_section
 #define __eth_stm32_buf  __dtcm_noinit_section
-#elif defined(CONFIG_SOC_SERIES_STM32H7X) && \
-		DT_NODE_HAS_STATUS(DT_NODELABEL(sram3), okay)
+#elif defined(CONFIG_SOC_SERIES_STM32H7X)
 #define __eth_stm32_desc __attribute__((section(".eth_stm32_desc")))
 #define __eth_stm32_buf  __attribute__((section(".eth_stm32_buf")))
 #elif defined(CONFIG_NOCACHE_MEMORY)
@@ -254,17 +253,19 @@ static inline void setup_mac_filter(ETH_HandleTypeDef *heth)
 #else
 	uint32_t tmp = heth->Instance->MACFFR;
 
-	/* disable multicast perfect filtering */
+	/* clear all multicast filter bits, resulting in perfect filtering */
 	tmp &= ~(ETH_MULTICASTFRAMESFILTER_PERFECTHASHTABLE |
-#if !defined(CONFIG_ETH_STM32_MULTICAST_FILTER)
 		 ETH_MULTICASTFRAMESFILTER_HASHTABLE |
-#endif /* CONFIG_ETH_STM32_MULTICAST_FILTER */
-		 ETH_MULTICASTFRAMESFILTER_PERFECT);
+		 ETH_MULTICASTFRAMESFILTER_PERFECT |
+		 ETH_MULTICASTFRAMESFILTER_NONE);
 
-#if defined(CONFIG_ETH_STM32_MULTICAST_FILTER)
-	/* enable multicast hash receive filter */
-	tmp |= ETH_MULTICASTFRAMESFILTER_HASHTABLE;
-#endif /* CONFIG_ETH_STM32_MULTICAST_FILTER */
+	if (IS_ENABLED(CONFIG_ETH_STM32_MULTICAST_FILTER)) {
+		/* enable multicast hash receive filter */
+		tmp |= ETH_MULTICASTFRAMESFILTER_HASHTABLE;
+	} else {
+		/* enable receiving all multicast frames */
+		tmp |= ETH_MULTICASTFRAMESFILTER_NONE;
+	}
 
 	heth->Instance->MACFFR = tmp;
 
@@ -957,10 +958,78 @@ void HAL_ETH_TxCpltCallback(ETH_HandleTypeDef *heth_handle)
 #if defined(CONFIG_ETH_STM32_HAL_API_V2)
 void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *heth)
 {
-	/* Do nothing */
-	/* Do not log errors. If errors are reported du to high traffic,
+	/* Do not log errors. If errors are reported due to high traffic,
 	 * logging errors will only increase traffic issues
 	 */
+#if defined(CONFIG_NET_STATISTICS_ETHERNET)
+	__ASSERT_NO_MSG(heth != NULL);
+
+	uint32_t dma_error;
+#if defined(CONFIG_SOC_SERIES_STM32H7X)
+	uint32_t mac_error;
+#endif /* CONFIG_SOC_SERIES_STM32H7X */
+	const uint32_t error_code = HAL_ETH_GetError(heth);
+
+	struct eth_stm32_hal_dev_data *dev_data =
+		CONTAINER_OF(heth, struct eth_stm32_hal_dev_data, heth);
+
+	switch (error_code) {
+	case HAL_ETH_ERROR_DMA:
+		dma_error = HAL_ETH_GetDMAError(heth);
+
+#if defined(CONFIG_SOC_SERIES_STM32H7X)
+		if ((dma_error & ETH_DMA_RX_WATCHDOG_TIMEOUT_FLAG)   ||
+			(dma_error & ETH_DMA_RX_PROCESS_STOPPED_FLAG)    ||
+			(dma_error & ETH_DMA_RX_BUFFER_UNAVAILABLE_FLAG)) {
+			eth_stats_update_errors_rx(dev_data->iface);
+		}
+		if ((dma_error & ETH_DMA_EARLY_TX_IT_FLAG) ||
+			(dma_error & ETH_DMA_TX_PROCESS_STOPPED_FLAG)) {
+			eth_stats_update_errors_tx(dev_data->iface);
+		}
+#else
+		if ((dma_error & ETH_DMASR_RWTS) ||
+			(dma_error & ETH_DMASR_RPSS) ||
+			(dma_error & ETH_DMASR_RBUS)) {
+			eth_stats_update_errors_rx(dev_data->iface);
+		}
+		if ((dma_error & ETH_DMASR_ETS)  ||
+			(dma_error & ETH_DMASR_TPSS) ||
+			(dma_error & ETH_DMASR_TJTS)) {
+			eth_stats_update_errors_tx(dev_data->iface);
+		}
+#endif /* CONFIG_SOC_SERIES_STM32H7X */
+		break;
+
+#if defined(CONFIG_SOC_SERIES_STM32H7X)
+	case HAL_ETH_ERROR_MAC:
+		mac_error = HAL_ETH_GetMACError(heth);
+
+		if (mac_error & ETH_RECEIVE_WATCHDOG_TIMEOUT) {
+			eth_stats_update_errors_rx(dev_data->iface);
+		}
+
+		if ((mac_error & ETH_EXECESSIVE_COLLISIONS)  ||
+			(mac_error & ETH_LATE_COLLISIONS)        ||
+			(mac_error & ETH_EXECESSIVE_DEFERRAL)    ||
+			(mac_error & ETH_TRANSMIT_JABBR_TIMEOUT) ||
+			(mac_error & ETH_LOSS_OF_CARRIER)        ||
+			(mac_error & ETH_NO_CARRIER)) {
+			eth_stats_update_errors_tx(dev_data->iface);
+		}
+		break;
+#endif /* CONFIG_SOC_SERIES_STM32H7X */
+	}
+
+#if defined(CONFIG_SOC_SERIES_STM32H7X)
+	dev_data->stats.error_details.rx_crc_errors = heth->Instance->MMCRCRCEPR;
+	dev_data->stats.error_details.rx_align_errors = heth->Instance->MMCRAEPR;
+#else
+	dev_data->stats.error_details.rx_crc_errors = heth->Instance->MMCRFCECR;
+	dev_data->stats.error_details.rx_align_errors = heth->Instance->MMCRFAECR;
+#endif /* CONFIG_SOC_SERIES_STM32H7X */
+
+#endif /* CONFIG_NET_STATISTICS_ETHERNET */
 }
 #elif defined(CONFIG_SOC_SERIES_STM32H7X)
 /* DMA and MAC errors callback only appear in H7 series */
@@ -1156,6 +1225,23 @@ static int eth_initialize(const struct device *dev)
 
 	k_thread_name_set(&dev_data->rx_thread, "stm_eth");
 
+#if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_ETH_STM32_HAL_API_V2)
+	/* Adjust MDC clock range depending on HCLK frequency: */
+	HAL_ETH_SetMDIOClockRange(heth);
+
+	/* @TODO: read duplex mode and speed from PHY and set it to ETH */
+
+	ETH_MACConfigTypeDef mac_config;
+
+	HAL_ETH_GetMACConfig(heth, &mac_config);
+	mac_config.DuplexMode = ETH_FULLDUPLEX_MODE;
+	mac_config.Speed = ETH_SPEED_100M;
+	hal_ret = HAL_ETH_SetMACConfig(heth, &mac_config);
+	if (hal_ret != HAL_OK) {
+		LOG_ERR("HAL_ETH_SetMACConfig: failed: %d", hal_ret);
+	}
+#endif /* CONFIG_SOC_SERIES_STM32H7X || CONFIG_ETH_STM32_HAL_API_V2 */
+
 #if defined(CONFIG_ETH_STM32_HAL_API_V2)
 
 	/* prepare tx buffer header */
@@ -1191,19 +1277,7 @@ static int eth_initialize(const struct device *dev)
 
 	setup_mac_filter(heth);
 
-#if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_ETH_STM32_HAL_API_V2)
-	/* Adjust MDC clock range depending on HCLK frequency: */
-	HAL_ETH_SetMDIOClockRange(heth);
 
-	/* @TODO: read duplex mode and speed from PHY and set it to ETH */
-
-	ETH_MACConfigTypeDef mac_config;
-
-	HAL_ETH_GetMACConfig(heth, &mac_config);
-	mac_config.DuplexMode = ETH_FULLDUPLEX_MODE;
-	mac_config.Speed = ETH_SPEED_100M;
-	HAL_ETH_SetMACConfig(heth, &mac_config);
-#endif /* CONFIG_SOC_SERIES_STM32H7X || CONFIG_ETH_STM32_HAL_API_V2 */
 
 	LOG_DBG("MAC %02x:%02x:%02x:%02x:%02x:%02x",
 		dev_data->mac_addr[0], dev_data->mac_addr[1],
@@ -1532,6 +1606,15 @@ static const struct device *eth_stm32_get_ptp_clock(const struct device *dev)
 }
 #endif /* CONFIG_PTP_CLOCK_STM32_HAL */
 
+#if defined(CONFIG_NET_STATISTICS_ETHERNET)
+static struct net_stats_eth *eth_stm32_hal_get_stats(const struct device *dev)
+{
+	struct eth_stm32_hal_dev_data *dev_data = dev->data;
+
+	return &dev_data->stats;
+}
+#endif /* CONFIG_NET_STATISTICS_ETHERNET */
+
 static const struct ethernet_api eth_api = {
 	.iface_api.init = eth_iface_init,
 #if defined(CONFIG_PTP_CLOCK_STM32_HAL)
@@ -1540,6 +1623,9 @@ static const struct ethernet_api eth_api = {
 	.get_capabilities = eth_stm32_hal_get_capabilities,
 	.set_config = eth_stm32_hal_set_config,
 	.send = eth_tx,
+#if defined(CONFIG_NET_STATISTICS_ETHERNET)
+	.get_stats = eth_stm32_hal_get_stats,
+#endif /* CONFIG_NET_STATISTICS_ETHERNET */
 };
 
 static void eth0_irq_config(void)

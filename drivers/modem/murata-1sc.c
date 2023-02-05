@@ -1023,30 +1023,21 @@ static int set_cfun(int on)
 }
 
 /**
- * @brief Set the PSM timer values that is passed in thru Parms
+ * @brief Set the PSM timer values that is passed in thru params
  *
  */
-static int set_psm_timer(struct set_cpsms_params *Parms)
+static int set_psm_timer(struct set_cpsms_params *params)
 {
 	char psm[100];
-	char t3312[PSM_TIME_LEN];
-	char t3314[PSM_TIME_LEN];
 	char t3412[PSM_TIME_LEN];
 	char t3324[PSM_TIME_LEN];
 	int ret;
 
-	strcpy(t3312, (const char *)byte_to_binary_str(Parms->t3312_mask));
-	strcpy(t3314, (const char *)byte_to_binary_str(Parms->t3314_mask));
-	strcpy(t3412, (const char *)byte_to_binary_str(Parms->t3412_mask));
-	strcpy(t3324, (const char *)byte_to_binary_str(Parms->t3324_mask));
+	strcpy(t3412, (const char *)byte_to_binary_str(params->t3412));
+	strcpy(t3324, (const char *)byte_to_binary_str(params->t3324));
 
-	if (Parms->t3312_mask == 0 || Parms->t3314_mask == 0) {
-		snprintf(psm, sizeof(psm), "AT+CPSMS=%d,,,\"%s\",\"%s\"", Parms->mode, t3412,
-			 t3324);
-	} else {
-		snprintf(psm, sizeof(psm), "AT+CPSMS=%d,\"%s\",\"%s\",\"%s\",\"%s\"", Parms->mode,
-			 t3312, t3314, t3412, t3324);
-	}
+	snprintf(psm, sizeof(psm), "AT+CPSMS=%d,,,\"%s\",\"%s\"", params->mode, t3412,
+			t3324);
 
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, psm, &mdata.sem_response,
 			     K_SECONDS(6));

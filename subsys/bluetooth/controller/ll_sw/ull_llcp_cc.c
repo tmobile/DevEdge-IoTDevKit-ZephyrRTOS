@@ -19,7 +19,10 @@
 #include "util/memq.h"
 #include "util/dbuf.h"
 
+#include "pdu_df.h"
+#include "lll/pdu_vendor.h"
 #include "pdu.h"
+
 #include "ll.h"
 #include "ll_feat.h"
 #include "ll_settings.h"
@@ -163,7 +166,30 @@ static void llcp_rp_cc_tx_rsp(struct ll_conn *conn, struct proc_ctx *ctx)
 	pdu = (struct pdu_data *)tx->pdu;
 
 	ctx->data.cis_create.conn_event_count = MAX(ctx->data.cis_create.conn_event_count,
-						    cc_event_counter(conn) + 2);
+						    ull_conn_event_counter(conn) + 2U);
+
+	delay_conn_events = ctx->data.cis_create.conn_event_count - conn_event_count;
+
+	/* If instant is postponed, calculate the offset to add to CIS_Offset_Min and
+	 * CIS_Offset_Max.
+	 *
+	 * BT Core v5.3, Vol 6, Part B, section 5.1.15:
+	 * Two windows are equivalent if they have the same width and the difference between their
+	 * start times is an integer multiple of ISO_Interval for the CIS.
+	 *
+	 * The offset shall compensate for the relation between ISO- and connection interval. The
+	 * offset translates to what is additionally needed to move the window by an integer number
+	 * of ISO intervals. I.e.:
+	 *   offset = (delayed * CONN_interval) MOD ISO_interval
+	 */
+	if (delay_conn_events) {
+		uint32_t conn_interval_us  = conn->lll.interval * CONN_INT_UNIT_US;
+		uint32_t iso_interval_us   = ctx->data.cis_create.iso_interval * ISO_INT_UNIT_US;
+		uint32_t offset_us = (delay_conn_events * conn_interval_us) % iso_interval_us;
+
+		ctx->data.cis_create.cis_offset_min += offset_us;
+		ctx->data.cis_create.cis_offset_max += offset_us;
+	}
 
 	llcp_pdu_encode_cis_rsp(ctx, pdu);
 	ctx->tx_opcode = pdu->llctrl.opcode;
@@ -439,10 +465,16 @@ static void rp_cc_check_instant(struct ll_conn *conn, struct proc_ctx *ctx, uint
 				void *param)
 {
 	uint16_t start_event_count;
+	uint16_t instant_latency;
+	uint16_t event_counter;
+
+	event_counter = ull_conn_event_counter(conn);
+	start_event_count = ctx->data.cis_create.conn_event_count;
+
+#if defined(CONFIG_BT_CTLR_PERIPHERAL_ISO_EARLY_CIG_START)
 	struct ll_conn_iso_group *cig;
 
 	cig = ll_conn_iso_group_get_by_id(ctx->data.cis_create.cig_id);
-	start_event_count = ctx->data.cis_create.conn_event_count;
 	LL_ASSERT(cig);
 
 	if (!cig->started) {
@@ -452,12 +484,14 @@ static void rp_cc_check_instant(struct ll_conn *conn, struct proc_ctx *ctx, uint
 		 */
 		start_event_count--;
 	}
+#endif /* CONFIG_BT_CTLR_PERIPHERAL_ISO_EARLY_CIG_START */
 
-	if (is_instant_reached_or_passed(start_event_count,
-					 cc_event_counter(conn))) {
+	instant_latency = (event_counter - start_event_count) & 0xffff;
+	if (instant_latency <= 0x7fff) {
 		/* Start CIS */
 		ull_conn_iso_start(conn, conn->llcp.prep.ticks_at_expire,
-				   ctx->data.cis_create.cis_handle);
+				   ctx->data.cis_create.cis_handle,
+				   instant_latency);
 
 		/* Now we can wait for CIS to become established */
 		ctx->state = RP_CC_STATE_WAIT_CIS_ESTABLISHED;
@@ -846,12 +880,19 @@ static void lp_cc_st_wait_tx_cis_ind(struct ll_conn *conn, struct proc_ctx *ctx,
 static void lp_cc_check_instant(struct ll_conn *conn, struct proc_ctx *ctx, uint8_t evt,
 				void *param)
 {
-	uint16_t event_counter = ull_conn_event_counter(conn);
+	uint16_t start_event_count;
+	uint16_t instant_latency;
+	uint16_t event_counter;
 
-	if (is_instant_reached_or_passed(ctx->data.cis_create.conn_event_count, event_counter)) {
+	event_counter = ull_conn_event_counter(conn);
+	start_event_count = ctx->data.cis_create.conn_event_count;
+
+	instant_latency = (event_counter - start_event_count) & 0xffff;
+	if (instant_latency <= 0x7fff) {
 		/* Start CIS */
 		ull_conn_iso_start(conn, conn->llcp.prep.ticks_at_expire,
-				   ctx->data.cis_create.cis_handle);
+				   ctx->data.cis_create.cis_handle,
+				   instant_latency);
 
 		/* Now we can wait for CIS to become established */
 		ctx->state = LP_CC_STATE_WAIT_ESTABLISHED;

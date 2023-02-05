@@ -2112,6 +2112,8 @@ struct k_event {
 	_wait_q_t         wait_q;
 	uint32_t          events;
 	struct k_spinlock lock;
+
+	SYS_PORT_TRACING_TRACKING_FIELD(k_event)
 };
 
 #define Z_EVENT_INITIALIZER(obj) \
@@ -4448,6 +4450,24 @@ __syscall int k_msgq_get(struct k_msgq *msgq, void *data, k_timeout_t timeout);
  * @retval -ENOMSG Returned when the queue has no message.
  */
 __syscall int k_msgq_peek(struct k_msgq *msgq, void *data);
+
+/**
+ * @brief Peek/read a message from a message queue at the specified index
+ *
+ * This routine reads a message from message queue at the specified index
+ * and leaves the message in the queue.
+ * k_msgq_peek_at(msgq, data, 0) is equivalent to k_msgq_peek(msgq, data)
+ *
+ * @funcprops \isr_ok
+ *
+ * @param msgq Address of the message queue.
+ * @param data Address of area to hold the message read from the queue.
+ * @param idx Message queue index at which to peek
+ *
+ * @retval 0 Message read.
+ * @retval -ENOMSG Returned when the queue has no message at index.
+ */
+__syscall int k_msgq_peek_at(struct k_msgq *msgq, void *data, uint32_t idx);
 
 /**
  * @brief Purge a message queue.

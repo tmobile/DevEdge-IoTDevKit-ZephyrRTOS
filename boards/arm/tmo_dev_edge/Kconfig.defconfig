@@ -17,7 +17,7 @@ config CMU_HFXO_FREQ
 config CMU_LFXO_FREQ
 	default 32768
 
-config TIME_GECKO_RTCC
+config COUNTER_GECKO_RTCC
 	bool
 	default y
 	depends on COUNTER
