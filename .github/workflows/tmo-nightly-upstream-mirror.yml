@@ -19,4 +19,4 @@ jobs:
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
           cd zephyr.git
           echo "pushing all from upstream to ours"
-          git push -f --all git@github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+          git push -f --all git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
