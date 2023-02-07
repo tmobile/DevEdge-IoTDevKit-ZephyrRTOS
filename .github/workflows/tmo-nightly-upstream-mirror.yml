@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '0 6 * * *'
+    - cron: "0 6 * * *"
 
 jobs:
   mirror:
@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            token: ${{ secrets.MIRROR_TOKEN }}
+          token: ${{ secrets.MIRROR_TOKEN }}
       - run: |
           echo "cloning upstream"
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
