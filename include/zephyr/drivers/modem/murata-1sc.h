@@ -111,10 +111,8 @@ enum murata_1sc_io_ctl {
 
 struct set_cpsms_params  {
 	uint8_t mode;
-	uint8_t t3312_mask;
-	uint8_t t3314_mask;
-	uint8_t t3412_mask;
-	uint8_t t3324_mask;
+	uint8_t t3412;
+	uint8_t t3324;
 };
 
 struct set_cedrxs_params  {
