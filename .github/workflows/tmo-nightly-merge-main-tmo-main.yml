@@ -17,6 +17,7 @@ jobs:
           git config user.name nightly-merge 
           git config user.email nightly-merge@github.com
           git config merge.ours.driver true
+          echo "Current head hash for reverting if needed"
           git rev-parse HEAD
           git checkout tmo-main
           git merge -X theirs --no-edit origin/main
