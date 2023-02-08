@@ -1,10 +1,10 @@
 name: Tmo Nightly Merge Main TmoMain
 
 on:
-  workflow_dispatch: 
-  # schedule:
-  #   # * is a special character in YAML so you have to quote this string
-  #   - cron:  '0 7 * * *'
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron: "0 7 * * *"
 
 jobs:
   mirror:
@@ -16,9 +16,9 @@ jobs:
       - run: |
           git config user.name nightly-merge
           git config user.email nightly-merge@github.com
+          git config merge.ours.driver true
+          echo "Current head hash for reverting if needed"
           git rev-parse HEAD
-          git fetch
-          git checkout main
           git checkout tmo-main
-          git merge -X ours --no-edit --allow-unrelated-histories main
+          git merge -X theirs --no-edit origin/main
           git push
