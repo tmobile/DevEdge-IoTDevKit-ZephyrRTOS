@@ -101,6 +101,11 @@
 		regulator-name = "bq24250rge";
 		regulator-boot-on;
 	};
+
+	vbatt {
+		compatible = "silabs,battery-adc";
+        status = "okay";
+	};
 };
 
 &cpu0 {

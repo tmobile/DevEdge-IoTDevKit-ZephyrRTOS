@@ -13,3 +13,4 @@ config ADC_GECKO
 config SOC_GECKO_ADC
 	bool
 	default n
+
