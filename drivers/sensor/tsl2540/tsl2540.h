@@ -60,6 +60,9 @@
 #define TSL2540_CFG2_G64  0x04
 #define TSL2540_CFG2_G128 0x14
 
+#define TSL2540_CFG3_INTRC 0x80
+#define TSL2540_CFG3_SAI   0x08
+
 #define TSL2540_INT_EN_AEN 0x10
 
 struct tsl2540_config {
@@ -72,8 +75,6 @@ struct tsl2540_data {
 	struct k_sem sem;
 #ifdef CONFIG_TSL2540_TRIGGER
 	const struct device *dev;
-	const struct device *gpio;
-	uint8_t gpio_pin;
 	struct gpio_callback gpio_cb;
 	// enum interrupt_type int_type;
 	sensor_trigger_handler_t als_handler;

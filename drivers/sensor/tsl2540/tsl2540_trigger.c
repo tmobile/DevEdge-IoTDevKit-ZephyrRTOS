@@ -11,8 +11,9 @@ LOG_MODULE_DECLARE(tsl2540, CONFIG_SENSOR_LOG_LEVEL);
 
 static void tsl2540_handle_cb(struct tsl2540_data *data)
 {
-	gpio_pin_interrupt_configure(data->gpio, data->gpio_pin,
-				     GPIO_INT_DISABLE);
+	const struct tsl2540_config *config = data->dev->config;
+
+	gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
 
 #if defined(CONFIG_TSL2540_TRIGGER_OWN_THREAD)
 	k_sem_give(&data->trig_sem);
@@ -27,8 +28,9 @@ static void tsl2540_gpio_callback(const struct device *dev,
 {
 	struct tsl2540_data *data =
 		CONTAINER_OF(cb, struct tsl2540_data, gpio_cb);
+	const struct tsl2540_config *config = data->dev->config;
 
-	if ((pin_mask & BIT(data->gpio_pin)) == 0U) {
+	if ((pin_mask & BIT(config->int_gpio.pin)) == 0U) {
 		return;
 	}
 
@@ -39,6 +41,7 @@ static void tsl2540_gpio_callback(const struct device *dev,
 static void tsl2540_handle_int(const struct device *dev)
 {
 	struct tsl2540_data *data = dev->data;
+	const struct tsl2540_config *config = dev->config;
 	uint8_t status;
 
 	k_sem_take(&data->sem, K_FOREVER);
@@ -58,8 +61,7 @@ static void tsl2540_handle_int(const struct device *dev)
 		data->als_handler(dev, &als_trig);
 	}
 
-	gpio_pin_interrupt_configure(data->gpio, data->gpio_pin,
-				     GPIO_INT_EDGE_TO_ACTIVE);
+	gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 }
 
 #ifdef CONFIG_TSL2540_TRIGGER_OWN_THREAD
@@ -108,6 +110,18 @@ int tsl2540_trigger_set(const struct device *dev,
 				goto exit;
 			}
 
+			if (tsl2540_reg_read(dev, TSL2540_REG_CFG_3, &conf)) {
+				ret = -EIO;
+				goto exit;
+			}
+
+			conf |= TSL2540_CFG3_SAI | TSL2540_CFG3_INTRC;
+
+			if (tsl2540_reg_write(dev, TSL2540_REG_CFG_3, conf)) {
+				ret = -EIO;
+				goto exit;
+			}
+
 			data->als_handler = handler;
 		} else {
 			ret = -ENOTSUP;
@@ -152,24 +166,19 @@ int tsl2540_trigger_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	data->gpio_pin = config->int_gpio.pin;
-	data->gpio = config->int_gpio.port;
-
-	gpio_pin_configure(data->gpio, data->gpio_pin,
-			   GPIO_INPUT | config->int_gpio.dt_flags);
+	gpio_pin_configure_dt(&config->int_gpio,  GPIO_INPUT | config->int_gpio.dt_flags);
 
 	gpio_init_callback(&data->gpio_cb, tsl2540_gpio_callback,
-			   BIT(data->gpio_pin));
+			   BIT(config->int_gpio.pin));
 
-	if (gpio_add_callback(data->gpio, &data->gpio_cb) < 0) {
+	if (gpio_add_callback(config->int_gpio.port, &data->gpio_cb) < 0) {
 		LOG_DBG("Failed to set gpio callback!");
 		return -EIO;
 	}
 
-	gpio_pin_interrupt_configure(data->gpio, data->gpio_pin,
-				     GPIO_INT_EDGE_TO_ACTIVE);
+	gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 
-	if (gpio_pin_get(data->gpio, data->gpio_pin) > 0) {
+	if (gpio_pin_get_dt(&config->int_gpio) > 0) {
 		tsl2540_handle_cb(data);
 	}
 

@@ -149,7 +149,7 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			uint16_t thld =
 				(uint16_t)(sensor_value_to_double(val) * cpl);
 			thld = sys_cpu_to_le16(thld);
-			LOG_INF("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
+			LOG_DBG("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
 			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_LOW,
 					      ((uint8_t *)&thld)[0])) {
 				ret = -EIO;
@@ -173,7 +173,7 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			uint16_t thld =
 				(uint16_t)(sensor_value_to_double(val) * cpl);
 			thld = sys_cpu_to_le16(thld);
-			LOG_INF("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
+			LOG_DBG("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
 			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_LOW,
 					      ((uint8_t *)&thld)[0])) {
 				ret = -EIO;
@@ -292,6 +292,17 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			default:
 				ret = -EINVAL;
 				goto exit;
+			}
+			if (attr == (enum sensor_attribute)SENSOR_ATTR_INT_APERS) {
+				uint8_t apv = (uint8_t)val->val1;
+				if (apv > 15) {
+					ret = -EINVAL;
+					goto exit;
+				}
+				if (tsl2540_reg_write(dev, TSL2540_REG_PERS, apv)) {
+					ret = -EIO;
+					goto exit;
+				}
 			}
 		}
 		if (attr ==
