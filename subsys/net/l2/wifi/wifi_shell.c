@@ -827,8 +827,6 @@ static int cmd_wifi_reg_domain(const struct shell *sh, size_t argc,
 			regd.country_code[0], regd.country_code[1]);
 	}
 
-	shell_fprintf(sh, SHELL_NORMAL, "AP mode disabled\n");
-
 	return 0;
 }
 

@@ -941,6 +941,18 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 			 * state, where the ase finally will be deallocated
 			 */
 			ase_release(ase);
+
+			if (stream != NULL) {
+				const struct bt_audio_stream_ops *ops;
+
+				/* Notify upper layer */
+				ops = stream->ops;
+				if (ops != NULL && ops->released != NULL) {
+					ops->released(stream);
+				} else {
+					LOG_WRN("No callback for released set");
+				}
+			}
 		}
 
 		if (stream != NULL && stream->conn != NULL) {
@@ -1454,12 +1466,12 @@ static int ase_stream_qos(struct bt_audio_stream *stream,
 {
 	struct bt_audio_ep *ep;
 
-	LOG_DBG("stream %p ep %p qos %p", stream, stream->ep, qos);
-
 	if (stream == NULL || stream->ep == NULL || qos == NULL) {
 		LOG_DBG("Invalid input stream, ep or qos pointers");
 		return -EINVAL;
 	}
+
+	LOG_DBG("stream %p ep %p qos %p", stream, stream->ep, qos);
 
 	ep = stream->ep;
 

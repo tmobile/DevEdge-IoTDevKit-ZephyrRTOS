@@ -853,13 +853,6 @@ config MCUBOOT_GENERATE_UNSIGNED_IMAGE
 	  generation when MCUboot signing key is not provided,
 	  i.e., MCUBOOT_SIGNATURE_KEY_FILE is left empty.
 
-config MCUBOOT_GENERATE_UNSIGNED_IMAGE
-	bool "Generate unsigned binary image bootable with MCUboot"
-	help
-	  Enabling this configuration allows automatic unsigned binary image
-	  generation when MCUboot signing key is not provided,
-	  i.e., MCUBOOT_SIGNATURE_KEY_FILE is left empty.
-
 config MCUBOOT_GENERATE_CONFIRMED_IMAGE
 	bool "Also generate a padded, confirmed image"
 	help
