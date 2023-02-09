@@ -20,6 +20,7 @@ jobs:
           mkdir ~/.ssh
           eval $(ssh-agent -s)
           echo "${{ secrets.MERGE_KEY }}" > ~/.ssh/id_rsa
+          chmod 0644 ~/.ssh/id_rsa
           ls -la ~/.ssh
           ssh-add ~/.ssh/id_rsa
           echo "pushing all from upstream to ours"
