@@ -118,7 +118,7 @@ ARC arch:
   collaborators:
     - abrodkin
     - evgeniy-paltsev
-    - IRISZZW
+    - SiyuanCheng-CN
   files:
     - arch/arc/
     - include/zephyr/arch/arc/
@@ -175,6 +175,7 @@ Bluetooth:
     - Thalley
     - asbjornsabo
     - sjanc
+    - theob-pro
   files:
     - doc/connectivity/bluetooth/
     - drivers/bluetooth/
@@ -2051,7 +2052,9 @@ ITE Platforms:
     - "platform: ITE"
 
 TI Platforms:
-  status: odd fixes
+  status: maintained
+  maintainers:
+    - vaishnavachath
   collaborators:
     - vanti
     - cfriedt
@@ -2697,6 +2700,17 @@ West:
     - samples/modules/tflite-micro/
   labels:
     - manifest-tflite-micro
+
+"West project: thrift":
+  status: maintained
+  maintainers:
+    - cfriedt
+  files:
+    - modules/thrift/Kconfig
+    - samples/modules/thrift/
+    - tests/lib/thrift/
+  labels:
+    - manifest-thrift
 
 "West project: tinycrypt":
   status: odd fixes
