@@ -13,7 +13,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           ssh-key: ${{ secrets.MERGE_KEY }}
-          token: ${{ secrets.MIRROR_TOKEN }}
       - run: |
           echo "cloning upstream"
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
