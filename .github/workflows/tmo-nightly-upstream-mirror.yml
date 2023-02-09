@@ -17,6 +17,8 @@ jobs:
           echo "cloning upstream"
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
           cd zephyr.git
+          ${{ secrets.MERGE_KEY }} > ~/.ssh/id_rsa
           ls -la ~/.ssh
+          ssh-add ~/.ssh/id_rsa
           echo "pushing all from upstream to ours"
           git push -f --all git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
