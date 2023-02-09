@@ -1,0 +1,7 @@
+<<<<<<<< HEAD:samples/drivers/counter/alarm/boards/esp32.overlay
+&timer0 {
+========
+&adc0 {
+>>>>>>>> origin/main:tests/drivers/adc/adc_api/boards/xmc45_relax_kit.overlay
+	status = "okay";
+};

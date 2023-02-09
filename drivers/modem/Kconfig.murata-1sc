@@ -72,4 +72,32 @@ config MODEM_DEMO_LOW_POWERMODE
 		help
 		  This is to keep modem inactive for minimal power usage.
 
+config MODEM_MURATA_IPV4_DNS_PRIMARY
+		string "Primary IPv4 DNS server to be used on the Murata modem"
+		default ""
+		help
+		  This is the default IPv4 DNS server used by the modem, if not set
+		  it uses the DNS provided by the network.
+
+config MODEM_MURATA_IPV4_DNS_SECONDARY
+		string "Secondary IPv4 DNS server to be used on the Murata modem"
+		default ""
+		help
+		  This is the secondary IPv4 DNS server used by the modem, if not set
+		  it uses the DNS provided by the network.
+
+config MODEM_MURATA_IPV6_DNS_PRIMARY
+		string "Primary IPv6 DNS server to be used on the Murata modem"
+		default ""
+		help
+		  This is the default IPv6 DNS server used by the modem, if not set
+		  it uses the DNS provided by the network.
+
+config MODEM_MURATA_IPV6_DNS_SECONDARY
+		string "Secondary IPv6 DNS server to be used on the Murata modem"
+		default ""
+		help
+		  This is the secondary IPv6 DNS server used by the modem, if not set
+		  it uses the DNS provided by the network.
+
 endif  #MODEM_MURATA_1SC

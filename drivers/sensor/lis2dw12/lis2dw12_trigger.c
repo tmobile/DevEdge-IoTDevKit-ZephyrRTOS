@@ -22,8 +22,7 @@ LOG_MODULE_DECLARE(LIS2DW12, CONFIG_SENSOR_LOG_LEVEL);
 /**
  * lis2dw12_enable_int - enable selected int pin to generate interrupt
  */
-static int lis2dw12_enable_int(const struct device *dev,
-			       enum sensor_trigger_type type, int enable)
+static int lis2dw12_enable_int(const struct device *dev, enum sensor_trigger_type type, int enable)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -106,9 +105,8 @@ static int lis2dw12_enable_int(const struct device *dev,
 /**
  * lis2dw12_trigger_set - link external trigger to event data ready
  */
-int lis2dw12_trigger_set(const struct device *dev,
-			  const struct sensor_trigger *trig,
-			  sensor_trigger_handler_t handler)
+int lis2dw12_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
+			 sensor_trigger_handler_t handler)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -300,8 +298,8 @@ static void lis2dw12_handle_interrupt(const struct device *dev)
 					GPIO_INT_EDGE_TO_ACTIVE);
 }
 
-static void lis2dw12_gpio_callback(const struct device *dev,
-				    struct gpio_callback *cb, uint32_t pins)
+static void lis2dw12_gpio_callback(const struct device *dev, struct gpio_callback *cb,
+				   uint32_t pins)
 {
 	struct lis2dw12_data *lis2dw12 =
 		CONTAINER_OF(cb, struct lis2dw12_data, gpio_cb);
@@ -333,8 +331,7 @@ static void lis2dw12_thread(struct lis2dw12_data *lis2dw12)
 #ifdef CONFIG_LIS2DW12_TRIGGER_GLOBAL_THREAD
 static void lis2dw12_work_cb(struct k_work *work)
 {
-	struct lis2dw12_data *lis2dw12 =
-		CONTAINER_OF(work, struct lis2dw12_data, work);
+	struct lis2dw12_data *lis2dw12 = CONTAINER_OF(work, struct lis2dw12_data, work);
 
 	lis2dw12_handle_interrupt(lis2dw12->dev);
 }
@@ -470,10 +467,9 @@ int lis2dw12_init_interrupt(const struct device *dev)
 	k_sem_init(&lis2dw12->gpio_sem, 0, K_SEM_MAX_LIMIT);
 
 	k_thread_create(&lis2dw12->thread, lis2dw12->thread_stack,
-		       CONFIG_LIS2DW12_THREAD_STACK_SIZE,
-		       (k_thread_entry_t)lis2dw12_thread, lis2dw12,
-		       NULL, NULL, K_PRIO_COOP(CONFIG_LIS2DW12_THREAD_PRIORITY),
-		       0, K_NO_WAIT);
+			CONFIG_LIS2DW12_THREAD_STACK_SIZE, (k_thread_entry_t)lis2dw12_thread,
+			lis2dw12, NULL, NULL, K_PRIO_COOP(CONFIG_LIS2DW12_THREAD_PRIORITY), 0,
+			K_NO_WAIT);
 #elif defined(CONFIG_LIS2DW12_TRIGGER_GLOBAL_THREAD)
 	lis2dw12->work.handler = lis2dw12_work_cb;
 #endif /* CONFIG_LIS2DW12_TRIGGER_OWN_THREAD */

@@ -91,7 +91,6 @@ void ull_periph_setup(struct node_rx_hdr *rx, struct node_rx_ftr *ftr,
 	uint16_t max_rx_time;
 	uint16_t win_offset;
 	memq_link_t *link;
-	uint16_t timeout;
 	uint8_t chan_sel;
 	void *node;
 
@@ -204,9 +203,7 @@ void ull_periph_setup(struct node_rx_hdr *rx, struct node_rx_ftr *ftr,
 		CONN_INT_UNIT_US;
 
 	/* procedure timeouts */
-	timeout = sys_le16_to_cpu(pdu_adv->connect_ind.timeout);
-	conn->supervision_reload =
-		RADIO_CONN_EVENTS((timeout * 10U * 1000U), conn_interval_us);
+	conn->supervision_timeout = sys_le16_to_cpu(pdu_adv->connect_ind.timeout);
 
 #if defined(CONFIG_BT_LL_SW_LLCP_LEGACY)
 	conn->procedure_reload =
@@ -286,7 +283,7 @@ void ull_periph_setup(struct node_rx_hdr *rx, struct node_rx_ftr *ftr,
 
 	cc->interval = lll->interval;
 	cc->latency = lll->latency;
-	cc->timeout = timeout;
+	cc->timeout = conn->supervision_timeout;
 	cc->sca = conn->periph.sca;
 
 	lll->handle = ll_conn_handle_get(conn);
@@ -352,8 +349,7 @@ void ull_periph_setup(struct node_rx_hdr *rx, struct node_rx_ftr *ftr,
 	}
 #endif
 
-	ll_rx_put(link, rx);
-	ll_rx_sched();
+	ll_rx_put_sched(link, rx);
 
 #if defined(CONFIG_BT_CTLR_DATA_LENGTH)
 #if defined(CONFIG_BT_CTLR_PHY)
@@ -674,8 +670,7 @@ static void invalid_release(struct ull_hdr *hdr, struct lll_conn *lll,
 	}
 
 	/* Enqueue connection or CSA event to be release */
-	ll_rx_put(link, rx);
-	ll_rx_sched();
+	ll_rx_put_sched(link, rx);
 }
 
 static void ticker_op_stop_adv_cb(uint32_t status, void *param)

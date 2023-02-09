@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#if FFCONF_DEF != 86631
+#if FFCONF_DEF != 80286
 #error "Configuration version mismatch"
 #endif
 
@@ -50,6 +50,11 @@
 #undef FF_MAX_LFN
 #define	FF_MAX_LFN	CONFIG_FS_FATFS_MAX_LFN
 #endif /* defined(CONFIG_FS_FATFS_MAX_LFN) */
+
+#if defined(CONFIG_FS_FATFS_MIN_SS)
+#undef FF_MIN_SS
+#define FF_MIN_SS	CONFIG_FS_FATFS_MIN_SS
+#endif /* defined(CONFIG_FS_FATFS_MIN_SS) */
 
 #if defined(CONFIG_FS_FATFS_MAX_SS)
 #undef FF_MAX_SS

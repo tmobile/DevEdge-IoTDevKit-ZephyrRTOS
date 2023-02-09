@@ -463,7 +463,7 @@ static int rs9116w_init(const struct device *dev)
 	 */
 	rs9116w_dev->spi = rs9116w_conf.spi;
 
-	if (!spi_is_ready(&rs9116w_dev->spi)) {
+	if (!spi_is_ready_dt(&rs9116w_dev->spi)) {
 		LOG_ERR("spi bus %s not ready", rs9116w_dev->spi.bus->name);
 		return -ENODEV;
 	}

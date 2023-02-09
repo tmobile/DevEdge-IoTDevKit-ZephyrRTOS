@@ -578,20 +578,18 @@ class ProjectBuilder(FilterBuilder):
                 self.report_out(results)
 
             if not self.options.coverage:
-                if self.options.runtime_artifact_cleanup == "pass" and self.instance.status == "passed":
-                    pipeline.put({"op": "cleanup_pass", "test": self.instance})
-                if self.options.runtime_artifact_cleanup == "all":
-                    pipeline.put({"op": "cleanup_all", "test": self.instance})
+                if self.options.prep_artifacts_for_testing:
+                    pipeline.put({"op": "cleanup", "mode": "device", "test": self.instance})
+                elif self.options.runtime_artifact_cleanup == "pass" and self.instance.status == "passed":
+                    pipeline.put({"op": "cleanup", "mode": "passed", "test": self.instance})
+                elif self.options.runtime_artifact_cleanup == "all":
+                    pipeline.put({"op": "cleanup", "mode": "all", "test": self.instance})
 
-        elif op == "cleanup_pass":
-            if self.options.device_testing or self.options.prep_artifacts_for_testing:
+        elif op == "cleanup":
+            mode = message.get("mode")
+            if mode == "device":
                 self.cleanup_device_testing_artifacts()
-            else:
-                self.cleanup_artifacts()
-        elif op == "cleanup_all":
-            if (self.options.device_testing or self.options.prep_artifacts_for_testing) and self.instance.reason != "Cmake build failure":
-                self.cleanup_device_testing_artifacts()
-            else:
+            elif mode == "pass" or (mode == "all" and self.instance.reason != "Cmake build failure"):
                 self.cleanup_artifacts()
 
     def determine_testcases(self, results):
@@ -673,11 +671,17 @@ class ProjectBuilder(FilterBuilder):
             'CMakeCache.txt',
             os.path.join('zephyr', 'runners.yaml'),
         ]
-        keep = [
-            os.path.join('zephyr', 'zephyr.hex'),
-            os.path.join('zephyr', 'zephyr.bin'),
-            os.path.join('zephyr', 'zephyr.elf'),
-            ]
+        platform = self.instance.platform
+        if platform.binaries:
+            keep = []
+            for binary in platform.binaries:
+                keep.append(os.path.join('zephyr', binary ))
+        else:
+            keep = [
+                os.path.join('zephyr', 'zephyr.hex'),
+                os.path.join('zephyr', 'zephyr.bin'),
+                os.path.join('zephyr', 'zephyr.elf'),
+                ]
 
         keep += sanitizelist
 
@@ -837,6 +841,9 @@ class ProjectBuilder(FilterBuilder):
                     self.defconfig['CONFIG_FAKE_ENTROPY_NATIVE_POSIX'] == 'y'):
                     instance.handler.seed = self.options.seed
 
+            if self.options.extra_test_args and instance.platform.arch == "posix":
+                instance.handler.extra_test_args = self.options.extra_test_args
+
             instance.handler.handle()
 
         sys.stdout.flush()
@@ -854,7 +861,7 @@ class ProjectBuilder(FilterBuilder):
     @staticmethod
     def calc_size(instance: TestInstance, from_buildlog: bool):
         if instance.status not in ["error", "failed", "skipped"]:
-            if not instance.platform.type in ["native", "qemu"]:
+            if not instance.platform.type in ["native", "qemu", "unit"]:
                 generate_warning = bool(instance.platform.type == "mcu")
                 size_calc = instance.calculate_sizes(from_buildlog=from_buildlog, generate_warning=generate_warning)
                 instance.metrics["used_ram"] = size_calc.get_used_ram()

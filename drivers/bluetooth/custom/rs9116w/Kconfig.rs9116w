@@ -155,6 +155,20 @@ config BT_SMP_SC_PAIR_ONLY
 
 endif # BT_SMP
 
+menu "GATT Services"
+
+source "subsys/bluetooth/services/Kconfig.dis"
+
+source "subsys/bluetooth/services/Kconfig.bas"
+
+source "subsys/bluetooth/services/Kconfig.hrs"
+
+source "subsys/bluetooth/services/Kconfig.tps"
+
+source "subsys/bluetooth/services/ias/Kconfig.ias"
+
+endmenu
+
 endif # BT_CONN
 
 config BT_DEVICE_APPEARANCE

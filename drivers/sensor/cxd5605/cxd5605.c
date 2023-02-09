@@ -430,6 +430,7 @@ static int cxd5605_attr_set(const struct device *dev,
 
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
+	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
 
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP && chan != SENSOR_CHAN_ALL) {
 		return -ENOTSUP;
@@ -580,8 +581,10 @@ static int cxd5605_attr_set(const struct device *dev,
 	case SENSOR_ATTR_CXD5605_PWR_CTRL:
 		if (val->val1 == 0) {
 			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
+			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		} else {
 			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
+			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
 		}
 		break;
 
@@ -633,10 +636,8 @@ int setup_interrupts(const struct device *dev)
 	struct cxd5605_data *drv_data = dev->data;
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *int_gpio = &config->int_gpio;
-	char device_type[] = DT_N_P_compatible;
 
-	if (!strcmp("tmo,dev_edge", device_type)) {
-		printk("found tmo_dev_edge device\n");
+	if (config->alert_gpio.port) {
 		/* setup 1pps interrupt */
 		result = gpio_pin_configure_dt(int_gpio, GPIO_INPUT);
 
@@ -661,8 +662,6 @@ int setup_interrupts(const struct device *dev)
 		if (result < 0) {
 			return result;
 		}
-	} else {
-		printk("found tmo_tracker_v2 device\n");
 	}
 
 	return 0;
@@ -683,6 +682,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 {
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
+	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
 
 	int result = 0;
 
@@ -693,6 +693,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 * domain this device belongs is resumed.
 		 */
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
+		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
 		k_msleep(3000);	/* wait for GNSS chip to boot */
 		result = init(dev);
 		if (result < 0) {
@@ -713,6 +714,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 
 		gpio_pin_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
+		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		break;
 	default:
 		return -ENOTSUP;

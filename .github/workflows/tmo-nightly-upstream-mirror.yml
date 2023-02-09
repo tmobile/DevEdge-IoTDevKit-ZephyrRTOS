@@ -1,0 +1,21 @@
+name: Tmo Nightly Upstream Mirror
+
+on:
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron: "0 6 * * *"
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.MIRROR_TOKEN }}
+      - run: |
+          echo "cloning upstream"
+          git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
+          cd zephyr.git
+          echo "pushing all from upstream to ours"
+          git push -f --all https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git

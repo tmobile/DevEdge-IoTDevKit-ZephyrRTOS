@@ -295,16 +295,6 @@ static int tmp108_attr_set(const struct device *dev,
 					     mode);
 		break;
 
-	case SENSOR_ATTR_USER_CALLBACK:
-		if (val->val1 > 0) {
-			if (val->val2) {
-				/* set application interrupt callback routine */
-				drv_data->temp_alert_handler =
-					(sensor_trigger_handler_t)val->val2;
-			}
-		}
-		break;
-
 	default:
 		return -ENOTSUP;
 	}

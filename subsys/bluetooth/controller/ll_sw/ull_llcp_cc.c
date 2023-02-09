@@ -49,12 +49,21 @@
 #include <soc.h>
 #include "hal/debug.h"
 
-static bool cc_check_cis_established_lll(struct proc_ctx *ctx)
+static bool cc_check_cis_established_or_timeout_lll(struct proc_ctx *ctx)
 {
 	const struct ll_conn_iso_stream *cis =
 		ll_conn_iso_stream_get(ctx->data.cis_create.cis_handle);
 
-	return cis->established;
+	if (cis->established) {
+		return true;
+	}
+
+	if (!cis->event_expire) {
+		ctx->data.cis_create.error = BT_HCI_ERR_CONN_FAIL_TO_ESTAB;
+		return true;
+	}
+
+	return false;
 }
 
 static void cc_ntf_established(struct ll_conn *conn, struct proc_ctx *ctx)
@@ -76,8 +85,7 @@ static void cc_ntf_established(struct ll_conn *conn, struct proc_ctx *ctx)
 	pdu->status = ctx->data.cis_create.error;
 
 	/* Enqueue notification towards LL */
-	ll_rx_put(ntf->hdr.link, ntf);
-	ll_rx_sched();
+	ll_rx_put_sched(ntf->hdr.link, ntf);
 }
 
 #if defined(CONFIG_BT_PERIPHERAL)
@@ -154,6 +162,9 @@ static void llcp_rp_cc_tx_rsp(struct ll_conn *conn, struct proc_ctx *ctx)
 
 	pdu = (struct pdu_data *)tx->pdu;
 
+	ctx->data.cis_create.conn_event_count = MAX(ctx->data.cis_create.conn_event_count,
+						    cc_event_counter(conn) + 2);
+
 	llcp_pdu_encode_cis_rsp(ctx, pdu);
 	ctx->tx_opcode = pdu->llctrl.opcode;
 
@@ -200,8 +211,7 @@ static void rp_cc_ntf_create(struct ll_conn *conn, struct proc_ctx *ctx)
 	ctx->data.cis_create.host_request_to = 0U;
 
 	/* Enqueue notification towards LL */
-	ll_rx_put(ntf->hdr.link, ntf);
-	ll_rx_sched();
+	ll_rx_put_sched(ntf->hdr.link, ntf);
 }
 
 static void rp_cc_complete(struct ll_conn *conn, struct proc_ctx *ctx, uint8_t evt, void *param)
@@ -368,6 +378,7 @@ static void rp_cc_state_wait_rx_cis_ind(struct ll_conn *conn, struct proc_ctx *c
 
 	switch (evt) {
 	case RP_CC_EVT_CIS_IND:
+		llcp_pdu_decode_cis_ind(ctx, pdu);
 		if (!ull_peripheral_iso_setup(&pdu->llctrl.cis_ind, ctx->data.cis_create.cig_id,
 					 ctx->data.cis_create.cis_handle)) {
 
@@ -428,8 +439,19 @@ static void rp_cc_check_instant(struct ll_conn *conn, struct proc_ctx *ctx, uint
 				void *param)
 {
 	uint16_t start_event_count;
+	struct ll_conn_iso_group *cig;
 
+	cig = ll_conn_iso_group_get_by_id(ctx->data.cis_create.cig_id);
 	start_event_count = ctx->data.cis_create.conn_event_count;
+	LL_ASSERT(cig);
+
+	if (!cig->started) {
+		/* Start ISO peripheral one event before the requested instant
+		 * for first CIS. This is done to be able to accept small CIS
+		 * offsets.
+		 */
+		start_event_count--;
+	}
 
 	if (is_instant_reached_or_passed(start_event_count,
 					 cc_event_counter(conn))) {
@@ -493,8 +515,11 @@ static void rp_cc_state_wait_cis_established(struct ll_conn *conn, struct proc_c
 	switch (evt) {
 	case RP_CC_EVT_RUN:
 		/* Check for CIS state */
-		if (cc_check_cis_established_lll(ctx)) {
-			/* CIS was established, so let's got ahead and complete procedure */
+		if (cc_check_cis_established_or_timeout_lll(ctx)) {
+			/* CIS was established or establishement timed out,
+			 * In either case complete procedure and generate
+			 * notification
+			 */
 			rp_cc_complete(conn, ctx, evt, param);
 		}
 		break;
@@ -561,8 +586,12 @@ void llcp_rp_cc_rx(struct ll_conn *conn, struct proc_ctx *ctx, struct node_rx_pd
 		rp_cc_execute_fsm(conn, ctx, RP_CC_EVT_REJECT, pdu);
 		break;
 	default:
-		/* Unknown opcode */
-		LL_ASSERT(0);
+		/* Invalid behaviour */
+		/* Invalid PDU received so terminate connection */
+		conn->llcp_terminate.reason_final = BT_HCI_ERR_LMP_PDU_NOT_ALLOWED;
+		llcp_rr_complete(conn);
+		ctx->state = RP_CC_STATE_IDLE;
+		break;
 	}
 }
 
@@ -671,8 +700,12 @@ void llcp_lp_cc_rx(struct ll_conn *conn, struct proc_ctx *ctx, struct node_rx_pd
 		lp_cc_execute_fsm(conn, ctx, LP_CC_EVT_REJECT, pdu);
 		break;
 	default:
-		/* Unknown opcode */
-		LL_ASSERT(0);
+		/* Invalid behaviour */
+		/* Invalid PDU received so terminate connection */
+		conn->llcp_terminate.reason_final = BT_HCI_ERR_LMP_PDU_NOT_ALLOWED;
+		llcp_lr_complete(conn);
+		ctx->state = LP_CC_STATE_IDLE;
+		break;
 	}
 }
 
@@ -843,7 +876,7 @@ static void lp_cc_st_wait_established(struct ll_conn *conn, struct proc_ctx *ctx
 {
 	switch (evt) {
 	case LP_CC_EVT_RUN:
-		if (cc_check_cis_established_lll(ctx)) {
+		if (cc_check_cis_established_or_timeout_lll(ctx)) {
 			/* CIS was established, so let's got ahead and complete procedure */
 			lp_cc_complete(conn, ctx, evt, param);
 		}
