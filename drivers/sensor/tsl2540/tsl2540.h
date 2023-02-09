@@ -75,7 +75,7 @@ struct tsl2540_data {
 	const struct device *gpio;
 	uint8_t gpio_pin;
 	struct gpio_callback gpio_cb;
-	enum interrupt_type int_type;
+	// enum interrupt_type int_type;
 	sensor_trigger_handler_t als_handler;
 #endif
 #ifdef CONFIG_TSL2540_TRIGGER_OWN_THREAD

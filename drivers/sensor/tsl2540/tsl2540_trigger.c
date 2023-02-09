@@ -43,7 +43,7 @@ static void tsl2540_handle_int(const struct device *dev)
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	if (tsl2540_read(dev, TSL2540_REG_STATUS, &status)) {
+	if (tsl2540_reg_read(dev, TSL2540_REG_STATUS, &status)) {
 		LOG_ERR("Could not read status");
 	}
 
@@ -153,6 +153,7 @@ int tsl2540_trigger_init(const struct device *dev)
 	}
 
 	data->gpio_pin = config->int_gpio.pin;
+	data->gpio = config->int_gpio.port;
 
 	gpio_pin_configure(data->gpio, data->gpio_pin,
 			   GPIO_INPUT | config->int_gpio.dt_flags);

@@ -148,13 +148,14 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			cpl /= (53 * data->glass_attenuation);
 			uint16_t thld =
 				(uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_be16(thld);
-			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_HI,
+			thld = sys_cpu_to_le16(thld);
+			LOG_INF("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
+			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_LOW,
 					      ((uint8_t *)&thld)[0])) {
 				ret = -EIO;
 				goto exit;
 			}
-			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_LOW,
+			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_HI,
 					      ((uint8_t *)&thld)[1])) {
 				ret = -EIO;
 				goto exit;
@@ -171,13 +172,14 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			cpl /= (53 * data->glass_attenuation);
 			uint16_t thld =
 				(uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_be16(thld);
-			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_HI,
+			thld = sys_cpu_to_le16(thld);
+			LOG_INF("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
+			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_LOW,
 					      ((uint8_t *)&thld)[0])) {
 				ret = -EIO;
 				goto exit;
 			}
-			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_LOW,
+			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_HI,
 					      ((uint8_t *)&thld)[1])) {
 				ret = -EIO;
 				goto exit;
@@ -186,14 +188,14 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 			ret = 0;
 			goto exit;
 		}
-		if (attr == SENSOR_ATTR_GLASS_ATTENUATION) {
+		if ((enum sensor_attribute_tsl2540) attr == SENSOR_ATTR_GLASS_ATTENUATION) {
 			data->glass_attenuation = sensor_value_to_double(val);
 			ret = 0;
 			goto exit;
 		}
 	}
 	if (chan == SENSOR_CHAN_IR) {
-		if (attr == SENSOR_ATTR_GLASS_ATTENUATION) {
+		if ((enum sensor_attribute_tsl2540) attr == SENSOR_ATTR_GLASS_ATTENUATION) {
 			data->glass_attenuation = sensor_value_to_double(val);
 			ret = 0;
 			goto exit;
@@ -363,7 +365,7 @@ static int tsl2540_init(const struct device *dev)
 
 #if CONFIG_TSL2540_TRIGGER
 	if (tsl2540_trigger_init(dev)) {
-		LOG_ERR("Could not initialise interrupts");
+		LOG_ERR("Could not initialize interrupts");
 		return -EIO;
 	}
 #endif
