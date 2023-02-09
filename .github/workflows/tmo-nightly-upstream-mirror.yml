@@ -18,6 +18,7 @@ jobs:
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
           cd zephyr.git
           mkdir ~/.ssh
+          ssh-agent -s
           echo "${{ secrets.MERGE_KEY }}" > ~/.ssh/id_rsa
           ls -la ~/.ssh
           ssh-add ~/.ssh/id_rsa
