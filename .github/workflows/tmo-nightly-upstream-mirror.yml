@@ -19,7 +19,7 @@ jobs:
           cd zephyr.git
           mkdir ~/.ssh
           echo "${{ secrets.MERGE_KEY }}" > ~/.ssh/id_rsa
-          chmod 0644 ~/.ssh/id_rsa
+          chmod 0400 ~/.ssh/id_rsa
           ls -la ~/.ssh
           eval $(ssh-agent -s)
           ssh-add ~/.ssh/id_rsa
