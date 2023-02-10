@@ -29,23 +29,17 @@ The boards support the following hardware features:
 +-----------+------------+-------------------------------------+
 | Interface | Controller | Driver/Component                    |
 +===========+============+=====================================+
-| Arm GIC   | on-chip    | interrupt_controller                |
+| GIC       | on-chip    | interrupt_controller                |
 +-----------+------------+-------------------------------------+
-| Arm Timer | on-chip    | timer                               |
-+-----------+------------+-------------------------------------+
-| LINFlexD  | on-chip    | serial                              |
-+-----------+------------+-------------------------------------+
-| MRU       | on-chip    | mbox                                |
-+-----------+------------+-------------------------------------+
-| NETC      | on-chip    | ethernet                            |
-|           |            |                                     |
-|           |            | mdio                                |
+| ARM Timer | on-chip    | timer                               |
 +-----------+------------+-------------------------------------+
 | SIUL2     | on-chip    | pinctrl                             |
 |           |            |                                     |
 |           |            | gpio                                |
 |           |            |                                     |
 |           |            | external interrupt controller       |
++-----------+------------+-------------------------------------+
+| LINFlexD  | on-chip    | serial                              |
 +-----------+------------+-------------------------------------+
 | SPI       | on-chip    | spi                                 |
 +-----------+------------+-------------------------------------+
@@ -116,17 +110,8 @@ remaining are disabled and not configured.
 Watchdog
 ========
 
-The watchdog driver only supports triggering an interrupt upon timer expiration.
-Zephyr is currently running from SRAM on this board, thus system reset is not
-supported.
-
-Ethernet
-========
-
-NETC driver supports to manage the Physical Station Interface (PSI0) and/or a
-single Virtual SI (VSI). The rest of the VSI's shall be assigned to different
-cores of the system. Refer to :ref:`nxp_s32_netc-samples` to learn how to
-configure the Ethernet network controller.
+Currently Watchdog only supports interrupt triggering, but does not support
+reset function because currently the board does not support running on flash.
 
 Programming and Debugging
 *************************
