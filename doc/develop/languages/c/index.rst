@@ -60,7 +60,6 @@ application.
 
    minimal_libc.rst
    newlib.rst
-   picolibc.rst
 
 .. _`C Standard Library`: https://en.wikipedia.org/wiki/C_standard_library
 
