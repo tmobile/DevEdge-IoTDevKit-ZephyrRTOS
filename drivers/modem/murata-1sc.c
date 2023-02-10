@@ -1634,7 +1634,7 @@ MODEM_CMD_DEFINE(on_cmd_dnsrslv)
  */
 static int get_dns_ip(const char *dn)
 {
-	char at_cmd[64];
+	char at_cmd[128];
 	int ret;
 
 	struct modem_cmd data_cmd[] = {
