@@ -264,6 +264,7 @@ static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **ar
 
 #if defined(CONFIG_TIME_GECKO_RTCC)
 	time_t time_ticks = (time_t)ticks;
+
 	gmtime_r(&time_ticks, &tm_gm);
 
 	date_print(shell_ptr, &tm_gm);
