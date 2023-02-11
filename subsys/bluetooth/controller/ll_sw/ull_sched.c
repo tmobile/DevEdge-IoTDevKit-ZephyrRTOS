@@ -95,14 +95,28 @@ int ull_sched_adv_aux_sync_free_slot_get(uint8_t user_id,
 
 		} else if (IN_RANGE(ticker_id, TICKER_ID_ADV_AUX_BASE,
 				    TICKER_ID_ADV_AUX_LAST)) {
+			const struct ll_adv_aux_set *aux;
+
 			*ticks_anchor += ticks_to_expire;
 			*ticks_anchor += ticks_slot;
 
-			if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
-				const struct ll_adv_aux_set *aux;
+			aux = ull_adv_aux_get(ticker_id -
+					      TICKER_ID_ADV_AUX_BASE);
 
-				aux = (void *)ull_hdr_get_cb(ticker_id,
-							     &ticks_slot);
+#if defined(CONFIG_BT_CTLR_ADV_PERIODIC)
+			if (aux->lll.adv->sync) {
+				const struct ll_adv_sync_set *sync;
+
+				sync = HDR_LLL2ULL(aux->lll.adv->sync);
+				if (sync->is_started) {
+					*ticks_anchor += sync->ull.ticks_slot;
+					*ticks_anchor += HAL_TICKER_US_TO_TICKS(
+						EVENT_TICKER_RES_MARGIN_US << 1);
+				}
+			}
+#endif /* CONFIG_BT_CTLR_ADV_PERIODIC */
+
+			if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
 				*ticks_anchor +=
 					MAX(aux->ull.ticks_active_to_start,
 					    aux->ull.ticks_prepare_to_start);
@@ -119,8 +133,8 @@ int ull_sched_adv_aux_sync_free_slot_get(uint8_t user_id,
 			if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
 				const struct ll_adv_sync_set *sync;
 
-				sync = (void *)ull_hdr_get_cb(ticker_id,
-							      &ticks_slot);
+				sync = ull_adv_sync_get(ticker_id -
+							TICKER_ID_ADV_SYNC_BASE);
 				*ticks_anchor +=
 					MAX(sync->ull.ticks_active_to_start,
 					    sync->ull.ticks_prepare_to_start);
@@ -137,8 +151,8 @@ int ull_sched_adv_aux_sync_free_slot_get(uint8_t user_id,
 			if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
 				const struct ll_adv_iso_set *iso;
 
-				iso = (void *)ull_hdr_get_cb(ticker_id,
-							     &ticks_slot);
+				iso = ull_adv_iso_get(ticker_id -
+						      TICKER_ID_ADV_ISO_BASE);
 				*ticks_anchor +=
 					MAX(iso->ull.ticks_active_to_start,
 					    iso->ull.ticks_prepare_to_start);
