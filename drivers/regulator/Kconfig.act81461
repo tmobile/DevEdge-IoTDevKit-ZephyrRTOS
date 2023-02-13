@@ -1,0 +1,31 @@
+# Copyright (c) 2021, NXP
+# SPDX -License-Identifier: Apache-2.0
+
+DT_COMPAT_PMIC_REG := qorvo,act81461
+
+config REGULATOR_ACT81461
+		bool "PMIC Regulator Driver"
+		depends on $(dt_compat_enabled,$(DT_COMPAT_PMIC_REG))
+		default $(dt_compat_enabled,$(DT_COMPAT_PMIC_REG))
+		select I2C
+		help
+		  Enable the pmic regulator driver
+
+if REGULATOR_ACT81461
+
+config REGULATOR_ACT81461_COMMON_INIT_PRIORITY
+		int "ACT81461 regulator driver parent init priority"
+		default 75
+		help
+		  Init priority for the QORVO parent regulator driver.
+		  It must be greater than I2C init priority.
+
+config REGULATOR_ACT81461_INIT_PRIORITY
+		int "regulator driver parent init priority"
+		default 76
+		help
+		  Init priority for the QORVO regulator child driver. It must be
+		  greater than parent REGULATOR_ACT81461_COMMON_INIT_PRIORITY.
+
+endif
+

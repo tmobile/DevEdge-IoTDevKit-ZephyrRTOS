@@ -1,0 +1,118 @@
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  QORVO REGULATOR ACT81461
+
+  The PMIC has two buck converters and two LDOs. All need to be defined as
+  children nodes, strictly following the BUCKBOOST, BUCK1, LDO1 and LDO3 node names.
+  For example:
+
+  pmic@25 {
+    reg = <0x25>;
+    ...
+    BUCKBOOST {
+      /* all properties for 400mA BUCKBOOST 3V3 */
+    };
+    BUCK1 {
+      /* all properties for 400mA DC-DC Stepdown BUCK1 1V85 */
+    };
+    LDO1 {
+      /* all properties for 100mA LDO1 2V20 */
+    };
+    LDO3 {
+      /* all properties for 100mA LDO3 1V85 */
+    };
+  };
+
+compatible: "qorvo,act81461"
+
+include: [base.yaml, i2c-device.yaml, regulator.yaml]
+
+properties:
+    int-gpios:
+        type: phandle-array
+        required: false
+        description: |
+           Identifies any change in enabled system status state
+    voltage-range:
+        type: array
+        required: false
+        description: |
+           array of voltage values in uV, followed by the register value that
+           must be written to enable the voltage. For example, [3300000, 0x3]
+           denotes a value of 0x3 must be written to the register to set 3.3V
+    num-voltages:
+        type: int
+        required: false
+        description: number of voltages present in the voltage-range array.
+    vsel-reg:
+        type: int
+        required: false
+        description: I2C register to write voltage selection value to
+    vsel-mask:
+        type: int
+        required: false
+        description: |
+          Mask to apply to the voltage range value when written to vsel
+          register
+    enable-reg:
+        type: int
+        required: false
+        description: I2C register to write enable value to
+    enable-mask:
+        type: int
+        required: false
+        description: |
+          Mask to apply to the enable bit (either 1 for enabled,
+          or 0 for disabled) when writing it to the I2C enable register.
+    enable-val:
+        type: int
+        required: false
+        description: |
+          value to apply enable-mask to, and write to enable-reg in order
+          to enable the regulator output.
+    pmic-init-reg-array:
+        type: uint8-array
+        required: false
+        description: I2C register to read and write data to.
+    pmic-init-reg-value-array:
+        type: uint8-array
+        required: false
+        description: I2C register to read and write data to.
+    pmic-init-reg-array-num:
+        type: int
+        required: false
+        description: I2C register to read and write data to.
+    rwdata-reg:
+        type: int
+        required: false
+        description: I2C register to read and write data to.
+    rwdata-reg-mask:
+        type: int
+        required: false
+        description: I2C register mask to use for the read and write.
+    rwdata-reg-value:
+        type: int
+        required: false
+        description: I2C register value to use for the read and write.
+    min-uV:
+        type: int
+        required: false
+        description: |
+           Minimum voltage in microvolts that this regulator supports
+    max-uV:
+        type: int
+        required: false
+        description: |
+           Maximum voltage in microvolts that this regulator supports
+
+child-binding:
+  include:
+    - name: regulator.yaml
+      property-allowlist:
+        - regulator-always-on
+        - regulator-boot-on
+        - regulator-min-microvolt
+        - regulator-max-microvolt
+

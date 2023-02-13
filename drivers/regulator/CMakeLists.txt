@@ -10,3 +10,5 @@ zephyr_library_sources_ifdef(CONFIG_REGULATOR_NPM1100 regulator_npm1100.c)
 zephyr_library_sources_ifdef(CONFIG_REGULATOR_NPM6001 regulator_npm6001.c)
 zephyr_library_sources_ifdef(CONFIG_REGULATOR_PCA9420 regulator_pca9420.c)
 zephyr_library_sources_ifdef(CONFIG_REGULATOR_SHELL regulator_shell.c)
+zephyr_library_sources_ifdef(CONFIG_REGULATOR_ACT81461 regulator_act81461.c)
+
