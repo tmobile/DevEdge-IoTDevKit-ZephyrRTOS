@@ -1041,13 +1041,13 @@ static int prepare_cb(struct lll_prepare_param *p)
 				    ticks_at_event);
 	/* check if preempt to start has changed */
 	if (overhead) {
-		LL_ASSERT_OVERHEAD(overhead);
-
+		LL_ASSERT_MSG(false, "%s: Actual EVENT_OVERHEAD_START_US = %u",
+			      __func__, HAL_TICKER_TICKS_TO_US(overhead));
 		radio_isr_set(isr_abort, lll);
 		radio_disable();
 
 		return -ECANCELED;
-	} else
+	}
 #endif /* CONFIG_BT_CTLR_XTAL_ADVANCED */
 
 #if defined(CONFIG_BT_CTLR_ADV_EXT) && defined(CONFIG_BT_TICKER_EXT_EXPIRE_INFO)
