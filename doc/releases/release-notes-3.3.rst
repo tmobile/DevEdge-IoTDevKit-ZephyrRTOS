@@ -278,6 +278,16 @@ New APIs in this release
 Kernel
 ******
 
+* Add an "EARLY" init level that runs immediately on entry to z_cstart()
+
+* Refactored the internal CPU count API to allow for runtime changes
+
+* Allow application main() to be defined in C++ code
+
+* Fix a race condition on SMP when pending threads where a second CPU
+  could attempt to run a thread before the pending thread had finished
+  the context switch.
+
 Architectures
 *************
 
@@ -285,14 +295,18 @@ Architectures
 
 * ARM
 
+  * More precise 'reason' codes are now returned in the fault handler.
+  * Cache functions now use proper ``sys_*`` functions.
+  * Renamed default RAM region from ``SRAM`` to ``RAM``.
+
 * ARM64
 
   * Implemented ASID support for ARM64 MMU
 
 * RISC-V
 
-  * Converted :kconfig:option:`CONFIG_MP_MAX_CPUS` to
-    :kconfig:option:`CONFIG_MP_MAX_CPUS`.
+  * Converted :kconfig:option:`CONFIG_MP_NUM_CPUS` to
+    :kconfig:option:`CONFIG_MP_MAX_NUM_CPUS`.
 
   * Added support for hardware register stacking/unstacking during ISRs and
     exceptions.
@@ -408,6 +422,8 @@ Boards & SoC Support
 
 * Added support for these SoC series:
 
+  * Atmel SAMC20, SAMC21
+  * Atmel SAME70Q19
   * GigaDevice GD32L23X
   * GigaDevice GD32A50X
 
@@ -430,9 +446,12 @@ Boards & SoC Support
 
 * Added support for these ARM boards:
 
+  * Adafruit ItsyBitsy nRF52840 Express
   * Adafruit KB2040
+  * Atmel atsamc21n_xpro
   * GigaDevice GD32L233R-EVAL
   * GigaDevice GD32A503V-EVAL
+  * nRF5340 Audio DK
   * Sparkfun pro micro RP2040
   * Arduino Portenta H7
   * SECO JUNO SBC-D23 (STM32F302)
@@ -458,6 +477,11 @@ Boards & SoC Support
 * Removed support for these Xtensa boards:
 
 * Made these changes in ARM boards:
+
+  * sam4s_xplained: Enabled PWM
+  * sam_e70_xplained: Added DMA devicetree entries for SPI
+  * sam_v71_xult: Added DMA devicetree entries for SPI
+  * tdk_robokit1: Added DMA devicetree entries for SPI
 
   * The scratch partition has been removed for the following Nordic boards and
     flash used by this area re-assigned to other partitions to free up space
@@ -540,6 +564,13 @@ Drivers and Sensors
 * ADC
 
   * STM32: Now Supports sequencing multiple channels into a single read.
+  * Fixed a problem in :c:macro:`ADC_CHANNEL_CFG_DT` that forced users to add
+    artificial ``input-positive`` property in nodes related to ADC drivers that
+    do not use configurable analog inputs when such drivers were used together
+    with an ADC driver that uses such input configuration.
+  * Added driver for TI CC13xx/CC26xx family.
+  * Added driver for Infineon XMC4xxx family.
+  * Added driver for ESP32 SoCs.
 
 * Battery-backed RAM
 
@@ -571,6 +602,9 @@ Drivers and Sensors
 
 * DAC
 
+  * Added support for GigaDevice GD32 SoCs.
+  * Added support for Espressif ESP32 SoCs.
+
 * DFU
 
   * Remove :c:macro:`BOOT_TRAILER_IMG_STATUS_OFFS` in favor a two new functions;
@@ -589,6 +623,8 @@ Drivers and Sensors
 * DMA
 
   * Adjust incorrect dma1 clock source for GD32 gd32vf103 SoC.
+  * Atmel SAM: Added support to select fixed or increment address mode when using
+    peripherals to memory or memory to peripheral transfers.
   * STM32 DMA variable scope cleanups
   * Intel GPDMA linked list transfer descriptors appropriately aligned to 64 byte addresses
   * Intel GPDMA fix bug in transfer configuration to initialize cfg_hi and cfg_lo
@@ -664,7 +700,13 @@ Drivers and Sensors
 
 * GPIO
 
+  * Atmel SAM: Added support to configure Open-Drain pins
   * Added driver for nPM6001 PMIC GPIOs
+
+* hwinfo
+
+  * Added hwinfo_get_device_id for ESP32-C3
+  * Add reset cause for iwdg and wwdg for STM32H7 and MP1
 
 * I2C
 
@@ -726,6 +768,9 @@ Drivers and Sensors
   * Added support for GD32L23x/GD32A50x in the Gigadevice driver
 
 * PWM
+
+  * Atmel SAM: Added support to select pin polarity
+  * Added driver for NXP PCA9685 LED controller
 
 * Power domain
 
@@ -807,13 +852,29 @@ Drivers and Sensors
 
 * Serial
 
+  * Atmel SAM: UART/USART: Added support to configure driver at runtime
   * STM32: DMA now supported on STM32U5 series.
 
 * SPI
 
   * Added dma support for GD32 driver.
+  * Atmel SAM:
+
+    * Added support to transfers using DMA.
+    * Added support to loopback mode for testing purposes.
 
 * Timer
+
+  * Correct CPU numbering on SMP RISC-V systems using the mtime device
+
+  * Add support for OpenTitan's priviledged timer device to riscv_machine_timer
+
+  * Refactor SYS_CLOCK_EXISTS such that it always matches the
+    existence of a timer device in kconfig
+
+  * Significant rework to nrf_rtc_timer with multiple fixes
+
+  * Fix prescaler correction in stm32_lptim driver and fix race with autoreload
 
 * USB
 
@@ -1109,6 +1170,13 @@ Libraries / Subsystems
 
   * Rewrote the ISO-TP API to not reuse definitions from the CAN controller API.
 
+* Logging
+
+  * Added support for logging on multiple domains.
+  * :kconfig:option:`CONFIG_LOG_PRINTK` is now by default enabled which means that
+    when logging is enabled then printk is by directed to the logging subsystem.
+  * Added option to use custom logging header.
+
 * Management
 
   * MCUmgr functionality deprecated in 3.1 has been removed:
@@ -1391,6 +1459,16 @@ Libraries / Subsystems
     buffer is insufficient has been fixed by making the default size 256 bytes
     instead of 64 when the shell MCUmgr transport is selected.
 
+  * UpdateHub:
+
+    * The integrity check was reworked to allow use by other libraries. Since
+      then UpdateHub uses mbedTLS library as default crypto library.
+    * Added a new Storage Abstraction to isolate both flash operations and
+      MCUboot internals.
+    * The UpdateHub User API was moved as a Zephyr public API and the userspace
+      now is available. This added :c:func:`updatehub_confirm` and
+      :c:func:`updatehub_reboot` functions.
+
 * LwM2M
 
   * The ``lwm2m_senml_cbor_*`` files have been regenerated using zcbor 0.6.0.
@@ -1447,15 +1525,32 @@ Libraries / Subsystems
 HALs
 ****
 
+* Atmel
+
+  * sam0: Added support for SAMC20/21.
+  * sam4l: Added ``US_MR_CHRL_{n}_BIT`` Register Aliases for USART Driver.
+
 * GigaDevice
 
   * Added support for gd32l23x.
   * Added support for gd32a50x.
+
+* Nordic
+
+  * Updated nrfx to version 2.10.0.
+
 * STM32
 
   * stm32cube: updated stm32h7 to cube version V1.11.0.
   * stm32cube: updated stm32l5 to cube version V1.5.0.
   * stm32cube: updated stm32wl to cube version V1.3.0.
+
+* Espressif
+
+  * Added Ethernet driver support
+  * Added light-sleep and deep-sleep support over PM interface
+  * Added ADC and DAC driver support
+  * Added GDMA driver support
 
 MCUboot
 *******
@@ -1469,6 +1564,13 @@ Storage
 
 Trusted Firmware-M
 ******************
+
+* Updated to TF-M 1.7.0 (and MbedTLS 3.2.1).
+* Initial attestation service has been disabled by default due to license
+  issues with the QCBOR dependecy. To enable it, set the path for QCBOR via
+  ``CONFIG_TFM_QCBOR_PATH`` or set the path to ``DOWNLOAD``.
+* Firmware update sample removed pending update to 1.0 FWU service.
+* psa_crypto sample removed pending resolution of PSA API conflicts w/MbedTLS.
 
 zcbor
 *****
