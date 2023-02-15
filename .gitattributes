@@ -173,6 +173,7 @@ soc/arm/silabs_exx32/common/soc_power.c merge=ours
 subsys/net/l2/wifi/wifi_mgmt.c merge=ours
 subsys/net/lib/CMakeLists.txt merge=ours
 subsys/net/lib/Kconfig merge=ours
+subsys/net/lib/http/http_client.c merge=ours
 subsys/net/lib/ping/CMakeLists.txt merge=ours
 subsys/net/lib/ping/Kconfig merge=ours
 subsys/net/lib/ping/ping.c merge=ours
