@@ -386,6 +386,40 @@ static int tmp108_init(const struct device *dev)
 	return result;
 }
 
+#ifdef CONFIG_PM_DEVICE
+#include <zephyr/pm/device.h>
+
+static int tmp108_pm_action(const struct device *dev,
+			     enum pm_device_action action)
+{
+	int ret = 0;
+	struct tmp108_data *drv_data = dev->data;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		if (drv_data->one_shot_mode) {
+			ret = tmp108_write_config(dev,
+						TI_TMP108_MODE_MASK(dev),
+						TI_TMP108_MODE_ONE_SHOT(dev));
+		} else {
+			ret = tmp108_write_config(dev,
+						TI_TMP108_MODE_MASK(dev),
+						TI_TMP108_MODE_CONTINUOUS(dev));
+		}
+		break;
+	case PM_DEVICE_ACTION_SUSPEND:
+		ret = tmp108_write_config(dev,
+						TI_TMP108_MODE_MASK(dev),
+						TI_TMP108_MODE_SHUTDOWN(dev));
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return ret;
+}
+#endif
+
 #define TMP108_DEFINE(inst, t)						   \
 	static struct tmp108_data tmp108_prv_data_##inst##t;		   \
 	static const struct tmp108_config tmp108_config_##inst##t = {	   \
@@ -394,9 +428,10 @@ static int tmp108_init(const struct device *dev)
 						       alert_gpios, { 0 }),\
 		.reg_def = t##_CONF					   \
 	};								   \
+	PM_DEVICE_DT_INST_DEFINE(inst, tmp108_pm_action);				   \
 	SENSOR_DEVICE_DT_INST_DEFINE(inst,				   \
 			      &tmp108_init,				   \
-			      NULL,					   \
+			      PM_DEVICE_DT_INST_GET(inst),		   \
 			      &tmp108_prv_data_##inst##t,		   \
 			      &tmp108_config_##inst##t,			   \
 			      POST_KERNEL,				   \
