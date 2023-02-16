@@ -876,7 +876,9 @@ static void sc_indicate(uint16_t start, uint16_t end);
 
 static void db_hash_process(struct k_work *work)
 {
-	if (!atomic_test_bit(gatt_sc.flags, DB_HASH_VALID)) {
+	bool new_hash = !atomic_test_bit(gatt_sc.flags, DB_HASH_VALID);
+
+	if (new_hash) {
 		db_hash_gen();
 	}
 
@@ -893,13 +895,15 @@ static void db_hash_process(struct k_work *work)
 		return;
 	}
 
-	if (!already_processed) {
+	if (already_processed) {
 		/* hash has been loaded from settings and we have already
 		 * executed the special case below once. we can now safely save
-		 * the calculated hash to settings.
+		 * the calculated hash to settings (if it has changed).
 		 */
-		set_all_change_unaware();
-		db_hash_store();
+		if (new_hash) {
+			set_all_change_unaware();
+			db_hash_store();
+		}
 	} else {
 		/* this is only supposed to run once, on bootup, after the hash
 		 * has been loaded from settings.
@@ -1071,7 +1075,7 @@ static int bt_gatt_store_cf(uint8_t id, const bt_addr_le_t *peer)
 
 }
 
-#if defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_SMP) && defined(CONFIG_BT_GATT_CLIENT)
+#if defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_SMP)
 /** Struct used to store both the id and the random address of a device when replacing
  * random addresses in the ccc attribute's cfg array with the device's id address after
  * pairing complete.
@@ -1114,14 +1118,35 @@ static void bt_gatt_identity_resolved(struct bt_conn *conn, const bt_addr_le_t *
 		.private_addr = private_addr,
 		.id_addr      = id_addr
 	};
+	bool is_bonded = bt_addr_le_is_bonded(conn->id, &conn->le.dst);
 
 	bt_gatt_foreach_attr(0x0001, 0xffff, convert_to_id_on_match, &user_data);
 
-	/* Store the ccc and cf data */
-	bt_gatt_store_ccc(conn->id, &(conn->le.dst));
-	bt_gatt_store_cf(conn->id, &conn->le.dst);
+	/* Store the ccc */
+	if (is_bonded) {
+		bt_gatt_store_ccc(conn->id, &conn->le.dst);
+	}
+
+	/* Update the cf addresses and store it if we get a match */
+	struct gatt_cf_cfg *cfg = find_cf_cfg_by_addr(conn->id, private_addr);
+
+	if (cfg) {
+		bt_addr_le_copy(&cfg->peer, id_addr);
+		if (is_bonded) {
+			bt_gatt_store_cf(conn->id, &conn->le.dst);
+		}
+	}
 }
-#endif /* CONFIG_BT_SETTINGS && CONFIG_BT_SMP && CONFIG_BT_GATT_CLIENT */
+
+static void bt_gatt_pairing_complete(struct bt_conn *conn, bool bonded)
+{
+	if (bonded) {
+		/* Store the ccc and cf data */
+		bt_gatt_store_ccc(conn->id, &(conn->le.dst));
+		bt_gatt_store_cf(conn->id, &conn->le.dst);
+	}
+}
+#endif /* CONFIG_BT_SETTINGS && CONFIG_BT_SMP */
 
 BT_GATT_SERVICE_DEFINE(_1_gatt_svc,
 	BT_GATT_PRIMARY_SERVICE(BT_UUID_GATT),
@@ -1493,17 +1518,28 @@ void bt_gatt_init(void)
 	k_work_init_delayable(&gatt_delayed_store.work, delayed_store);
 #endif
 
-#if defined(CONFIG_BT_GATT_CLIENT) && defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_SMP)
+#if defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_SMP)
+	static struct bt_conn_auth_info_cb gatt_conn_auth_info_cb = {
+		.pairing_complete = bt_gatt_pairing_complete,
+	};
+
+	/* Register the gatt module for authentication info callbacks so it can
+	 * be notified when pairing has completed. This is used to enable CCC
+	 * and CF storage on pairing complete.
+	 */
+	bt_conn_auth_info_cb_register(&gatt_conn_auth_info_cb);
+
 	static struct bt_conn_cb gatt_conn_cb = {
 		.identity_resolved = bt_gatt_identity_resolved,
 	};
 
-	/* Register the gatt module for connection callbacks so it can be
-	 * notified when pairing has completed. This is used to enable CCC and
-	 * CF storage on pairing complete.
+	/* Also update the address of CCC or CF writes that happened before the
+	 * identity resolution. Note that to increase security in the future, we
+	 * might want to explicitly not do this and treat a bonded device as a
+	 * brand-new peer.
 	 */
 	bt_conn_cb_register(&gatt_conn_cb);
-#endif /* CONFIG_BT_GATT_CLIENT && CONFIG_BT_SETTINGS && CONFIG_BT_SMP */
+#endif /* CONFIG_BT_SETTINGS && CONFIG_BT_SMP */
 }
 
 #if defined(CONFIG_BT_GATT_DYNAMIC_DB) || \
@@ -5712,7 +5748,7 @@ void bt_gatt_encrypt_change(struct bt_conn *conn)
 
 	bt_gatt_foreach_attr(0x0001, 0xffff, update_ccc, &data);
 
-#if defined(CONFIG_BT_SETTINGS)
+#if defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_GATT_SERVICE_CHANGED)
 	if (!bt_gatt_change_aware(conn, false)) {
 		/* Send a Service Changed indication if the current peer is
 		 * marked as change-unaware.
