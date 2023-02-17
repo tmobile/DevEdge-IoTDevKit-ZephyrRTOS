@@ -137,6 +137,7 @@ html_theme_options = {
     "logo_only": True,
     "prev_next_buttons_location": None
 }
+html_baseurl = "https://docs.zephyrproject.org/latest/"
 html_title = "Zephyr Project Documentation"
 html_logo = str(ZEPHYR_BASE / "doc" / "_static" / "images" / "logo.svg")
 html_favicon = str(ZEPHYR_BASE / "doc" / "_static" / "images" / "favicon.png")
@@ -324,6 +325,3 @@ def setup(app):
     # theme customizations
     app.add_css_file("css/custom.css")
     app.add_js_file("js/dark-mode-toggle.min.mjs", type="module")
-
-    app.add_js_file("https://www.googletagmanager.com/gtag/js?id=UA-831873-47")
-    app.add_js_file("js/ga-tracker.js")

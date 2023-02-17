@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022 Silicon Labs
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +12,9 @@
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintptr_t reg)
 {
 	USART_TypeDef *base = (USART_TypeDef *)reg;
+#ifdef USART_NUM
 	int usart_num = USART_NUM(base);
+#endif /* USART_NUM */
 	uint8_t loc;
 
 #ifdef CONFIG_SPI_GECKO
