@@ -27,6 +27,10 @@ https://docs.zephyrproject.org/latest/security/vulnerabilities.html
 API Changes
 ***********
 
+* Emulator creation APIs have changed to better match
+  :c:macro:`DEVICE_DT_DEFINE`. It also includes a new backend API pointer to
+  allow sensors to share common APIs for more generic tests.
+
 Changes in this release
 =======================
 
@@ -128,6 +132,14 @@ Changes in this release
   bus that enables one-to-one, one-to-many and many-to-many communication
   between threads.
 
+* zTest now supports controlling test summary printouts via the
+  :kconfig:option:`CONFIG_ZTEST_SUMMARY`. This Kconfig can be set to ``n`` for
+  less verbose test output.
+
+* Emulators now support a backend API pointer which allows a single class of
+  devices to provide similar emulated functionality. This can be used to write
+  a single test for the class of devices and testing various boards using
+  different chips.
 
 Removed APIs in this release
 ============================
@@ -165,6 +177,10 @@ Removed APIs in this release
 
 Deprecated in this release
 ==========================
+
+* :ref:`xtools toolchain variant <toolchain_xtools>` is now deprecated. When using a
+  custom toolchain built with Crosstool-NG, the
+  :ref:`cross-compile toolchain variant <other_x_compilers>` should be used instead.
 
 * C++ library Kconfig options have been renamed to improve consistency. See
   below for the list of deprecated Kconfig options and their replacements:
@@ -441,6 +457,7 @@ Boards & SoC Support
   * Atmel SAME70Q19
   * GigaDevice GD32L23X
   * GigaDevice GD32A50X
+  * NXP S32Z2/E2
 
 * Removed support for these SoC series:
 
@@ -472,6 +489,7 @@ Boards & SoC Support
   * SECO JUNO SBC-D23 (STM32F302)
   * ST Nucleo G070RB
   * ST Nucleo L4A6ZG
+  * NXP X-S32Z27X-DC (DC2)
 
 * Added support for these ARM64 boards:
 
@@ -614,6 +632,7 @@ Drivers and Sensors
 
   * STM32 RTC based counter domain clock (LSE/SLI) should now be configured using device tree.
   * Added Timer based driver for GigaDevice GD32 SoCs.
+  * Added NXP S32 System Timer Module driver.
 
 * Crypto
 
@@ -719,6 +738,7 @@ Drivers and Sensors
 
   * Atmel SAM: Added support to configure Open-Drain pins
   * Added driver for nPM6001 PMIC GPIOs
+  * Added NXP S32 GPIO (SIUL2) driver
 
 * hwinfo
 
@@ -749,13 +769,25 @@ Drivers and Sensors
 
 * I3C
 
+  * Added a new target device API :c:func:`i3c_target_tx_write` to
+    explicit write to TX FIFO.
+
+  * GETMRL and GETMWL are both optional in :c:func:`i3c_device_basic_info_get` as
+    MRL and MWL are optional according to I3C specification.
+
+  * Added a new driver to support Cadence I3C controller.
+
 * IEEE 802.15.4
 
 * Interrupt Controller
 
   * STM32: Driver configuration and initialization is now based on device tree
+  * Added NXP S32 External Interrupt Controller (SIUL2) driver.
 
 * IPM
+
+  * ipm_stm32_ipcc: fix an issue where interrupt mask is not cleaned correctly,
+    resulting in infinite TXF interrupts.
 
 * KSCAN
 
@@ -763,9 +795,24 @@ Drivers and Sensors
 
 * MBOX
 
+  * Added NXP S32 Message Receive Unit (MRU) driver.
+
 * MEMC
 
 * PCIE
+
+  * Support for accessing I/O BARs, which was previously removed, is back.
+
+  * Added new API :c:func:`pcie_scan` to scan for devices.
+
+    * This interates through the the buses and devices which are expected to
+      exist. The old method was to try all possible combination of buses
+      and devices to determine if there is a device there.
+      :c:func:`pci_init` and :c:func:`pcie_bdf_lookup` have been updated to
+      use this new API.
+
+    * :c:func:`pcie_scan` also introduces a callback mechanism for when
+      a new device has been discovered.
 
 * PECI
 
@@ -872,6 +919,37 @@ Drivers and Sensors
   * Atmel SAM: UART/USART: Added support to configure driver at runtime
   * STM32: DMA now supported on STM32U5 series.
 
+  * uart_altera_jtag: added support for Nios-V UART.
+
+  * uart_esp32: added support asynchronous operation.
+
+  * uart_gecko: added support for pinctrl.
+
+  * uart_mchp_xec: now supports UART on MEC15xx SoC.
+
+  * uart_mcux_flexcomm: added support for runtime configuration.
+
+  * uart_mcux_lpuart: added support for RS-485.
+
+  * uart_numicro: uses pinctrl to configure UART pins.
+
+  * uart_pl011: added support for pinctrl.
+
+  * uart_rpi_pico: added support for runtime configuration.
+
+  * uart_xmc4xxx: added support for interrupt so it can now be interrupt driven.
+    Also added support for FIFO.
+
+  * New UART drivers are added:
+
+    * Cadence IP6528 UART.
+
+    * NXP S32 LINFlexD UART.
+
+    * OpenTitan UART.
+
+    * QuickLogic USBserialport_S3B.
+
 * SPI
 
   * Added dma support for GD32 driver.
@@ -879,6 +957,8 @@ Drivers and Sensors
 
     * Added support to transfers using DMA.
     * Added support to loopback mode for testing purposes.
+
+  * Added NXP S32 SPI driver.
 
 * Timer
 
@@ -925,6 +1005,7 @@ Drivers and Sensors
   * Added driver for nPM6001 PMIC Watchdog.
   * Added free watchdog driver for GigaDevice GD32 SoCs.
   * Added window watchdog driver for GigaDevice GD32 SoCs.
+  * Added NXP S32 Software Watchdog Timer driver.
 
 * WiFi
 
@@ -943,6 +1024,7 @@ Networking
     bringing Ethernet interface up.
   * Added ``unknown_protocol`` statistic for packets with unrecognized protocol
     field, instead of using ``error`` for this purpose.
+  * Added NXP S32 NETC Ethernet driver.
 
 * HTTP:
 
@@ -1991,6 +2073,12 @@ Libraries / Subsystems
     :kconfig:option:`CONFIG_ARCH_CACHE`
   * ``CONFIG_HAS_EXTERNAL_CACHE`` has been renamed to
     :kconfig:option:`CONFIG_EXTERNAL_CACHE`
+
+* DSP
+
+  * Introduced DSP (digital signal processing) subsystem with CMSIS-DSP as the
+    default backend.
+  * CMSIS-DSP now supports all architectures supported by Zephyr.
 
 * File systems
 
