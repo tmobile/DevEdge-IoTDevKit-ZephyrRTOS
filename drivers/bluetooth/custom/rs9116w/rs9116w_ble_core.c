@@ -94,11 +94,19 @@ int bt_enable(bt_ready_cb_t cb)
 
 	device_init();
 
-	err = rsi_bt_set_local_name(CONFIG_BT_DEVICE_NAME);
+	char name[17] = {0};
+
+	if (strlen(CONFIG_BT_DEVICE_NAME) > 16) {
+		BT_WARN("Configured name is too long, truncating to 16 bytes");
+	}
+
+	strncpy(name, CONFIG_BT_DEVICE_NAME, 16);
+
+	err = rsi_bt_set_local_name(name);
 	if (err) {
 		BT_ERR("Name set fail: 0x%X\n", err);
 	} else {
-		BT_INFO("Device name set to: %s\n", CONFIG_BT_DEVICE_NAME);
+		BT_INFO("Device name set to: %s\n", name);
 	}
 
 	/*spawn the thread*/
