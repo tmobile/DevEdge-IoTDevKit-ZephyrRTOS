@@ -1,13 +1,13 @@
-# EFM32PG_STK3402A board
+# TMO_DEV_EDGE board
 
 # Copyright (c) 2022, Silicon Labs
 # Copyright (c) 2023 T-Mobile USA, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_EFM32PG_STK3402A
+if BOARD_TMO_DEV_EDGE
 
-module = BOARD_EFM32PG
+module = BOARD_TMO_EDGE
 module-str = Board Control
 source "subsys/logging/Kconfig.template.log_config"
 
-endif # BOARD_EFM32PG_STK3402A
+endif # BOARD_TMO_DEV_EDGE

@@ -12,8 +12,21 @@
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt, uintptr_t reg)
 {
 	USART_TypeDef *base = (USART_TypeDef *)reg;
+	int usart_num = 0;
 #ifdef USART_NUM
-	int usart_num = USART_NUM(base);
+	usart_num = USART_NUM(base);
+#else /* USART_NUM */
+	if (base == USART0) {
+		usart_num = 0;
+	} else if (base == USART1) {
+		usart_num = 1;
+	} else if (base == USART2) {
+		usart_num = 2;
+	} else if (base == USART3) {
+		usart_num = 3;
+	} else {
+		usart_num = -1;
+	}
 #endif /* USART_NUM */
 	uint8_t loc;
 

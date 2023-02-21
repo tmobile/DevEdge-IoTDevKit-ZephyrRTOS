@@ -1,5 +1,10 @@
-identifier: tmo_dev_edge
-name: TMO_DEV_EDGE
+# Copyright (c) 2023 T-Mobile USA, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+identifier: efm32pg_stk3402a
+name: EFM32PG-STK3402A
 type: mcu
 arch: arm
 ram: 256
@@ -15,6 +20,8 @@ supported:
   - nvs
   - watchdog
   - counter
+  - uart
+  - spi
 testing:
   default: true
   ignore_tags:

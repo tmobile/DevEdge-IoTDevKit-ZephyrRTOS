@@ -11,9 +11,9 @@
 	usart0_default: usart0_default {
 		group1 {
 			/* configure PA.1 as UART_RX and PA.0 as UART_TX */
-			psels = <GECKO_PSEL(UART_TX, A, 0)>,
-				<GECKO_PSEL(UART_RX, A, 1)>,
-				<GECKO_LOC(UART, 0)>;
+			psels = <GECKO_PSEL(UART_TX, F, 4)>,
+				<GECKO_PSEL(UART_RX, F, 5)>,
+				<GECKO_LOC(UART, 28)>;
 		};
 	};
 };

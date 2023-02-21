@@ -1,13 +1,14 @@
 /*
  * Copyright (c) 2017 Christian Taedcke
  * Copyright (c) 2019 Lemonbeat GmbH
- * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /dts-v1/;
 #include <silabs/efm32pg12b500f1024gl125.dtsi>
+#include "dts/arm/silabs/tmo_dev_edge-pinctrl.dtsi"
 #include <dt-bindings/pwm/pwm.h>
 
 / {
@@ -52,19 +53,19 @@
 
 		led0: led_0 {
 			// LED WHITE
-			gpios = <&gpioc 7 0>;
+			gpios = <&gpioc GECKO_PIN(7) GPIO_ACTIVE_HIGH>;
 		};
 		led1: led_1 {
 			// LED RED
-			gpios = <&gpioc 8 0>;
+			gpios = <&gpioc GECKO_PIN(8) GPIO_ACTIVE_HIGH>;
 		};
 		led2: led_2 {
 			// LED GREEN
-			gpios = <&gpioc 9 0>;
+			gpios = <&gpioc GECKO_PIN(9) GPIO_ACTIVE_HIGH>;
 		};
 		led3: led_3 {
 			// LED BLUE
-			gpios = <&gpioc 10 0>;
+			gpios = <&gpioc GECKO_PIN(10) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -92,7 +93,7 @@
 		compatible = "gpio-keys";
 		button0: button_0 {
 			// User Push Button 0
-			gpios = <&gpiob 13 GPIO_ACTIVE_LOW>;
+			gpios = <&gpiob GECKO_PIN(13) GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -110,16 +111,16 @@
 &usart0 {
 	// UART_0
 	current-speed = <115200>;
-	location-rx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(5)>;
-	location-tx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(4)>;
 	status = "okay";
+	pinctrl-0 = <&usart0_default>;
+	pinctrl-names = "default";
 };
 
 &usart1 {
 	// UART_1
 	current-speed	= <115200>;
-	location-rx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
-	location-tx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
+	location-rx	= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
+	location-tx	= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
 	location-cts	= <GECKO_LOCATION(15) GECKO_PORT_D GECKO_PIN(11)>;
 	location-rts	= <GECKO_LOCATION(13) GECKO_PORT_D GECKO_PIN(10)>;
 	hw-flow-control;

@@ -443,9 +443,11 @@ static int uart_gecko_init(const struct device *dev)
 
 	/* Init USART */
 	usartInit.baudrate = config->baud_rate;
+#ifndef CONFIG_PINCTRL
 #ifdef UART_GECKO_HW_FLOW_CONTROL
 	usartInit.hwFlowControl = config->hw_flowcontrol ?
 		usartHwFlowControlCtsAndRts : usartHwFlowControlNone;
+#endif
 #endif
 	USART_InitAsync(config->base, &usartInit);
 
