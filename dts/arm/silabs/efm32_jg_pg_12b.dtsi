@@ -273,6 +273,12 @@
 			reg = <0x40046000 0x400>;
 			status = "disabled";
 		};
+
+		letimer0: letimer@40046000 {
+			compatible = "silabs,gecko-letimer";
+			reg = <0x40046000 0x54>;
+			interrupts = <27 1>;
+		};
 	};
 };
 

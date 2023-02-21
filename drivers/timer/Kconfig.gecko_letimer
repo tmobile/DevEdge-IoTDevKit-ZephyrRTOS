@@ -1,0 +1,41 @@
+# Copyright (c) 2023 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config GECKO_LETIMER
+	bool "Gecko LETIMER"
+	depends on SOC_FAMILY_EXX32
+	depends on DT_HAS_SILABS_GECKO_LETIMER_ENABLED
+	select SOC_GECKO_LETIMER
+	select TICKLESS_CAPABLE
+	select SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	help
+	  This module implements a kernel device driver for the Gecko LETIMER
+	  and provides the standard "system clock driver" interfaces.
+
+if GECKO_LETIMER
+
+choice GECKO_LETIMER_OSCILLATOR
+	prompt "LETIMER Oscillator configuration"
+	default GECKO_LETIMER_USE_LFXO
+	help
+	  This option determines which Oscillator the LETIMER utilizes
+
+
+config GECKO_LETIMER_USE_LFXO
+	bool "LFXO"
+	help
+	  Use LFXO Oscillator to drive LETIMER
+
+config GECKO_LETIMER_USE_LFRCO
+	bool "LFRCO"
+	help
+	  Use LFRCO Oscillator to drive LETIMER
+
+endchoice
+
+config GECKO_LETIMER_USE_REP
+	bool "Use repeat mode"
+	help
+		Use repeat mode for longer timers
+
+endif # GECKO_LETIMER
