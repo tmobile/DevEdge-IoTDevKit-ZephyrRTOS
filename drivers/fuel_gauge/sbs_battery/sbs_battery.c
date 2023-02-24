@@ -1,12 +1,11 @@
 
-
 #define DT_DRV_COMPAT sbs_sbs_battery
 
 #include <zephyr/drivers/adc.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree.h>
- #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/gpio.h>
 
 #define ADC_RESOLUTION		10
 #define ADC_GAIN			ADC_GAIN_1
@@ -20,21 +19,22 @@
 #endif
 
 #define BUFFER_SIZE  6
-static int16_t m_sample_buffer[BUFFER_SIZE];
+//static int16_t m_sample_buffer[BUFFER_SIZE];
 
+/*
 static const struct adc_channel_cfg m_1st_channel_cfg = {
 	.gain             = ADC_GAIN,
 	.reference        = ADC_REFERENCE,
 	.acquisition_time = ADC_ACQUISITION_TIME,
 	.channel_id       = ADC_1ST_CHANNEL_ID,
 };
+*/
 
 struct gecko_adc_config {
 	const struct gpio_dt_spec en_gpio;
 };
 
-
-static int gecko_adc_channel_setup(const struct device *dev,
+static int adc_gecko_channel_setup(const struct device *dev,
 				 const struct adc_channel_cfg *channel_cfg)
 {
 	uint8_t channel_id = channel_cfg->channel_id;
@@ -66,7 +66,7 @@ static int gecko_adc_channel_setup(const struct device *dev,
 	return 0;
 }
 
-static int gecko_adc_read(const struct device *dev,
+static int adc_gecko_read(const struct device *dev,
 			const struct adc_sequence *sequence)
 {
 
@@ -74,7 +74,7 @@ static int gecko_adc_read(const struct device *dev,
 }
 
 #ifdef CONFIG_ADC_ASYNC
-static int gecko_adc_read_async(const struct device *dev,
+static int adc_gecko_read_async(const struct device *dev,
 			      const struct adc_sequence *sequence,
 			      struct k_poll_signal *async)
 {
@@ -83,43 +83,40 @@ static int gecko_adc_read_async(const struct device *dev,
 #endif
 
 static const struct adc_driver_api gecko_adc_api = {
-	.channel_setup = gecko_adc_channel_setup,
-	.read = gecko_adc_read,
+	.channel_setup = adc_gecko_channel_setup,
+	.read = adc_gecko_read,
 #ifdef CONFIG_ADC_ASYNC
-	.read_async = gecko_adc_read_async,
+	.read_async = adc_gecko_read_async,
 #endif
 };
 
-static int gecko_adc_init(const struct device *dev)
+static int adc_gecko_init(const struct device *dev)
 {
 	printk("%s:%d - init batmon driver\n", __FUNCTION__, __LINE__);
 	printk("[BAT] adc_dev address %p\n", (void *)dev);
-	int i, ret;
+	int ret;
 
 	const struct gecko_adc_config *config = dev->config;
 	const struct gpio_dt_spec *en_gpio = &config->en_gpio;
 
 	ret = gpio_pin_configure_dt(en_gpio, GPIO_OUTPUT_HIGH);
 
-
-
 	return 0;
 }
 
-
-#define GECKO_ADC_INIT(inst)							\
-	static struct gecko_adc_config gecko_adc_config_##inst = {			\
-		.en_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,			\
-						       en_gpios, { 0 })	\
-	};									\
-										\
-	DEVICE_DT_INST_DEFINE(inst,						\
-		&gecko_adc_init,								\
-			      NULL,			\
-			      NULL,				\
-			      &gecko_adc_config_##inst,				\
-			      POST_KERNEL,					\
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,			\
+#define GECKO_ADC_INIT(inst)                                       \
+	static struct gecko_adc_config gecko_adc_config_##inst = {     \
+		.en_gpio = GPIO_DT_SPEC_INST_GET_OR(inst,                  \
+						       en_gpios, { 0 })                    \
+	};                                                             \
+	                                                               \
+	DEVICE_DT_INST_DEFINE(inst,                                    \
+		&adc_gecko_init,                                           \
+			      NULL,                                            \
+			      NULL,                                            \
+			      &gecko_adc_config_##inst,                        \
+			      POST_KERNEL,                                     \
+			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE,              \
 			      &gecko_adc_api);
 
 DT_INST_FOREACH_STATUS_OKAY(GECKO_ADC_INIT)
