@@ -210,7 +210,7 @@ Bluetooth:
     - samples/bluetooth/mesh/
     - subsys/bluetooth/audio/
     - include/zephyr/bluetooth/audio/
-    - tests/bluetooth/bsim_bt/bsim_test_audio/
+    - tests/bluetooth/bsim/audio/
     - tests/bluetooth/controller/
     - tests/bluetooth/mesh_*/
     - tests/bluetooth/mesh/
@@ -271,7 +271,7 @@ Bluetooth Audio:
   files:
     - subsys/bluetooth/audio/
     - include/zephyr/bluetooth/audio/
-    - tests/bluetooth/bsim_bt/bsim_test_audio/
+    - tests/bluetooth/bsim/audio/
     - tests/bluetooth/shell/audio*
   labels:
     - "area: Bluetooth Audio"
@@ -1108,19 +1108,6 @@ Release Notes:
     - include/zephyr/dt-bindings/pinctrl/
   labels:
     - "area: Pinctrl"
-
-"Drivers: Pinmux":
-  status: maintained
-  maintainers:
-    - mnkp
-  collaborators:
-    - gmarull
-  files:
-    - doc/hardware/peripherals/pinmux.rst
-    - drivers/pinmux/
-    - include/zephyr/drivers/pinmux.h
-  labels:
-    - "area: Pinmux"
 
 "Drivers: PTP Clock":
   status: maintained
@@ -2141,6 +2128,7 @@ STM32 Platforms:
     - ABOSTM
     - FRASTM
     - gautierg-st
+    - Desvauxm-st
     - GeorgeCGV
   files:
     - boards/arm/nucleo_*/
@@ -2637,6 +2625,8 @@ West:
   collaborators:
     - FRASTM
     - ABOSTM
+    - gautierg-st
+    - Desvauxm-st
   files:
     - modules/Kconfig.stm32
   labels:
