@@ -15,9 +15,6 @@
 #if defined(CONFIG_COUNTER_GECKO_RTCC)
 #include <em_rtcc.h>
 #endif
-#if defined(CONFIG_TIME_GECKO_RTCC)
-#include <em_rtcc.h>
-#endif
 
 #define HELP_NONE      "[none]"
 #define HELP_DATE_SET  "[Y-m-d] <H:M:S>"
@@ -146,11 +143,6 @@ static int get_h_m_s(const struct shell *shell, struct tm *tm, char *time_str)
 
 static int cmd_date_set(const struct shell *shell, size_t argc, char **argv)
 {
-#if defined(CONFIG_TIME_GECKO_RTCC)
-	uint32_t time_set = 0;    /*!< RTCC_TIME - Time of Day Register */
-	uint32_t date_set = 0;    /*!< RTCC_DATE - Date Register */
-	uint32_t year_set = 0;
-#endif
 	struct timespec tp;
 	struct tm tm;
 	int ret;
@@ -194,25 +186,6 @@ static int cmd_date_set(const struct shell *shell, size_t argc, char **argv)
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_TIME_GECKO_RTCC)
-	time_set |= bin2bcd(tm.tm_sec) << _RTCC_TIME_SECU_SHIFT;
-	time_set |= bin2bcd(tm.tm_min) << _RTCC_TIME_MINU_SHIFT;
-	time_set |= bin2bcd(tm.tm_hour) << _RTCC_TIME_HOURU_SHIFT;
-	date_set |= tm.tm_wday << _RTCC_DATE_DAYOW_SHIFT;
-	date_set |= bin2bcd(tm.tm_mday) << _RTCC_DATE_DAYOMU_SHIFT;
-	date_set |= bin2bcd(tm.tm_mon) << _RTCC_DATE_MONTHU_SHIFT;
-
-	year_set = tm.tm_year;
-	if (year_set >= 100) {
-		RTCC->RET[0].REG = year_set / 100;
-		year_set %= 100;
-	}
-
-	date_set |= bin2bcd(year_set) << _RTCC_DATE_YEARU_SHIFT;
-
-	RTCC_TimeSet(time_set);
-	RTCC_DateSet(date_set);
-#endif
 #if defined(CONFIG_COUNTER_GECKO_RTCC)
 	RTCC_CounterSet(tp.tv_sec);
 #endif
@@ -239,9 +212,6 @@ static int cmd_date_get(const struct shell *shell, size_t argc, char **argv)
 #if defined(CONFIG_COUNTER_GECKO_RTCC)
 #define TIMER_COUNTER DT_NODELABEL(rtcc0)
 #endif
-#if defined(CONFIG_TIME_GECKO_RTCC)
-#define TIMER_COUNTER DT_NODELABEL(rtcc0)
-#endif
 
 static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **argv)
 {
@@ -262,13 +232,7 @@ static int cmd_counter_get(const struct shell *shell_ptr, size_t argc, char **ar
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_TIME_GECKO_RTCC)
-	time_t time_ticks = (time_t)ticks;
-
-	gmtime_r(&time_ticks, &tm_gm);
-
-	date_print(shell_ptr, &tm_gm);
-#else
+#if defined(CONFIG_COUNTER_GECKO_RTCC)
 	struct timespec tp;
 
 	tp.tv_sec = ticks;

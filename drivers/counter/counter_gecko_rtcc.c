@@ -223,6 +223,13 @@ static uint32_t counter_gecko_get_pending_int(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PERSISTENT_GECKO_RTCC
+/*! /brief Set the posix time to the RTCC value.
+ *
+ *  This is ONLY done when we are preserving the RTCC operations in EM4. If the
+ *  RTCC power has been removed, then the RTCC value is not saved, but both
+ *  values will be the same anyway.
+ */
 static int update_posix(void)
 {
 	struct timespec tp;
@@ -233,17 +240,50 @@ static int update_posix(void)
 	return clock_settime(CLOCK_REALTIME, &tp);
 }
 
-/* Pin bootloader definitions. */
+/*! \brief Pin bootloader definitions.
+ *
+ * The UART Bootloader (e.g. First Stage Bootloader) also uses the RTCC so it must
+ * be disabled if we are preserving the time in the RTCC.
+ *
+ * Here is a list of the devices supported by the UART Bootloader:
+ * See: https://www.silabs.com/documents/public/application-notes/an0003-efm32-uart-bootloader.pdf
+*/
+#if (	/* EFM32 Series 0: */ \
+	defined(CONFIG_SOC_SERIES_EFM32G)	/*!< EFM32 Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32GG)	/*!< EFM32 Giant Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32WG)	/*!< EFM32 Wonder Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32LG)	/*!< EFM32 Leopard Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32TG)	/*!< EFM32 Tiny Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32ZG)	/*!< EFM32 Zero Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EFM32HG)	/*!< EFM32 Happy Gecko */ || \
+	/* EZR32 Series 0: */ \
+	defined(CONFIG_SOC_SERIES_EZR32WG)	/*!< EZR32 Wonder Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EZR32LG)	/*!< EZR32 Leopard Gecko */ || \
+	defined(CONFIG_SOC_SERIES_EZR32HG)	/*!< EZR32 Happy Gecko */ || \
+	/* EFM32 Series 1: */ \
+	defined(CONFIG_SOC_SERIES_EFM32PG1)	/*!< EFM32 Pearl Gecko (Rev C onwards) */ || \
+	defined(CONFIG_SOC_SERIES_EFM32PG12B)	/*!< EFM32 Pearl Gecko (Rev C onwards) */ || \
+	defined(CONFIG_SOC_SERIES_EFM32JG1)	/*!< EFM32 Jade Gecko (Rev C onwards) */ || \
+	defined(CONFIG_SOC_SERIES_EFM32JG12)	/*!< EFM32 Jade Gecko (Rev C onwards) */ || \
+	defined(CONFIG_SOC_SERIES_EFM32GG11)	/*!< EFM32 Giant Gecko GG11 */ || \
+	defined(CONFIG_SOC_SERIES_EFM32GG12)	/*!< EFM32 Giant Gecko GG12 */ || \
+	defined(CONFIG_SOC_SERIES_EFM32TG11)	/*!< EFM32 Tiny Gecko 11 */ )
 #define LB_CLW0           (*((volatile uint32_t *)(LOCKBITS_BASE)+122))
 #define LB_CLW0_PINBOOTLOADER    (1 << 1)
+#endif /* EFM32, EZR32 SOC Series */
+#endif /* PERSISTENT_GECKO_RTCC */
 
 static int counter_gecko_init(const struct device *dev)
 {
 	const struct counter_gecko_config *const dev_cfg = dev->config;
-	int rc;
+	int rc = 0;
 
 	RTCC_Init_TypeDef rtcc_config = {
+#ifdef CONFIG_PERSISTENT_GECKO_RTCC
 		true,                 /* Start counting when initialization is done */
+#else
+		false,                /* Don't start counting */
+#endif
 		false,                /* Disable RTC during debug halt. */
 		false,                /* Don't wrap prescaler on CCV0 */
 		true,                 /* Counter wrap on CCV1 */
@@ -298,14 +338,18 @@ static int counter_gecko_init(const struct device *dev)
 	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFXO);
 #endif
 
+#ifdef LB_CLW0
 	/* Turn off the bootloader enable bit to prevent RTCC changes */
 	LB_CLW0 &= !LB_CLW0_PINBOOTLOADER;
+#endif /* LB_CLW0 */
 
+#ifdef CONFIG_PERSISTENT_GECKO_RTCC
 	/* Turn on reset limited mode to preserve RTCC counts */
 	RMU_ResetControl(rmuResetWdog, rmuResetModeLimited);
 	RMU_ResetControl(rmuResetCoreLockup, rmuResetModeLimited);
 	RMU_ResetControl(rmuResetSys, rmuResetModeLimited);
 	RMU_ResetControl(rmuResetPin, rmuResetModeLimited);
+#endif /* CONFIG_PERSISTENT_GECKO_RTCC */
 
 	/* Enable RTCC module clock */
 	CMU_ClockEnable(cmuClock_RTCC, true);
@@ -322,13 +366,20 @@ static int counter_gecko_init(const struct device *dev)
 	RTCC_IntDisable(_RTCC_IF_MASK);
 	RTCC_IntClear(_RTCC_IF_MASK);
 
+#ifndef CONFIG_PERSISTENT_GECKO_RTCC
+	/* Clear the counter */
+	RTCC->CNT = 0;
+#endif /* CONFIG_PERSISTENT_GECKO_RTCC */
+
 	/* Configure & enable module interrupts */
 	dev_cfg->irq_config();
 
+#ifdef CONFIG_PERSISTENT_GECKO_RTCC
 	rc = update_posix();
 	if (rc < 0) {
 		LOG_WRN("Failed to set date: %d", rc);
 	}
+#endif /* CONFIG_PERSISTENT_GECKO_RTCC */
 
 	LOG_INF("Device %s initialized", dev->name);
 

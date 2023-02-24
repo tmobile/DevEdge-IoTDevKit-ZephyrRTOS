@@ -1,5 +1,3 @@
-# Copyright (c) 2022 T-Mobile USA, Inc.
-#
 # SPDX-License-Identifier: Apache-2.0
 
 zephyr_library()
@@ -7,7 +5,6 @@ zephyr_library()
 zephyr_library_sources_ifdef(CONFIG_TIMER_TMR_CMSDK_APB         timer_tmr_cmsdk_apb.c)
 zephyr_library_sources_ifdef(CONFIG_TIMER_DTMR_CMSDK_APB        timer_dtmr_cmsdk_apb.c)
 zephyr_library_sources_ifdef(CONFIG_COUNTER_GECKO_RTCC          counter_gecko_rtcc.c)
-zephyr_library_sources_ifdef(CONFIG_TIME_GECKO_RTCC             gecko_rtcc.c)
 zephyr_library_sources_ifdef(CONFIG_COUNTER_GECKO_STIMER        counter_gecko_stimer.c)
 zephyr_library_sources_ifdef(CONFIG_COUNTER_IMX_EPIT            counter_imx_epit.c)
 zephyr_library_sources_ifdef(CONFIG_COUNTER_MCUX_CTIMER         counter_mcux_ctimer.c)
