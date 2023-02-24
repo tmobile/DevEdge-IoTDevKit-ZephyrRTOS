@@ -1,0 +1,49 @@
+
+
+description: Silabs Gecko ADC node
+
+compatible: "sbs,sbs-battery"
+
+include: adc-controller.yaml
+
+properties:
+  reg:
+    required: false 
+
+  "#io-channel-cells":
+    const: 1
+
+  "num-channels":
+    type: int
+    required: true
+    description:
+      Number of channels available
+      
+  sample-freq:
+    type: int
+    required: false
+    enum:
+      - 23000
+      - 48000
+      - 96000
+    description: |
+      This property selects the ADC source frequency: 23 kHz, 48 kHz, or 96 kHz.
+
+  vref-internal-mv:
+    type: int
+    required: false
+    enum:
+      - 900
+      - 1200
+    description: |
+      This property selects the internal reference voltage source (in millivolts).
+      The external reference source is not supported.
+
+  en-gpios:
+    type: phandle-array
+    required: false
+    description: 
+      Chip select enable/disable.
+
+io-channel-cells:
+  - input

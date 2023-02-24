@@ -10,6 +10,7 @@
 #include <silabs/efm32pg12b500f1024gl125.dtsi>
 #include <dt-bindings/pwm/pwm.h>
 
+
 / {
 	model = "Silicon Labs EFM32PG STK3402A board";
 	compatible = "tmo,dev_edge";
@@ -102,9 +103,16 @@
 		regulator-boot-on;
 	};
 
-	vbatt {
-		compatible = "silabs,battery-adc";
+	adc0:adc0@40002000 {
+		compatible = "sbs,sbs-battery";
         status = "okay";
+		reg = <0x40002000 0x400>;
+		sample-freq = <23000>;
+		vref-internal-mv = <900>;
+		en-gpios = <&gpiok 0 GPIO_ACTIVE_LOW>;
+		#io-channel-cells = <1>;
+		num-channels = <2>;
+
 	};
 };
 

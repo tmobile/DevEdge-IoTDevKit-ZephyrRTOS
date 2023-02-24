@@ -1,0 +1,11 @@
+# Copyright (c) 2022 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.
+ 
+
+config SBS_BATTERY_NEW_API
+	bool "Smart Battery"
+	default y
+	depends on DT_HAS_SBS_SBS_BATTERY_ENABLED
+	select ADC
+	help
+	  Enable battery driver.

@@ -15,4 +15,21 @@ source "subsys/logging/Kconfig.template.log_config"
 
 source "drivers/fuel_gauge/sbs_gauge/Kconfig"
 
+
 endif # FUEL_GAUGE
+
+menuconfig SBS_BATTERY
+	bool "Battery driver"
+	help
+	  Enable battery driver configuration.
+
+if SBS_BATTERY
+
+module = SBS_BATTERY
+module-str = sbs_battery
+source "subsys/logging/Kconfig.template.log_config"
+
+source "drivers/fuel_gauge/sbs_battery/Kconfig"
+
+
+endif # SBS_BATTERY
