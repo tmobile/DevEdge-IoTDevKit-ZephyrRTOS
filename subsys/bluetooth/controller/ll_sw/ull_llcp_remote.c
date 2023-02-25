@@ -920,48 +920,24 @@ static void rr_abort(struct ll_conn *conn)
 
 #ifdef ZTEST_UNITTEST
 
-bool rr_is_disconnected(struct ll_conn *conn)
+bool llcp_rr_is_disconnected(struct ll_conn *conn)
 {
 	return conn->llcp.remote.state == RR_STATE_DISCONNECT;
 }
 
-bool rr_is_idle(struct ll_conn *conn)
+bool llcp_rr_is_idle(struct ll_conn *conn)
 {
 	return conn->llcp.remote.state == RR_STATE_IDLE;
 }
 
-void test_int_remote_pending_requests(void)
+struct proc_ctx *llcp_rr_dequeue(struct ll_conn *conn)
 {
-	struct ll_conn conn;
-	struct proc_ctx *peek_ctx;
-	struct proc_ctx *dequeue_ctx;
-	struct proc_ctx ctx;
+	return rr_dequeue(conn);
+}
 
-	ull_cp_init();
-	ull_tx_q_init(&conn.tx_q);
-	ull_llcp_init(&conn);
-
-	peek_ctx = llcp_rr_peek(&conn);
-	zassert_is_null(peek_ctx, NULL);
-
-	dequeue_ctx = rr_dequeue(&conn);
-	zassert_is_null(dequeue_ctx, NULL);
-
-	rr_enqueue(&conn, &ctx);
-	peek_ctx = (struct proc_ctx *)sys_slist_peek_head(&conn.llcp.remote.pend_proc_list);
-	zassert_equal_ptr(peek_ctx, &ctx, NULL);
-
-	peek_ctx = llcp_rr_peek(&conn);
-	zassert_equal_ptr(peek_ctx, &ctx, NULL);
-
-	dequeue_ctx = rr_dequeue(&conn);
-	zassert_equal_ptr(dequeue_ctx, &ctx, NULL);
-
-	peek_ctx = llcp_rr_peek(&conn);
-	zassert_is_null(peek_ctx, NULL);
-
-	dequeue_ctx = rr_dequeue(&conn);
-	zassert_is_null(dequeue_ctx, NULL);
+void llcp_rr_enqueue(struct ll_conn *conn, struct proc_ctx *ctx)
+{
+	rr_enqueue(conn, ctx);
 }
 
 #endif

@@ -573,7 +573,7 @@ static inline void icm42688_accel_ms(struct icm42688_cfg *cfg, int32_t in, int32
 	*out_ms = in_ms / (sensitivity * 1000000LL);
 
 	/* micrometers/s^2 */
-	*out_ums = ((llabs(in_ms) - (llabs(*out_ms) * sensitivity * 1000000LL)) / sensitivity);
+	*out_ums = (in_ms - (*out_ms * sensitivity * 1000000LL)) / sensitivity;
 }
 
 /**
@@ -622,8 +622,8 @@ static inline void icm42688_gyro_rads(struct icm42688_cfg *cfg, int32_t in, int3
 	*out_rads = in10_rads / (sensitivity * 180LL * 1000000LL);
 
 	/* microrad/s */
-	*out_urads = ((llabs(in10_rads) - (llabs((*out_rads)) * sensitivity * 180LL * 1000000LL))) /
-		     (sensitivity * 180LL);
+	*out_urads =
+		(in10_rads - (*out_rads * sensitivity * 180LL * 1000000LL)) / (sensitivity * 180LL);
 }
 
 /**
@@ -638,16 +638,14 @@ static inline void icm42688_temp_c(int32_t in, int32_t *out_c, uint32_t *out_uc)
 {
 	int64_t sensitivity = 13248; /* value equivalent for x100 1c */
 
-	int64_t in100 = in * 100;
+	/* Offset by 25 degrees Celsius */
+	int64_t in100 = (in * 100) + (25 * sensitivity);
 
 	/* Whole celsius */
 	*out_c = in100 / sensitivity;
 
 	/* Micro celsius */
-	*out_uc = ((llabs(in100) - (llabs(*out_c)) * sensitivity) * 1000000LL) / sensitivity;
-
-	/* Shift whole celsius 25 degress */
-	*out_c = *out_c + 25;
+	*out_uc = ((in100 - (*out_c) * sensitivity) * INT64_C(1000000)) / sensitivity;
 }
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_ICM42688_H_ */
