@@ -1,0 +1,9 @@
+# Copyright (c) 2023 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  QORVO ACT81461 PMIC ALPC
+
+compatible: "qorvo,act81461-alpc"
+
+include: [base.yaml, fuel-gauge.yaml]

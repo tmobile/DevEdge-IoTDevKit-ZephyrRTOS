@@ -1,0 +1,63 @@
+# Copyright (c) 2023 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  QORVO ACT81461 PMIC
+
+  The PMIC has two buck converters and two LDOs. All need to be defined as
+  child nodes, strictly following the BUCKBOOST, BUCK1, BUCK2, BOOST, LDO1,
+  LDO2, and LDO3 node names.
+  For example:
+
+  pmic@25 {
+    reg = <0x25>;
+    ...
+    BUCKBOOST {
+      /* all properties for 400mA BUCKBOOST */
+    };
+    BUCK1 {
+      /* all properties for 400mA DC-DC Stepdown BUCK1 */
+    };
+    LDO1 {
+      /* all properties for LDO1 */
+    };
+    ...
+  };
+
+compatible: "qorvo,act81461"
+
+include: [base.yaml, i2c-device.yaml, regulator.yaml]
+
+properties:
+  alert-gpios:
+    type: phandle-array
+    description: |
+        Identifies any change in enabled system status state
+
+  int-gpios:
+    type: phandle-array
+    description: |
+        Identifies any change in enabled system status state
+
+  pmic-override-reg-array:
+    type: uint8-array
+    description: This is the PMIC I2C register to write data to.
+
+  pmic-override-reg-value-array:
+    type: uint8-array
+    description: This is the PMIC I2C register value to write.
+
+  pmic-override-num:
+    type: int
+    description: This is number of PMIC override registers to do.
+
+child-binding:
+  include:
+    - name: regulator.yaml
+      property-allowlist:
+        - regulator-always-on
+        - regulator-boot-on
+        - regulator-min-microvolt
+        - regulator-max-microvolt
+        - regulator-allowed-modes
+        - regulator-initial-mode
