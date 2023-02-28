@@ -24,22 +24,16 @@ void main(void)
 	double resistance;
 	int32_t buffer;
 	int err;
-	const struct adc_channel_cfg ch_cfg = {
-		.channel_id = 0,
-		.differential = false,
-		.reference = ADC_REF_INTERNAL,
-		.gain = ADC_GAIN_1,
-		.acquisition_time = ADC_ACQ_TIME_DEFAULT
+
+
+	static const struct adc_channel_cfg ch_cfg = {
+		.gain             = ADC_GAIN_1,
+		.reference        = ADC_REF_INTERNAL,
+		.acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 32),
+		.channel_id       = 2,
+		.differential = false
 	};
-	const struct adc_sequence seq = {
-		.options = NULL,
-		.channels = BIT(0),
-		.buffer = &buffer,
-		.buffer_size = sizeof(buffer),
-		.resolution = 12,
-		.oversampling = 0,
-		.calibrate = 0
-	};
+
 
 	if (!device_is_ready(batt_dev)) {
 		printk(" device not ready");
@@ -52,10 +46,25 @@ void main(void)
 		return;
 	}
 
-	while (true) {
-		err = adc_read(batt_dev, &seq);
-        printk("%s:%d - err %d buffer %d\n", err, buffer);
+	struct adc_sequence seq = {
+		.buffer = &buffer,
+		.buffer_size = sizeof(buffer),
+		.resolution = 12
+	};
+    seq.channels = 0; // HWID
+    err = adc_read(batt_dev, &seq);
 
-		k_sleep(K_MSEC(1000));
+    k_msleep(5000);
+
+    seq.channels = 1; //VBATT
+    err = adc_read(batt_dev, &seq);
+
+
+
+	while (true) {
+		//err = adc_read(batt_dev, &seq);
+        //printk("%s:%d - err %d buffer %d\n", err, buffer);
+
+		//k_sleep(K_MSEC(1000));
 	}
 }

@@ -38,12 +38,10 @@
 #else
 #define LED_PWM_DEV NULL
 #endif
-#
+
 #define LED_PWM_WHITE 0
 #define LED_PWM_RED   1
 #define LED_PWM_GREEN 2
 #define LED_PWM_BLUE  3
 
-
 #endif /* __INC_BOARD_H */
-#
