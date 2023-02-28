@@ -18,16 +18,24 @@ properties:
     required: true
     description:
       Number of channels available
-      
-  sample-freq:
+  
+  vbat-aport:
     type: int
     required: false
-    enum:
-      - 23000
-      - 48000
-      - 96000
     description: |
-      This property selects the ADC source frequency: 23 kHz, 48 kHz, or 96 kHz.
+      This property selects the ADC channel for battery voltage detection.
+
+  hwid-aport:
+    type: int
+    required: true
+    description: |
+      This property selects the ADC channel for battery ID detection.
+
+  frequency:
+    type: int
+    required: true
+    description: |
+      This property selects the ADC source frequency: 
 
   vref-internal-mv:
     type: int

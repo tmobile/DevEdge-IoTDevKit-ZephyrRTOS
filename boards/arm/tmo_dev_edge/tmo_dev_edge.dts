@@ -11,6 +11,7 @@
 #include <dt-bindings/pwm/pwm.h>
 
 
+
 / {
 	model = "Silicon Labs EFM32PG STK3402A board";
 	compatible = "tmo,dev_edge";
@@ -107,12 +108,13 @@
 		compatible = "sbs,sbs-battery";
         status = "okay";
 		reg = <0x40002000 0x400>;
-		sample-freq = <23000>;
+		frequency= <16000000>;
 		vref-internal-mv = <900>;
-		en-gpios = <&gpiok 0 GPIO_ACTIVE_LOW>;
+		en-gpios = <&gpiok 0 GPIO_ACTIVE_HIGH>;
 		#io-channel-cells = <1>;
-		num-channels = <2>;
-
+		num-channels = <32>;
+		hwid-aport = <151>;
+		vbat-aport = <106>;
 	};
 };
 
