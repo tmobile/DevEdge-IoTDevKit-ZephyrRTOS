@@ -804,6 +804,19 @@
 			status = "disabled";
 		};
 
+		bdma1: bdma@58025400 {
+			compatible = "st,stm32-bdma";
+			#dma-cells = <4>;
+			reg = <0x58025400 0x400>;
+			interrupts = <129 0>, <130 0>, <131 0>, <132 0>, <133 0>, <134 0>,
+						 <135 0>, <136 0>;
+			clocks = <&rcc STM32_CLOCK_BUS_AHB4 0x00200000>;
+			st,mem2mem;
+			dma-offset = <0>;
+			dma-requests = <8>;
+			status = "disabled";
+		};
+
 		dmamux1: dmamux@40020800 {
 			compatible = "st,stm32-dmamux";
 			#dma-cells = <3>;
@@ -812,6 +825,22 @@
 			/* dmamux1 has no dedicated clock, so we enable dma1 clock */
 			clocks = <&rcc STM32_CLOCK_BUS_AHB1 0x00000001>;
 			dma-channels = <16>;
+			dma-generators = <8>;
+			status = "disabled";
+			/*
+			 * dma-requests is different among h7 socs,
+			 * so we set in specific dtsi files
+			 */
+		};
+
+		dmamux2: dmamux@58025800 {
+			compatible = "st,stm32-dmamux";
+			#dma-cells = <3>;
+			reg = <0x58025800 0x400>;
+			interrupts = <128 0>;
+			/* dmamux2 has no dedicated clock, so we enable bdma clock */
+			clocks = <&rcc STM32_CLOCK_BUS_AHB4 0x00200000>;
+			dma-channels = <8>;
 			dma-generators = <8>;
 			status = "disabled";
 			/*
