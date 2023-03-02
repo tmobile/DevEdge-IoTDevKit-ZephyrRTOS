@@ -46,17 +46,19 @@ void main(void)
 		return;
 	}
 
+    k_msleep(5000);
+
 	struct adc_sequence seq = {
 		.buffer = &buffer,
 		.buffer_size = sizeof(buffer),
 		.resolution = 12
 	};
-    seq.channels = 0; // HWID
+    seq.channels = 1; // HWID
     err = adc_read(batt_dev, &seq);
 
     k_msleep(5000);
 
-    seq.channels = 1; //VBATT
+    seq.channels = 0; //VBATT
     err = adc_read(batt_dev, &seq);
 
 

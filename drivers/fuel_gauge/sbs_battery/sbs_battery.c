@@ -1,38 +1,125 @@
-
 #define DT_DRV_COMPAT sbs_sbs_battery
 
 #include <string.h>
-#include <zephyr/drivers/adc.h>
+#include <zephyr/drivers/fuel_gauge/sbs_battery/sbs_battery.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree.h>
-#include <zephyr/drivers/gpio.h>
 
-#include "em_adc.h"
 #include "em_cmu.h"
 #include "em_gpio.h"
+#include "battery_ctrl.h"
 
 K_SEM_DEFINE(adc_sem, 0, 1);
 
-struct adc_gecko_config {
-	ADC_TypeDef *base;
-	ADC_InitSingle_TypeDef initSingle_bv;
-	const struct gpio_dt_spec en_gpio;
-};
+static void battery_apply_filter(float *bv)
+{
+	static float s_filtered_capacity = -1;
+	static bool s_battery_is_charging = false;
+	bool battery_is_charging;
 
-struct adc_gecko_data {
-	struct device *dev;
-	int resolution;
-	int hwid;
-};
+	// If there has been a switch between charger and battery, reset the filter
+	battery_is_charging = is_battery_charging();
+	if (s_battery_is_charging != battery_is_charging) {
+		s_battery_is_charging = battery_is_charging;
+		s_filtered_capacity = -1;
+	}
+
+	if (s_filtered_capacity < 0) {
+		s_filtered_capacity = *bv;
+	}
+	*bv = s_filtered_capacity = s_filtered_capacity * 0.95 + (*bv) * 0.05;
+}
+
+static uint8_t battery_millivolts_to_percent(uint32_t millivolts) {
+	float curBv = get_remaining_capacity((float) millivolts / 1000);
+	battery_apply_filter(&curBv);
+	return (uint8_t) (curBv + 0.5);
+}
+
+static int get_reference_voltage (int reference) {
+	int ref = -1;
+
+	switch(reference) {
+		case ADC_REF_INTERNAL:
+			ref = adcRef2V5;
+			break;
+		case ADC_REF_VDD_1:
+			ref = adcRefVDD;
+			break;
+		case ADC_REF_VDD_1_2:
+			ref = adcRef2V5;
+			break;
+		case ADC_REF_VDD_1_4:
+			ref = adcRef1V25;
+			break;
+		default:
+			break;			
+	}
+	return ref;
+}
+
+static int get_resolution(uint8_t resolution) {
+
+	switch (resolution) {
+		case  12:
+			return adcRes12Bit;
+		case  8:
+			return adcRes8Bit;
+		case 6:
+			return adcRes6Bit;
+		case 0:
+			return adcResOVS;
+		default:
+			printk("ADC resolution value %d is not valid",resolution);
+			return -EINVAL;
+	}
+	return 0;
+}
+
+static int get_acquisition_time(uint16_t acq) {
+	uint16_t sample_cycl;
+
+	/* Check acquisition time */
+	switch (acq) {
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 1):
+		sample_cycl = adcAcqTime1;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 2):
+		sample_cycl = adcAcqTime2;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 4):
+		sample_cycl = adcAcqTime4;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 8):
+		sample_cycl = adcAcqTime8;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS,16):
+		sample_cycl = adcAcqTime16;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 32):
+		sample_cycl = adcAcqTime32;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 64):
+		sample_cycl = adcAcqTime64;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 128):
+		sample_cycl = adcAcqTime128;
+		break;
+	case ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 256):
+		sample_cycl = adcAcqTime256;
+		break;
+	default:
+		sample_cycl = 0;
+		break;
+	}
+	return sample_cycl;
+}
 
 static int adc_gecko_channel_setup(const struct device *dev,
 				 const struct adc_channel_cfg *channel_cfg)
 {
-	struct adc_gecko_config *config = dev->config;
-	const struct adc_gecko_data *data = dev->data;
-	uint8_t channel_id = channel_cfg->channel_id;
-	ADC_TypeDef *adc_reg = (ADC_TypeDef *)config->base;
+	struct adc_gecko_config *config = (struct adc_gecko_config *)dev->config;
 
 	if (channel_cfg->channel_id >= DT_PROP(DT_NODELABEL(adc0), num_channels)) {
 		printk("Channel %d is not valid\n", channel_cfg->channel_id);
@@ -43,24 +130,11 @@ static int adc_gecko_channel_setup(const struct device *dev,
 		return -EINVAL;
 	}
 
-	if (channel_cfg->gain > ADC_GAIN_128) {
-		printk("Invalid channel gain\n");
-		return -EINVAL;
-	}
-
-	// Declare init structs
-	ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
-
-	// Modify init structs and initialize
-	init.prescale = ADC_PrescaleCalc(DT_PROP(DT_NODELABEL(adc0), frequency), 0); // Init to max ADC clock for Series 1
-
 	config->initSingle_bv.diff       = channel_cfg->differential;
-	config->initSingle_bv.reference  = channel_cfg->reference;
-	config->initSingle_bv.acqTime    = channel_cfg->acquisition_time;
-	config->initSingle_bv.resolution = data->resolution;
+	config->initSingle_bv.reference  = get_reference_voltage(channel_cfg->reference);
+	config->initSingle_bv.acqTime    = get_acquisition_time(channel_cfg->acquisition_time);
+	config->initSingle_bv.resolution = adcRes12Bit;
 
-	init.timebase = ADC_TimebaseCalc(0);
-	ADC_Init(adc_reg, &init);
 	printk("Channel setup succeeded!");
 
 	return 0;
@@ -69,17 +143,20 @@ static int adc_gecko_channel_setup(const struct device *dev,
 static int adc_gecko_read(const struct device *dev,
 			const struct adc_sequence *sequence)
 {
-	struct adc_gecko_config *config = dev->config;
+	struct adc_gecko_config *config = (struct adc_gecko_config *)dev->config;
+	struct adc_gecko_data *data = dev->data;
 	ADC_TypeDef *adc_reg = (ADC_TypeDef *)config->base;
-	config->initSingle_bv.posSel = -1;
+	uint32_t sample = 0;
+	uint32_t millivolts = 0;
+	float millivolts_f = 0.0;
 
+	config->initSingle_bv.posSel = -1;
 
 	if (!sequence->resolution) {
 		printk("Invalid resolution\n");
-		return 0;
+		return -EINVAL;
 	}
 
-	printk("%s:%d - sequence->channels %d \n", __FUNCTION__,__LINE__, sequence->channels);
 	switch (sequence->channels) {
 		case 0:
 			#if DT_NODE_HAS_PROP(DT_NODELABEL(adc0), vbat_aport)
@@ -99,37 +176,37 @@ static int adc_gecko_read(const struct device *dev,
 			printk("%s:%d - Unsupported channel %d\n", __FUNCTION__,__LINE__, sequence->channels);
 			break;
 	}
-
-	printk("%s:%d - initSingle_bv.posSel %d \n", __FUNCTION__,__LINE__,config->initSingle_bv.posSel);
 	if (config->initSingle_bv.posSel < 0)
-		return 0;
+		return -EINVAL;
 
-	config->initSingle_bv.resolution = sequence->resolution;
+	config->initSingle_bv.resolution = get_resolution(sequence->resolution);
 
-	uint32_t sample;
-	uint32_t millivolts;
-	float millivolts_f;
-	// Start ADC conversion
-	k_sem_take(&adc_sem, K_MSEC(500));
-	ADC_InitSingle(adc_reg, &config->initSingle_bv);
-	ADC_Start(adc_reg, adcStartSingle);
+	data->charging_status = get_battery_charging_status(&data->charging, &data->vbus, &data->battery_attached, &data->fault);
 
-	//  Wait for conversion to be complete
-	while(!(adc_reg->STATUS & _ADC_STATUS_SINGLEDV_MASK));
+	if (data->battery_attached !=  0) {
+		// Start ADC conversion
+		k_sem_take(&adc_sem, K_MSEC(500));
+		ADC_InitSingle(adc_reg, &config->initSingle_bv);
+		ADC_Start(adc_reg, adcStartSingle);
 
-	// Get ADC result
-	sample = ADC_DataSingleGet(adc_reg);
+		//  Wait for conversion to be complete
+		while(!(adc_reg->STATUS & _ADC_STATUS_SINGLEDV_MASK));
+		// Get ADC result
+		sample = ADC_DataSingleGet(adc_reg);
+		k_sem_give(&adc_sem);
+		// Calculate input voltage in mV
+		millivolts_f = (sample * 2500.0) / 4096.0;
+		// On the 2nd generation dev edge, voltage on PA2 is
+		// one third the actual battery voltage
+		millivolts = (uint32_t) (3.0 * millivolts_f + 0.5);
+		data->mVolts = millivolts;
+	}
 
-	k_sem_give(&adc_sem);
-
-	// Calculate input voltage in mV
-	millivolts_f = (sample * 2500.0) / 4096.0;
-
-	// On the 2nd generation dev edge, voltage on PA2 is
-	// one third the actual battery voltage
-	millivolts = (uint32_t) (3.0 * millivolts_f + 0.5);
-	printf("millivolts %d\n", millivolts);
-	return (millivolts);
+	if (config->initSingle_bv.posSel == DT_PROP(DT_NODELABEL(adc0), hwid_aport))
+		data->hwid = millivolts;
+	else
+		data->percent = battery_millivolts_to_percent(millivolts);
+	return 0;
 }
 
 #ifdef CONFIG_ADC_ASYNC
@@ -152,21 +229,22 @@ static const struct adc_driver_api adc_gecko_api = {
 
 static int adc_gecko_init(const struct device *dev)
 {
-	int ret;
-	int mVolts;
-	int32_t buffer;
-
-	struct adc_gecko_config *config = dev->config;
-	struct adc_gecko_data *data = dev->data;
+	struct adc_gecko_config *config = (struct adc_gecko_config *)dev->config;
 	const struct gpio_dt_spec *en_gpio = &config->en_gpio;
+	ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
 
-	config->base = (ADC_TypeDef *) DT_REG_ADDR(DT_NODELABEL(adc0));
-
-	// Enable ADC0 clock
-	CMU_ClockEnable(cmuClock_ADC0, true);
+	config->base = (ADC_TypeDef *) DT_REG_ADDR(DT_NODELABEL(adc0));																																																																																																				
 
 	// enable VBATT sense
 	gpio_pin_configure_dt(en_gpio, GPIO_OUTPUT_HIGH);
+	// Enable ADC0 clock
+	CMU_ClockEnable(cmuClock_ADC0, true);
+
+	// Modify init structs and initialize
+	init.prescale = ADC_PrescaleCalc(DT_PROP(DT_NODELABEL(adc0), frequency), 0); // Init to max ADC clock for Series 1
+	init.timebase = ADC_TimebaseCalc(0);
+	ADC_Init(config->base, &init);
+
 	return 0;
 }
 
