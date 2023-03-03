@@ -14,6 +14,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/drivers/fuel_gauge/sbs_battery/sbs_battery.h>
 
 #define ADC_DEVICE_NODE		DT_INST(0, sbs_sbs_battery)
 
@@ -21,13 +22,13 @@
 void main(void)
 {
 	const struct device *const batt_dev = DEVICE_DT_GET(ADC_DEVICE_NODE);
-	double resistance;
 	int32_t buffer;
 	int err;
 
+	struct adc_gecko_data *data = batt_dev->data;
+
 
 	static const struct adc_channel_cfg ch_cfg = {
-		.gain             = ADC_GAIN_1,
 		.reference        = ADC_REF_INTERNAL,
 		.acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 32),
 		.channel_id       = 2,
@@ -53,20 +54,21 @@ void main(void)
 		.buffer_size = sizeof(buffer),
 		.resolution = 12
 	};
-    seq.channels = 1; // HWID
-    err = adc_read(batt_dev, &seq);
+
 
     k_msleep(5000);
 
-    seq.channels = 0; //VBATT
-    err = adc_read(batt_dev, &seq);
-
-
-
 	while (true) {
-		//err = adc_read(batt_dev, &seq);
-        //printk("%s:%d - err %d buffer %d\n", err, buffer);
+		seq.channels = 1; // HWID
+    	err = adc_read(batt_dev, &seq);
+		printk("HWID = %d\n", data->hwid);
+		k_sleep(K_MSEC(2000));
 
-		//k_sleep(K_MSEC(1000));
+		seq.channels = 0;
+		err = adc_read(batt_dev, &seq);
+        printk("Voltage = %dmV\n", data->mVolts);
+		printk("Percent = %d%%\n", data->percent);
+
+		k_sleep(K_MSEC(2000));
 	}
 }
