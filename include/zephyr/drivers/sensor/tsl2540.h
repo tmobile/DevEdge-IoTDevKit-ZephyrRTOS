@@ -20,14 +20,15 @@ extern "C" {
 #endif
 
 enum sensor_attribute_tsl2540 {
+	TSL2540_SENSOR_ATTR_PRIV_START = SENSOR_ATTR_PRIV_START,
 	/** Sensor Gain */
-	SENSOR_ATTR_GAIN = SENSOR_ATTR_PRIV_START,
+	TSL2540_SENSOR_ATTR_GAIN ,
 	/** Sensor Integration Time (in ms) */
-	SENSOR_ATTR_INTEGRATION_TIME,
+	TSL2540_SENSOR_ATTR_INTEGRATION_TIME,
 	/** Sensor Glass Attenuation Factor */
-	SENSOR_ATTR_GLASS_ATTENUATION,
+	TSL2540_SENSOR_ATTR_GLASS_ATTENUATION,
 	/** Sensor persistence filter. */
-	SENSOR_ATTR_INT_APERS,
+	TSL2540_SENSOR_ATTR_INT_APERS,
 };
 
 enum sensor_gain_tsl2540 {

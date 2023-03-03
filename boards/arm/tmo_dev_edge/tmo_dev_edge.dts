@@ -264,7 +264,7 @@
 	tsl2540: tsl2540@39 {
 		// TSL2540
 		compatible = "ams,tsl2540";
-		reg = <0x39 0x4>;
+		reg = <0x39>;
 		status = "okay";
 		int-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
 	};

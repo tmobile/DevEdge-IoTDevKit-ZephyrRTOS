@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "tsl2540.h"
-#include <zephyr/logging/log.h>
 
-LOG_MODULE_DECLARE(tsl2540, CONFIG_SENSOR_LOG_LEVEL);
+#include <zephyr/logging/log.h>
+#include "tsl2540.h"
+LOG_MODULE_DECLARE(tsl2540);
 
 static void tsl2540_handle_cb(struct tsl2540_data *data)
 {
@@ -45,10 +45,17 @@ static void tsl2540_handle_int(const struct device *dev)
 	uint8_t status;
 
 	k_sem_take(&data->sem, K_FOREVER);
-
+#if 1
+	errno = 0;
+	status = fetch_STATUS(dev);
+	if (errno) {
+		LOG_ERR("Could not read status register, errno: %d", errno);
+	}
+#else
 	if (tsl2540_reg_read(dev, TSL2540_REG_STATUS, &status)) {
 		LOG_ERR("Could not read status");
 	}
+#endif
 
 	k_sem_give(&data->sem);
 
@@ -97,30 +104,42 @@ int tsl2540_trigger_set(const struct device *dev,
 	switch (trig->type) {
 	case SENSOR_TRIG_THRESHOLD:
 		if (trig->chan == SENSOR_CHAN_LIGHT) {
+#if 1
+			conf = get_INTENAB(dev);
+#else
 			if (tsl2540_reg_read(dev, TSL2540_REG_INT_EN, &conf)) {
 				ret = -EIO;
 				goto exit;
 			}
-
+#endif
 			/* Set interrupt enable bit */
 			conf |= TSL2540_INT_EN_AEN;
 
+#if 1
+			set_INTENAB(dev, conf);
+#else
 			if (tsl2540_reg_write(dev, TSL2540_REG_INT_EN, conf)) {
 				ret = -EIO;
 				goto exit;
 			}
-
+#endif
+#if 1
+			conf = get_CFG3(dev);
+#else
 			if (tsl2540_reg_read(dev, TSL2540_REG_CFG_3, &conf)) {
 				ret = -EIO;
 				goto exit;
 			}
-
+#endif
 			conf |= TSL2540_CFG3_SAI | TSL2540_CFG3_INTRC;
-
+#if 1
+			set_CFG3(dev, conf);
+#else
 			if (tsl2540_reg_write(dev, TSL2540_REG_CFG_3, conf)) {
 				ret = -EIO;
 				goto exit;
 			}
+#endif
 
 			data->als_handler = handler;
 		} else {
@@ -134,6 +153,8 @@ int tsl2540_trigger_set(const struct device *dev,
 		goto exit;
 	}
 exit:
+	flush_all(dev);
+
 	k_sem_give(&data->sem);
 
 	return ret;
@@ -181,6 +202,9 @@ int tsl2540_trigger_init(const struct device *dev)
 	if (gpio_pin_get_dt(&config->int_gpio) > 0) {
 		tsl2540_handle_cb(data);
 	}
+
+	set_ENABLE(dev, TSL2540_EN_ACTIVE);
+	// flush_all(dev);
 
 	return 0;
 }
