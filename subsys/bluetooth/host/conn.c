@@ -1987,6 +1987,11 @@ struct bt_conn *bt_conn_add_sco(const bt_addr_t *peer, int link_type)
 	}
 
 	sco_conn->sco.acl = bt_conn_lookup_addr_br(peer);
+	if (!sco_conn->sco.acl) {
+		bt_conn_unref(sco_conn);
+		return NULL;
+	}
+
 	sco_conn->type = BT_CONN_TYPE_SCO;
 
 	if (link_type == BT_HCI_SCO) {
@@ -2460,7 +2465,7 @@ int bt_conn_get_info(const struct bt_conn *conn, struct bt_conn_info *info)
 #if defined(CONFIG_BT_ISO)
 	case BT_CONN_TYPE_ISO:
 		if (IS_ENABLED(CONFIG_BT_ISO_UNICAST) &&
-		    conn->iso.info.type == BT_ISO_CHAN_TYPE_CONNECTED) {
+		    conn->iso.info.type == BT_ISO_CHAN_TYPE_CONNECTED && conn->iso.acl != NULL) {
 			info->le.dst = &conn->iso.acl->le.dst;
 			info->le.src = &bt_dev.id_addr[conn->iso.acl->id];
 		} else {
