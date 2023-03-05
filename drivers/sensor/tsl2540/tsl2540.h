@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2022-2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,6 +11,9 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/tsl2540.h>
+
+#include "log.h"
+LOG_MODULE_DECLARE(LOG_MODULE_NAME, CONFIG_SENSOR_LOG_LEVEL);
 
 #define TSL2540_REG_EN	     0x80
 #define TSL2540_REG_ATIME    0x81
@@ -49,7 +52,7 @@
 #define TSL2540_CFG1_G64  0x03
 #define TSL2540_CFG1_G128 0x03
 
-#define TSL2540_EN_ACTIVE 0x03
+#define TSL2540_EN_ACTIVE 0x0B
 #define TSL2540_EN_IDLE	  0x01
 #define TSL2540_EN_SLEEP  0x00
 
@@ -63,7 +66,7 @@
 #define TSL2540_CFG3_INTRC 0x80
 #define TSL2540_CFG3_SAI   0x08
 
-#define TSL2540_INT_EN_AEN 0x10
+#define TSL2540_INT_EN_AEN 0x90
 
 struct tsl2540_config {
 	const struct i2c_dt_spec i2c_spec;
@@ -135,7 +138,6 @@ struct tsl2540_data {
 	const struct device *dev;
 #ifdef CONFIG_TSL2540_TRIGGER
 	struct gpio_callback gpio_cb;
-	// enum interrupt_type int_type;
 	sensor_trigger_handler_t als_handler;
 #endif
 #ifdef CONFIG_TSL2540_TRIGGER_OWN_THREAD
@@ -181,53 +183,6 @@ PROTO_GETTER_SETTER(INTENAB, uint8_t)
 
 extern int fetch_all(const struct device *dev);
 extern int flush_all(const struct device *dev);
-
-// int tsl2540_reg_read(const struct device *dev, uint8_t reg, uint8_t *val);
-// int tsl2540_reg_write(const struct device *dev, uint8_t reg, uint8_t val);
-
-// #ifndef ZEPHYR_INCLUDE_LOGGING_LOG_H_
-// #define LOG_MODULE_NAME tsl2540
-// #include <zephyr/logging/log.h>
-// LOG_MODULE_DECLARE(LOG_MODULE_NAME, CONFIG_SENSOR_LOG_LEVEL);
-// LOG_MODULE_DECLARE(tsl2540);
-// #endif
-
-#if 1
-// extern int tsl2540_reg_read(const struct device *dev, uint8_t reg, uint8_t *val);
-// extern int tsl2540_reg_write(const struct device *dev, uint8_t reg, uint8_t val);
-#else
-inline static int tsl2540_reg_read(const struct device *dev, uint8_t reg, uint8_t *val)
-{
-	// const struct tsl2540_config *cfg = dev->config;
-	int result;
-
-	result = i2c_reg_read_byte_dt(&((const struct tsl2540_config *) dev->config)->i2c_spec, reg, val);
-	LOG_DBG("%s:%d: int %s(*dev: %p, reg: %#.02x, val: %#.02x): %d", __FILE__, __LINE__,
-		__func__, dev, reg, *val, result);
-
-	if (result < 0) {
-		return result;
-	}
-
-	return 0;
-}
-
-inline static int tsl2540_reg_write(const struct device *dev, uint8_t reg, uint8_t val)
-{
-	// const struct tsl2540_config *cfg = dev->config;
-	int result;
-
-	result = i2c_reg_write_byte_dt(&((const struct tsl2540_config *) dev->config)->i2c_spec, reg, val);
-	LOG_DBG("%s:%d int %s(*dev: %p, reg: %#.02x, val: %#.02x): %d", __FILE__, __LINE__,
-		__func__, dev, reg, val, result);
-
-	if (result < 0) {
-		return result;
-	}
-
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_TSL2540_TRIGGER
 int tsl2540_trigger_init(const struct device *dev);

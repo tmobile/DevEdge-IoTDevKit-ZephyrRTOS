@@ -1,15 +1,12 @@
 /*
- * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2022-2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #define DT_DRV_COMPAT ams_tsl2540
 
-#include <zephyr/logging/log.h>
 #include "tsl2540.h"
-// LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_SENSOR_LOG_LEVEL);
-LOG_MODULE_REGISTER(tsl2540, LOG_LEVEL_DBG);
 
 #include <stdlib.h>
 
@@ -81,23 +78,11 @@ DEF_GETTER_SETTER(INTENAB, uint8_t)
 int fetch_all(const struct device *dev)
 {
 	typedef int (*Functions)(const struct device *dev);
-	const Functions functions[] = {fetch_ENABLE,
-				       fetch_ATIME,
-				       fetch_WTIME,
-				       fetch_AILT,
-				       fetch_AIHT,
-				       fetch_PERS,
-				       fetch_CFG0,
-				       fetch_CFG1,
-				       fetch_REVID,
-				       fetch_ID,
-				       /* fetch_STATUS, */ fetch_VISDATA,
-				       fetch_IRDATA,
-				       fetch_REVID2,
-				       fetch_CFG2,
-				       fetch_CFG3,
-				       fetch_AZ_CONFIG,
-				       fetch_INTENAB};
+	const Functions functions[] = {fetch_ENABLE,	fetch_ATIME,  fetch_WTIME,  fetch_AILT,
+				       fetch_AIHT,	fetch_PERS,   fetch_CFG0,   fetch_CFG1,
+				       fetch_REVID,	fetch_ID,     fetch_STATUS, fetch_VISDATA,
+				       fetch_IRDATA,	fetch_REVID2, fetch_CFG2,   fetch_CFG3,
+				       fetch_AZ_CONFIG, fetch_INTENAB};
 	for (int ii = 0; ii < sizeof functions / sizeof *functions; ii++) {
 		(void)functions[ii](dev);
 		if (errno) {
@@ -111,21 +96,9 @@ int fetch_all(const struct device *dev)
 int flush_all(const struct device *dev)
 {
 	typedef int (*Functions)(const struct device *dev);
-	const Functions functions[] = {
-		/* flush_ENABLE, */ flush_ATIME,
-		flush_WTIME,
-		flush_AILT,
-		flush_AIHT,
-		flush_PERS,
-		flush_CFG0,
-		flush_CFG1,
-		flush_REVID,
-		flush_ID,
-		/* flush_STATUS, flush_VISDATA, flush_IRDATA, flush_REVID2,*/ flush_CFG2,
-		flush_CFG3,
-		flush_AZ_CONFIG,
-		flush_INTENAB,
-		flush_ENABLE};
+	const Functions functions[] = {flush_ATIME, flush_WTIME,     flush_AILT,    flush_AIHT,
+				       flush_PERS,  flush_CFG0,	     flush_CFG1,    flush_CFG2,
+				       flush_CFG3,  flush_AZ_CONFIG, flush_INTENAB, flush_ENABLE};
 	if (get_ENABLE(dev)) {
 		uint8_t desired_state = get_ENABLE(dev);
 		set_ENABLE(dev, TSL2540_EN_SLEEP);
@@ -146,39 +119,35 @@ int flush_all(const struct device *dev)
 static int tsl2540_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct tsl2540_data *data = dev->data;
-	int ret = 0;
-
-	// LOG_DBG("%s(*dev: %p, chan: %d)", __func__, dev, chan);
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_LIGHT ||
 			chan == SENSOR_CHAN_IR);
-	k_sem_take(&data->sem, K_FOREVER);
 
+	k_sem_take(&data->sem, K_FOREVER);
 	if (chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_LIGHT) {
 		errno = 0;
 		fetch_VISDATA(dev);
 		if (errno) {
-			LOG_ERR("Could not fetch ambient light (visible), errno: %d", errno);
+			LOG_ERR("Could not fetch ambient light (visible); errno: %d", errno);
 		} else {
 			data->count_vis = sys_le16_to_cpu(get_VISDATA(dev));
+			fetch_IRDATA(dev);
+			if (errno) {
+				LOG_ERR("Could not fetch ambient light (IR); errno: %d", errno);
+			} else {
+				data->count_vis = sys_le16_to_cpu(get_IRDATA(dev));
+			}
 		}
-	}
-	fetch_IRDATA(dev);
-	if (errno) {
-		LOG_ERR("Could not fetch ambient light (IR), errno: %d", errno);
-	} else {
-		data->count_vis = sys_le16_to_cpu(get_IRDATA(dev));
 	}
 	k_sem_give(&data->sem);
 
-	return ret;
+	return -errno;
 }
 
 static int tsl2540_channel_get(const struct device *dev, enum sensor_channel chan,
 			       struct sensor_value *val)
 {
 	struct tsl2540_data *data = dev->data;
-	uint32_t uval;
 	int ret = 0;
 	double cpl;
 
@@ -186,19 +155,14 @@ static int tsl2540_channel_get(const struct device *dev, enum sensor_channel cha
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	cpl = (data->integration_time + 1) * 2.81;
-	cpl *= data->again;
+	cpl = (data->integration_time + 1) * data->again * 2.81;
 
 	switch (chan) {
 	case SENSOR_CHAN_LIGHT:
-		uval = data->count_vis;
-		cpl /= (53 * data->glass_attenuation);
-		sensor_value_from_double(val, uval / cpl);
+		sensor_value_from_double(val, data->count_vis / cpl * 53.0 * data->glass_attenuation);
 		break;
 	case SENSOR_CHAN_IR:
-		uval = data->count_ir;
-		cpl /= (53 * data->glass_attenuation_ir);
-		sensor_value_from_double(val, uval / cpl);
+		sensor_value_from_double(val, data->count_ir / cpl * 53.0 * data->glass_attenuation_ir);
 		break;
 	default:
 		ret = -ENOTSUP;
@@ -218,53 +182,6 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan, enum se
 	LOG_DBG("int %s(*dev: %p, chan: %d, attr: %d, *val: %p)", __func__, dev, chan, attr, val);
 
 	k_sem_take(&data->sem, K_FOREVER);
-#if CONFIG_TSL2540_TRIGGER && 0
-	if (chan == SENSOR_CHAN_LIGHT) {
-		if (attr == SENSOR_ATTR_UPPER_THRESH) {
-			double cpl;
-
-			cpl = ((data->integration_time + 1) * 2.81);
-			cpl *= data->again;
-			cpl /= (53 * data->glass_attenuation);
-			uint16_t thld = (uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_le16(thld);
-			set_AIHT(dev, thld);
-			LOG_DBG("SENSOR_ATTR_UPPER_THRESH (%d): %g, cpl: %g, thld: %d. (%#.02x)\n",
-				attr, sensor_value_to_double(val), cpl, thld, thld);
-
-			if (i2c_burst_write_dt(
-				    &((const struct tsl2540_config *)dev->config)->i2c_spec,
-				    TSL2540_REG_AIHT_LOW, (uint8_t *)&thld, sizeof thld)) {
-				ret = -EIO;
-				goto exit;
-			} else {
-				LOG_HEXDUMP_DBG((const uint8_t *)&thld, sizeof thld, "0x86:");
-			}
-			goto exit;
-		}
-		if (attr == SENSOR_ATTR_LOWER_THRESH) {
-			double cpl;
-
-			cpl = ((data->integration_time + 1) * 2.81);
-			cpl *= data->again;
-			cpl /= (53 * data->glass_attenuation);
-			uint16_t thld = (uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_le16(thld);
-			set_AILT(dev, thld);
-			goto exit;
-		}
-		if ((enum sensor_attribute_tsl2540)attr == TSL2540_SENSOR_ATTR_GLASS_ATTENUATION) {
-			data->glass_attenuation = sensor_value_to_double(val);
-			goto exit;
-		}
-	}
-	if (chan == SENSOR_CHAN_IR) {
-		if ((enum sensor_attribute_tsl2540)attr == TSL2540_SENSOR_ATTR_GLASS_ATTENUATION) {
-			data->glass_attenuation = sensor_value_to_double(val);
-			goto exit;
-		}
-	}
-#endif
 
 	if (chan == SENSOR_CHAN_IR || chan == SENSOR_CHAN_LIGHT) {
 		switch ((enum sensor_attribute_tsl2540)attr) {
@@ -337,55 +254,34 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan, enum se
 
 		default:
 #if CONFIG_TSL2540_TRIGGER
+		{
+			double cpl;
+
+			cpl = ((data->integration_time + 1) * 2.81) * data->again;
+			uint16_t thld = sensor_value_to_double(val) * cpl / 53.0 / data->glass_attenuation;
+
 			switch (attr) {
-			case SENSOR_ATTR_UPPER_THRESH: {
-				double cpl;
+			case SENSOR_ATTR_UPPER_THRESH:
+				set_AIHT(dev, sys_cpu_to_le16(thld));
+				break;
 
-				cpl = ((data->integration_time + 1) * 2.81);
-				cpl *= data->again;
-				cpl /= (53 * data->glass_attenuation);
-				uint16_t thld = (uint16_t)(sensor_value_to_double(val) * cpl);
-				thld = sys_cpu_to_le16(thld);
-				set_AIHT(dev, thld);
-				LOG_DBG("SENSOR_ATTR_UPPER_THRESH (%d): %g, cpl: %g, thld: %d. "
-					"(%#.02x)\n",
-					attr, sensor_value_to_double(val), cpl, thld, thld);
-
-				if (i2c_burst_write_dt(
-					    &((const struct tsl2540_config *)dev->config)->i2c_spec,
-					    TSL2540_REG_AIHT_LOW, (uint8_t *)&thld, sizeof thld)) {
-					ret = -EIO;
-					// goto exit;
-				} else {
-					LOG_HEXDUMP_DBG((const uint8_t *)&thld, sizeof thld,
-							"0x86:");
-				}
-			} break;
-
-			case SENSOR_ATTR_LOWER_THRESH: {
-				double cpl;
-
-				cpl = ((data->integration_time + 1) * 2.81);
-				cpl *= data->again;
-				cpl /= (53 * data->glass_attenuation);
-				uint16_t thld = (uint16_t)(sensor_value_to_double(val) * cpl);
-				thld = sys_cpu_to_le16(thld);
-				set_AILT(dev, thld);
-			} break;
+			case SENSOR_ATTR_LOWER_THRESH:
+				set_AILT(dev, sys_cpu_to_le16(thld));
+				break;
 
 			default:
 				ret = -ENOTSUP;
 				break;
 			}
+		}
 #else
 			ret = -ENOTSUP;
 #endif
-			break;
+		break;
 		}
 	}
 
-	// exit:
-	// flush_all(dev);
+	flush_all(dev);
 
 	k_sem_give(&data->sem);
 
@@ -440,8 +336,6 @@ static int tsl2540_init(const struct device *dev)
 		return -EIO;
 	}
 #endif
-
-	// flush_all(dev);
 
 	LOG_DBG("int %s(*dev: %p) Init complete", __func__, dev);
 
