@@ -224,6 +224,9 @@ static uint32_t counter_gecko_get_pending_int(const struct device *dev)
 }
 
 #ifdef CONFIG_PERSISTENT_GECKO_RTCC
+
+#ifdef CONFIG_POSIX_CLOCK
+
 /*! /brief Set the posix time to the RTCC value.
  *
  *  This is ONLY done when we are preserving the RTCC operations in EM4. If the
@@ -239,6 +242,8 @@ static int update_posix(void)
 
 	return clock_settime(CLOCK_REALTIME, &tp);
 }
+
+#endif /* CONFIG_POSIX_CLOCK */
 
 /*! \brief Pin bootloader definitions.
  *
