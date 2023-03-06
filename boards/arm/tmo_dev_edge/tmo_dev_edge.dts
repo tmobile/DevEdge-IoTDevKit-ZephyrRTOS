@@ -119,10 +119,6 @@
 &usart1 {
 	// UART_1
 	current-speed	= <115200>;
-	//location-rx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
-	//location-tx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
-	//location-cts	= <GECKO_LOCATION(15) GECKO_PORT_D GECKO_PIN(11)>;
-	//location-rts	= <GECKO_LOCATION(13) GECKO_PORT_D GECKO_PIN(10)>;
 	//hw-flow-control;
 	pinctrl-0 = <&usart1_default>;
 	pinctrl-names = "default";
@@ -147,9 +143,6 @@
 &usart3 {
 	// SPI_1
 	compatible = "silabs,gecko-spi-usart";
-	//location-clk = <GECKO_LOCATION(16) GECKO_PORT_C GECKO_PIN(0)>;
-	//location-rx = <GECKO_LOCATION(19) GECKO_PORT_C GECKO_PIN(2)>;
-	//location-tx = <GECKO_LOCATION(21) GECKO_PORT_C GECKO_PIN(3)>;
 	cs-gpios = <&gpioc 1 GPIO_ACTIVE_LOW>;
 	pinctrl-0 = <&usart3_default>;
 	pinctrl-names = "default";
@@ -189,9 +182,6 @@
 	// SPI_0
 	compatible = "silabs,gecko-spi-usart";
 
-	//location-clk = <GECKO_LOCATION(3) GECKO_PORT_I GECKO_PIN(0)>;
-	//location-rx = <GECKO_LOCATION(6) GECKO_PORT_I GECKO_PIN(2)>;
-	//location-tx = <GECKO_LOCATION(8) GECKO_PORT_I GECKO_PIN(3)>;
 	cs-gpios = <&gpioi 1 GPIO_ACTIVE_LOW>;
 	pinctrl-0 = <&usart2_default>;
 	pinctrl-names = "default";
