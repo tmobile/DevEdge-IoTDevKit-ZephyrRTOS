@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2017 Christian Taedcke
  * Copyright (c) 2019 Lemonbeat GmbH
- * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,7 @@
 /dts-v1/;
 #include <silabs/efm32pg12b500f1024gl125.dtsi>
 #include <dt-bindings/pwm/pwm.h>
+#include "tmo_dev_edge-pinctrl.dtsi"
 
 / {
 	model = "Silicon Labs EFM32PG STK3402A board";
@@ -110,19 +111,17 @@
 &usart0 {
 	// UART_0
 	current-speed = <115200>;
-	location-rx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(5)>;
-	location-tx = <GECKO_LOCATION(28) GECKO_PORT_F GECKO_PIN(4)>;
+	pinctrl-0 = <&usart0_default>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
 &usart1 {
 	// UART_1
 	current-speed	= <115200>;
-	location-rx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(13)>;
-	location-tx		= <GECKO_LOCATION(20) GECKO_PORT_D GECKO_PIN(12)>;
-	location-cts	= <GECKO_LOCATION(15) GECKO_PORT_D GECKO_PIN(11)>;
-	location-rts	= <GECKO_LOCATION(13) GECKO_PORT_D GECKO_PIN(10)>;
-	hw-flow-control;
+	//hw-flow-control;
+	pinctrl-0 = <&usart1_default>;
+	pinctrl-names = "default";
 	status = "okay";
 
 	murata_1sc: murata_1sc {
@@ -144,10 +143,9 @@
 &usart3 {
 	// SPI_1
 	compatible = "silabs,gecko-spi-usart";
-	location-clk = <GECKO_LOCATION(16) GECKO_PORT_C GECKO_PIN(0)>;
-	location-rx = <GECKO_LOCATION(19) GECKO_PORT_C GECKO_PIN(2)>;
-	location-tx = <GECKO_LOCATION(21) GECKO_PORT_C GECKO_PIN(3)>;
 	cs-gpios = <&gpioc 1 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&usart3_default>;
+	pinctrl-names = "default";
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -184,10 +182,9 @@
 	// SPI_0
 	compatible = "silabs,gecko-spi-usart";
 
-	location-clk = <GECKO_LOCATION(3) GECKO_PORT_I GECKO_PIN(0)>;
-	location-rx = <GECKO_LOCATION(6) GECKO_PORT_I GECKO_PIN(2)>;
-	location-tx = <GECKO_LOCATION(8) GECKO_PORT_I GECKO_PIN(3)>;
 	cs-gpios = <&gpioi 1 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&usart2_default>;
+	pinctrl-names = "default";
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -215,8 +212,8 @@
 
 &leuart0 {
 	current-speed = <9600>;
-	location-rx = <GECKO_LOCATION(6) GECKO_PORT_B GECKO_PIN(12)>;
-	location-tx = <GECKO_LOCATION(6) GECKO_PORT_B GECKO_PIN(11)>;
+	pinctrl-0 = <&leuart0_default>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
