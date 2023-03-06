@@ -52,8 +52,8 @@
 					<GECKO_LOC(SPI_MOSI, 21)>;
 		};
 	};
-	
-	/* configuration for leuart0 device */ 
+
+	/* configuration for leuart0 device */
 	leuart0_default: leuart0_default {
 		group1 {
 			psels = <GECKO_PSEL(UART_TX, B, 11)>,
