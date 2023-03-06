@@ -19,10 +19,7 @@ if LVGL
 config KSCAN
 	default y
 
-config INPUT
-	default y if KSCAN
-
-config INPUT_GT911_INTERRUPT
+config KSCAN_GT911_INTERRUPT
 	default y
 
 config LV_Z_POINTER_KSCAN
