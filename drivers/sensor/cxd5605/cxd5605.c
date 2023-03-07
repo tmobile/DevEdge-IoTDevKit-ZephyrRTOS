@@ -712,7 +712,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 * domain this device belongs is suspended.
 		 */
 
-		gpio_pin_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
+		gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
 		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
 		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		break;
