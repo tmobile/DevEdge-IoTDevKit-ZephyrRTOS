@@ -182,7 +182,7 @@ config BT_DEVICE_APPEARANCE
 
 config BT_DEBUG
 	bool "Bluetooth driver debug"
-	default y
+	default n
 	help
 	  This option enables debug support for the RS9116W
 	  Bluetooth driver.
