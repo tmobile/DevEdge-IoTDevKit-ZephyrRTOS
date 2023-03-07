@@ -128,12 +128,12 @@ static int rs9116w_mgmt_scan(const struct device *dev, scan_result_cb_t cb)
 			z_result.security = WIFI_SECURITY_TYPE_NONE;
 		} else if (r_result->security_mode == RSI_WPA2) {
 			z_result.security = WIFI_SECURITY_TYPE_PSK;
+		} else if (r_result->security_mode == RSI_WPA3
+			|| r_result->security_mode == RSI_WPA3_TRANSITION) {
+			z_result.security = WIFI_SECURITY_TYPE_SAE;
 		} else {
-			printk("SSID: %s with security %u not supported",
-			       z_result.ssid, r_result->security_mode);
-			LOG_DBG("SSID: %s with security %u not supported",
+			LOG_WRN("SSID: %s with security %u not supported",
 				z_result.ssid, r_result->security_mode);
-			continue;
 		}
 
 		/* rssi */
