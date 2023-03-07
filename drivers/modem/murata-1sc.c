@@ -2007,7 +2007,7 @@ static int send_sms_msg(void *obj, const struct sms_out *sms)
 
 	snprintk(at_cmd, sizeof(at_cmd), "AT%%CMGSC=\"%s\"\r%s\x1a", sms->phone, sms->msg);
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
-			     MDM_CMD_RSP_TIME);
+			     MDM_CMD_LONG_RSP_TIME);
 	if (ret < 0) {
 		LOG_ERR("%s ret:%d", at_cmd, ret);
 	}
