@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "mesh_test.h"
+#include "argparse.h"
+#include <bs_pc_backchannel.h>
 
 #define LOG_MODULE_NAME mesh_test
 
@@ -157,11 +159,19 @@ static struct bt_mesh_model_pub health_pub = {
 	.msg = NET_BUF_SIMPLE(BT_MESH_TX_SDU_MAX),
 };
 
+#if defined(CONFIG_BT_MESH_SAR_CFG)
+static struct bt_mesh_sar_cfg_cli sar_cfg_cli;
+#endif
+
 static struct bt_mesh_model models[] = {
 	BT_MESH_MODEL_CFG_SRV,
 	BT_MESH_MODEL_CFG_CLI(&cfg_cli),
 	BT_MESH_MODEL_CB(TEST_MOD_ID, model_op, &pub, NULL, &test_model_cb),
 	BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub),
+#if defined(CONFIG_BT_MESH_SAR_CFG)
+	BT_MESH_MODEL_SAR_CFG_SRV,
+	BT_MESH_MODEL_SAR_CFG_CLI(&sar_cfg_cli),
+#endif
 };
 
 struct bt_mesh_model *test_model = &models[2];
@@ -251,6 +261,11 @@ void bt_mesh_device_setup(const struct bt_mesh_prov *prov, const struct bt_mesh_
 void bt_mesh_test_setup(void)
 {
 	static struct bt_mesh_prov prov;
+
+	/* Ensure those test devices will not drift more than
+	 * 100ms for each other in emulated time
+	 */
+	tm_set_phy_max_resync_offset(100000);
 
 	net_buf_simple_init(pub.msg, 0);
 	net_buf_simple_init(vnd_pub.msg, 0);
@@ -487,3 +502,108 @@ void bt_mesh_test_ra_cb_setup(void (*cb)(uint8_t *, size_t))
 {
 	ra_cb = cb;
 }
+
+void bt_mesh_test_sync_init(struct bt_mesh_test_sync_ctx *ctx)
+{
+	ctx->chan_id = bs_open_back_channel(get_device_nbr(),
+						  ctx->dev_nmbr,
+						  ctx->chan_nmbr, ctx->cnt);
+}
+
+static bool wait_for_sync(uint32_t channel_id, int *wait, uint8_t msg_len)
+{
+	int size;
+
+	while (true) {
+		size = bs_bc_is_msg_received(channel_id);
+
+		if (size < 0) {
+			FAIL("Sync channel error: %d", size);
+		} else if (size > 0) {
+			ASSERT_EQUAL(size, msg_len);
+			return true;
+		} else if (*wait <= 0) {
+			return false;
+		}
+
+		k_sleep(K_MSEC(100));
+		*wait -= 100;
+	}
+}
+
+bool bt_mesh_test_sync_multi(struct bt_mesh_test_sync_ctx *ctx, uint32_t channel, uint16_t wait_sec)
+{
+	const uint32_t barrier_msg = 0xC0FFEE;
+	uint32_t recv_msg;
+	int wait = wait_sec * MSEC_PER_SEC;
+
+	for (int i = 0; i < ctx->cnt; i++) {
+		if (ctx->chan_nmbr[i] != channel) {
+			continue;
+		}
+
+		if (!wait_for_sync(ctx->chan_id[i], &wait, sizeof(barrier_msg))) {
+			return false;
+		}
+
+		bs_bc_receive_msg(ctx->chan_id[i], (uint8_t *)&recv_msg, sizeof(recv_msg));
+		ASSERT_EQUAL(barrier_msg, recv_msg);
+	}
+
+	for (int i = 0; i < ctx->cnt; i++) {
+		if (ctx->chan_nmbr[i] != channel) {
+			continue;
+		}
+
+		bs_bc_send_msg(ctx->chan_id[i], (uint8_t *)&barrier_msg, sizeof(barrier_msg));
+	}
+
+	return true;
+}
+
+bool bt_mesh_test_sync(uint32_t channel_id, uint16_t wait_sec)
+{
+	const uint32_t barrier_msg = 0xC0FFEE;
+	uint32_t recv_msg;
+	int wait = wait_sec * MSEC_PER_SEC;
+
+	bs_bc_send_msg(channel_id, (uint8_t *)&barrier_msg, sizeof(barrier_msg));
+
+	if (!wait_for_sync(channel_id, &wait, sizeof(barrier_msg))) {
+		return false;
+	}
+
+	bs_bc_receive_msg(channel_id, (uint8_t *)&recv_msg, sizeof(recv_msg));
+	ASSERT_EQUAL(barrier_msg, recv_msg);
+	return true;
+}
+
+uint16_t bt_mesh_test_own_addr_get(uint16_t start_addr)
+{
+	return start_addr + get_device_nbr();
+}
+
+#if defined(CONFIG_BT_MESH_SAR_CFG)
+void bt_mesh_test_sar_conf_set(struct bt_mesh_sar_tx *tx_set, struct bt_mesh_sar_rx *rx_set)
+{
+	int err;
+
+	if (tx_set) {
+		struct bt_mesh_sar_tx tx_rsp;
+
+		err = bt_mesh_sar_cfg_cli_transmitter_set(0, cfg->addr, tx_set, &tx_rsp);
+		if (err) {
+			FAIL("Failed to configure SAR Transmitter state (err %d)", err);
+		}
+	}
+
+	if (rx_set) {
+		struct bt_mesh_sar_rx rx_rsp;
+
+		err = bt_mesh_sar_cfg_cli_receiver_set(0, cfg->addr, rx_set, &rx_rsp);
+		if (err) {
+			FAIL("Failed to configure SAR Receiver state (err %d)", err);
+		}
+	}
+}
+#endif /* defined(CONFIG_BT_MESH_SAR_CFG) */

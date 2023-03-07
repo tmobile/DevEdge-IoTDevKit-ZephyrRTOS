@@ -6,3 +6,6 @@ source $(dirname "${BASH_SOURCE[0]}")/../../_mesh_test.sh
 
 # test tx callbacks sequence for multiple advs
 RunTest mesh_adv_tx_cb_multi adv_tx_cb_multi
+
+conf=prj_mesh1d1_conf
+RunTest mesh_adv_tx_cb_multi adv_tx_cb_multi
