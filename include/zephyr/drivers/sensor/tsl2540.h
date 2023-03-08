@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,11 +22,13 @@ extern "C" {
 
 enum sensor_attribute_tsl2540 {
 	/** Sensor Gain */
-	SENSOR_ATTR_GAIN = SENSOR_ATTR_PRIV_START,
+	SENSOR_ATTR_GAIN = SENSOR_ATTR_PRIV_START + 1,
 	/** Sensor Integration Time (in ms) */
 	SENSOR_ATTR_INTEGRATION_TIME,
 	/** Sensor Glass Attenuation Factor */
 	SENSOR_ATTR_GLASS_ATTENUATION,
+	/** Sensor ALS interrupt persistence filters */
+	SENSOR_ATTR_INT_APERS,
 };
 
 enum sensor_gain_tsl2540 {
@@ -36,7 +39,6 @@ enum sensor_gain_tsl2540 {
 	TSL2540_SENSOR_GAIN_64,
 	TSL2540_SENSOR_GAIN_128,
 };
-
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -46,8 +47,7 @@ int tsl2540_reg_write(const struct device *dev, uint8_t reg, uint8_t val)
 	return 0;
 }
 
-static int tsl2540_sample_fetch(const struct device *dev,
-				enum sensor_channel chan)
+static int tsl2540_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct tsl2540_data *data = dev->data;
 	int ret = 0;
@@ -57,52 +57,38 @@ static int tsl2540_sample_fetch(const struct device *dev,
 	k_sem_take(&data->sem, K_FOREVER);
 
 	if (chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_LIGHT) {
-		ret = tsl2540_reg_read(dev, TSL2540_REG_VIS_LOW,
-				       (uint8_t *)&data->count_vis);
-		if (ret < 0) {
+		uint16_t le16_buffer;
+
+		ret = i2c_burst_read_dt(
+			     &((const struct tsl2540_config *)dev->config)->i2c_spec,
+			     TSL2540_REG_VIS_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
+		if (ret) {
 			LOG_ERR("Could not fetch ambient light (visible)");
+		} else {
+			data->count_vis = sys_le16_to_cpu(le16_buffer);
 		}
-		ret = tsl2540_reg_read(dev, TSL2540_REG_VIS_HI,
-				       ((uint8_t *)&data->count_vis) + 1);
-		if (ret < 0) {
-			LOG_ERR("Could not fetch ambient light (visible)");
-		}
-		ret = tsl2540_reg_read(dev, TSL2540_REG_VIS_LOW,
-				       (uint8_t *)&data->count_vis);
-		if (ret < 0) {
-			LOG_ERR("Could not fetch ambient light (visible)");
-		}
-		ret = tsl2540_reg_read(dev, TSL2540_REG_VIS_HI,
-				       ((uint8_t *)&data->count_vis) + 1);
-		if (ret < 0) {
-			LOG_ERR("Could not fetch ambient light (visible)");
-		}
-		data->count_vis = sys_be16_to_cpu(data->count_vis);
 	}
 	if (chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_IR) {
-		ret = tsl2540_reg_read(dev, TSL2540_REG_IR_LOW,
-				       (uint8_t *)&data->count_ir);
-		if (ret < 0) {
+		uint16_t le16_buffer;
+
+		ret = i2c_burst_read_dt(
+			     &((const struct tsl2540_config *)dev->config)->i2c_spec,
+			     TSL2540_REG_IR_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
+		if (ret) {
 			LOG_ERR("Could not fetch ambient light (IR)");
+		} else {
+			data->count_ir = sys_le16_to_cpu(le16_buffer);
 		}
-		ret = tsl2540_reg_read(dev, TSL2540_REG_IR_HI,
-				       ((uint8_t *)&data->count_ir) + 1);
-		if (ret < 0) {
-			LOG_ERR("Could not fetch ambient light (IR)");
-		}
-		data->count_ir = sys_be16_to_cpu(data->count_ir);
 	}
 	k_sem_give(&data->sem);
 
 	return ret;
 }
 
-static int tsl2540_channel_get(const struct device *dev,
-			       enum sensor_channel chan,
+static int tsl2540_channel_get(const struct device *dev, enum sensor_channel chan,
 			       struct sensor_value *val)
 {
 	struct tsl2540_data *data = dev->data;
-	uint32_t uval;
 	int ret = 0;
 	double cpl;
 
@@ -113,14 +99,12 @@ static int tsl2540_channel_get(const struct device *dev,
 
 	switch (chan) {
 	case SENSOR_CHAN_LIGHT:
-		uval = data->count_vis;
-		cpl /= (53 * data->glass_attenuation);
-		sensor_value_from_double(val, uval / cpl);
+		sensor_value_from_double(val,
+					 data->count_vis / cpl * 53.0 * data->glass_attenuation);
 		break;
 	case SENSOR_CHAN_IR:
-		uval = data->count_ir;
-		cpl /= (53 * data->glass_attenuation_ir);
-		sensor_value_from_double(val, uval / cpl);
+		sensor_value_from_double(val,
+					 data->count_ir / cpl * 53.0 * data->glass_attenuation_ir);
 		break;
 	default:
 		ret = -ENOTSUP;
@@ -131,69 +115,59 @@ static int tsl2540_channel_get(const struct device *dev,
 	return ret;
 }
 
-int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
-		     enum sensor_attribute attr, const struct sensor_value *val)
+int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan, enum sensor_attribute attr,
+		     const struct sensor_value *val)
 {
 	struct tsl2540_data *data = dev->data;
 	int ret = 0;
 
 	k_sem_take(&data->sem, K_FOREVER);
+	tsl2540_reg_write(dev, TSL2540_ENABLE_ADDR, TSL2540_ENABLE_MASK & ~TSL2540_ENABLE_CONF);
 #if CONFIG_TSL2540_TRIGGER
 	if (chan == SENSOR_CHAN_LIGHT) {
 		if (attr == SENSOR_ATTR_UPPER_THRESH) {
 			double cpl;
+			uint16_t thld, le16_buffer;
 
 			cpl = ((data->integration_time + 1) * 2.81);
 			cpl *= data->again;
 			cpl /= (53 * data->glass_attenuation);
-			uint16_t thld =
-				(uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_be16(thld);
-			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_HI,
-					      ((uint8_t *)&thld)[0])) {
-				ret = -EIO;
-				goto exit;
-			}
-			if (tsl2540_reg_write(dev, TSL2540_REG_AIHT_LOW,
-					      ((uint8_t *)&thld)[1])) {
-				ret = -EIO;
-				goto exit;
-			}
+			thld = sensor_value_to_double(val) * cpl;
+			LOG_DBG("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
 
-			ret = 0;
+			le16_buffer = sys_cpu_to_le16(thld);
+			ret = i2c_burst_write_dt(
+				&((const struct tsl2540_config *)dev->config)->i2c_spec,
+				TSL2540_REG_AIHT_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
+
 			goto exit;
 		}
 		if (attr == SENSOR_ATTR_LOWER_THRESH) {
 			double cpl;
+			uint16_t thld, le16_buffer;
 
 			cpl = ((data->integration_time + 1) * 2.81);
 			cpl *= data->again;
 			cpl /= (53 * data->glass_attenuation);
-			uint16_t thld =
-				(uint16_t)(sensor_value_to_double(val) * cpl);
-			thld = sys_cpu_to_be16(thld);
-			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_HI,
-					      ((uint8_t *)&thld)[0])) {
-				ret = -EIO;
-				goto exit;
-			}
-			if (tsl2540_reg_write(dev, TSL2540_REG_AILT_LOW,
-					      ((uint8_t *)&thld)[1])) {
-				ret = -EIO;
-				goto exit;
-			}
+			thld = sensor_value_to_double(val) * cpl;
+			LOG_DBG("attr: %d, cpl: %g, thld: %x\n", attr, cpl, thld);
 
-			ret = 0;
+			le16_buffer = sys_cpu_to_le16(sys_cpu_to_le16(thld));
+
+			ret = i2c_burst_write_dt(
+				&((const struct tsl2540_config *)dev->config)->i2c_spec,
+				TSL2540_REG_AILT_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
+
 			goto exit;
 		}
-		if (attr == SENSOR_ATTR_GLASS_ATTENUATION) {
+		if ((enum sensor_attribute_tsl2540)attr == SENSOR_ATTR_GLASS_ATTENUATION) {
 			data->glass_attenuation = sensor_value_to_double(val);
 			ret = 0;
 			goto exit;
 		}
 	}
 	if (chan == SENSOR_CHAN_IR) {
-		if (attr == SENSOR_ATTR_GLASS_ATTENUATION) {
+		if ((enum sensor_attribute_tsl2540)attr == SENSOR_ATTR_GLASS_ATTENUATION) {
 			data->glass_attenuation = sensor_value_to_double(val);
 			ret = 0;
 			goto exit;
@@ -204,13 +178,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 		if (attr == (enum sensor_attribute)SENSOR_ATTR_GAIN) {
 			switch (val->val1) {
 			case TSL2540_SENSOR_GAIN_1_2:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G1_2)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G1_2)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G1_2)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G1_2)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -218,13 +190,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = 0;
 				goto exit;
 			case TSL2540_SENSOR_GAIN_1:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G1)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G1)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G1)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G1)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -232,13 +202,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = 0;
 				goto exit;
 			case TSL2540_SENSOR_GAIN_4:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G4)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G4)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G4)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G4)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -246,13 +214,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = 0;
 				goto exit;
 			case TSL2540_SENSOR_GAIN_16:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G16)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G16)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G16)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G16)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -260,13 +226,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = 0;
 				goto exit;
 			case TSL2540_SENSOR_GAIN_64:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G64)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G64)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G64)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G64)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -274,13 +238,11 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = 0;
 				goto exit;
 			case TSL2540_SENSOR_GAIN_128:
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1,
-						      TSL2540_CFG1_G128)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_1, TSL2540_CFG1_G128)) {
 					ret = -EIO;
 					goto exit;
 				}
-				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2,
-						      TSL2540_CFG2_G128)) {
+				if (tsl2540_reg_write(dev, TSL2540_REG_CFG_2, TSL2540_CFG2_G128)) {
 					ret = -EIO;
 					goto exit;
 				}
@@ -291,9 +253,20 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 				ret = -EINVAL;
 				goto exit;
 			}
+			if (attr == (enum sensor_attribute)SENSOR_ATTR_INT_APERS) {
+				uint8_t apv = (uint8_t)val->val1;
+
+				if (apv > 15) {
+					ret = -EINVAL;
+					goto exit;
+				}
+				if (tsl2540_reg_write(dev, TSL2540_REG_PERS, apv)) {
+					ret = -EIO;
+					goto exit;
+				}
+			}
 		}
-		if (attr ==
-		    (enum sensor_attribute)SENSOR_ATTR_INTEGRATION_TIME) {
+		if (attr == (enum sensor_attribute)SENSOR_ATTR_INTEGRATION_TIME) {
 			uint8_t itv;
 			double it;
 
@@ -318,6 +291,8 @@ int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
 
 	ret = -ENOTSUP;
 exit:
+	tsl2540_reg_write(dev, TSL2540_ENABLE_ADDR, TSL2540_ENABLE_MASK & TSL2540_ENABLE_CONF);
+
 	k_sem_give(&data->sem);
 
 	return ret;
@@ -325,17 +300,14 @@ exit:
 
 static int tsl2540_setup(const struct device *dev)
 {
+	struct sensor_value integration_time;
+
 	/* Set ALS integration time */
-	tsl2540_reg_write(dev, TSL2540_REG_EN, TSL2540_EN_ACTIVE);
+	tsl2540_attr_set(dev, SENSOR_CHAN_LIGHT, SENSOR_ATTR_GAIN,
+			 &(struct sensor_value){.val1 = TSL2540_SENSOR_GAIN_1_2, .val2 = 0});
 
-	struct sensor_value val;
-
-	val.val1 = TSL2540_SENSOR_GAIN_16;
-	val.val2 = 0;
-	tsl2540_attr_set(dev, SENSOR_CHAN_LIGHT, SENSOR_ATTR_GAIN, &val);
-	val.val1 = 400;
-	tsl2540_attr_set(dev, SENSOR_CHAN_LIGHT, SENSOR_ATTR_INTEGRATION_TIME,
-			 &val);
+	sensor_value_from_double(&integration_time, 500.0);
+	tsl2540_attr_set(dev, SENSOR_CHAN_LIGHT, SENSOR_ATTR_INTEGRATION_TIME, &integration_time);
 
 	return 0;
 }
@@ -351,6 +323,8 @@ static int tsl2540_init(const struct device *dev)
 	data->glass_attenuation = 2.27205;
 	data->glass_attenuation_ir = 2.34305;
 
+	tsl2540_reg_write(dev, TSL2540_REG_PERS, 1);
+
 	if (!device_is_ready(cfg->i2c_spec.bus)) {
 		LOG_ERR("I2C dev %s not ready", cfg->i2c_spec.bus->name);
 		return -ENODEV;
@@ -363,7 +337,7 @@ static int tsl2540_init(const struct device *dev)
 
 #if CONFIG_TSL2540_TRIGGER
 	if (tsl2540_trigger_init(dev)) {
-		LOG_ERR("Could not initialise interrupts");
+		LOG_ERR("Could not initialize interrupts");
 		return -EIO;
 	}
 #endif
@@ -384,19 +358,18 @@ static const struct sensor_driver_api tsl2540_driver_api = {
 
 /* Todo: finish PM */
 #ifdef CONFIG_PM_DEVICE
-static int tsl2540_pm_action(const struct device *dev,
-			     enum pm_device_action action)
+static int tsl2540_pm_action(const struct device *dev, enum pm_device_action action)
 {
 	int ret = 0;
 
-	if (ret < 0)
-		return ret;
 	switch (action) {
 	case PM_DEVICE_ACTION_RESUME:
-		ret = tsl2540_reg_write(dev, TSL2540_REG_EN, TSL2540_EN_ACTIVE);
+		ret = tsl2540_reg_write(dev, TSL2540_ENABLE_ADDR,
+					TSL2540_ENABLE_MASK & TSL2540_ENABLE_CONF);
 		break;
 	case PM_DEVICE_ACTION_SUSPEND:
-		ret = tsl2540_reg_write(dev, TSL2540_REG_EN, TSL2540_EN_SLEEP);
+		ret = tsl2540_reg_write(dev, TSL2540_ENABLE_ADDR,
+					TSL2540_ENABLE_MASK & ~TSL2540_ENABLE_CONF);
 		break;
 	default:
 		return -ENOTSUP;
@@ -406,15 +379,14 @@ static int tsl2540_pm_action(const struct device *dev,
 }
 #endif
 
-#define TSL2540_DEFINE(inst)                                                   \
-	static struct tsl2540_data tsl2540_prv_data_##inst;                    \
-	static const struct tsl2540_config tsl2540_config_##inst = {           \
-		.i2c_spec = I2C_DT_SPEC_INST_GET(inst),                        \
-		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, {0})};   \
-	PM_DEVICE_DT_INST_DEFINE(inst, tsl2540_pm_action);                     \
-	DEVICE_DT_INST_DEFINE(                                                 \
-		inst, &tsl2540_init, PM_DEVICE_DT_INST_GET(inst),              \
-		&tsl2540_prv_data_##inst, &tsl2540_config_##inst, POST_KERNEL, \
-		CONFIG_SENSOR_INIT_PRIORITY, &tsl2540_driver_api);
+#define TSL2540_DEFINE(inst)                                                                       \
+	static struct tsl2540_data tsl2540_prv_data_##inst;                                        \
+	static const struct tsl2540_config tsl2540_config_##inst = {                               \
+		.i2c_spec = I2C_DT_SPEC_INST_GET(inst),                                            \
+		.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, {0})};                       \
+	PM_DEVICE_DT_INST_DEFINE(inst, tsl2540_pm_action);                                         \
+	DEVICE_DT_INST_DEFINE(inst, &tsl2540_init, PM_DEVICE_DT_INST_GET(inst),                    \
+			      &tsl2540_prv_data_##inst, &tsl2540_config_##inst, POST_KERNEL,       \
+			      CONFIG_SENSOR_INIT_PRIORITY, &tsl2540_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(TSL2540_DEFINE)
