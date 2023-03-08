@@ -632,7 +632,7 @@ static int lis2dw12_pm_action(const struct device *dev,
 {
 	int ret = 0;
 	struct lis2dw12_data *data = dev->data;
-	struct lis2dw12_device_config *cfg = dev->config;
+	const struct lis2dw12_device_config *cfg = dev->config;
 
 	if (ret < 0)
 		return ret;
