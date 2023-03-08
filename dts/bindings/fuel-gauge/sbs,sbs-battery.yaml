@@ -21,7 +21,7 @@ properties:
   
   vbat-aport:
     type: int
-    required: false
+    required: true
     description: |
       This property selects the ADC channel for battery voltage detection.
 
@@ -36,16 +36,6 @@ properties:
     required: true
     description: |
       This property selects the ADC source frequency: 
-
-  vref-internal-mv:
-    type: int
-    required: false
-    enum:
-      - 900
-      - 1200
-    description: |
-      This property selects the internal reference voltage source (in millivolts).
-      The external reference source is not supported.
 
   en-gpios:
     type: phandle-array

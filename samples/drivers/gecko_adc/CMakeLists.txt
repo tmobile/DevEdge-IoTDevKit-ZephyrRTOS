@@ -6,3 +6,5 @@ find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 project(ADC)
 
 target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE src/battery_ctrl.c)
+target_sources(app PRIVATE src/bq24250.c)

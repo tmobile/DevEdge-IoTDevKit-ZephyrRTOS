@@ -19,14 +19,6 @@ struct adc_gecko_config {
 
 struct adc_gecko_data {
 	struct device *dev;
-	int resolution;
-	int hwid;
-	uint8_t charging;
-	uint8_t vbus;
-	uint8_t battery_attached;
-	uint8_t fault;
-	uint8_t percent;
-	uint8_t charging_status;
 	uint32_t mVolts;
 };
 

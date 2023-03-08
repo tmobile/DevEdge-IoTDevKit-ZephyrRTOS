@@ -1,5 +1,5 @@
 sample:
-  name: BatMon Driver Sample 
+  name: BatMon Driver Sample
 tests:
   sample.drivers.adc:
     tags: ADC

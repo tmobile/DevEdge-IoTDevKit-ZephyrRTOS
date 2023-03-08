@@ -109,7 +109,6 @@
         status = "okay";
 		reg = <0x40002000 0x400>;
 		frequency= <16000000>;
-		vref-internal-mv = <900>;
 		en-gpios = <&gpiok 0 GPIO_ACTIVE_HIGH>;
 		#io-channel-cells = <1>;
 		num-channels = <32>;
