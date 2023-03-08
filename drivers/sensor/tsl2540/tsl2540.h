@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022-2023 T-Mobile USA, Inc.
+ * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -63,6 +64,7 @@ LOG_MODULE_DECLARE(LOG_MODULE_NAME, CONFIG_SENSOR_LOG_LEVEL);
 #define TSL2540_CFG2_G64  0x04
 #define TSL2540_CFG2_G128 0x14
 
+#define TSL2540_CFG3_DEFAULT (2 << 5) | (3 << 2)
 #define TSL2540_CFG3_INTRC 0x80
 #define TSL2540_CFG3_SAI   0x10
 

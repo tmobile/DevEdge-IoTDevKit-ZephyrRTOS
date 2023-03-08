@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022-2023 T-Mobile USA, Inc.
+ * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,26 +43,36 @@ static void tsl2540_handle_int(const struct device *dev)
 		LOG_ERR("Could not read status register, errno: %d", errno);
 	} else {
 		if ((1 << 7) & status) { /* ASAT */
-			LOG_ERR("Interrupt status: unhandled ASAT event");
 			/*
 			 * TODO:
-			 * Implement a mechanism triggered by the over-saturation of one or both
-			 * input amplifiers to automatically adjust the input gain to keep the
-			 * amplifiers from saturating.
+			 * Implement a mechanism triggered by the over-saturation of one or
+			 * both input amplifiers to automatically adjust the input gain to
+			 * keep the amplifiers from saturating.
 			 */
-			return;
-		}
-		if ((1 << 4) & status) { /* AINT */
-			LOG_INF("Interrupt status: AINT");
+
+			LOG_ERR("Interrupt status(%#x): %#x: ASAT", TSL2540_REG_STATUS, status);
 		}
 		if ((1 << 3) & status) { /* CINT */
-			LOG_INF("Interrupt status: CINT");
+			LOG_INF("Interrupt status(%#x): %#x: CINT", TSL2540_REG_STATUS, status);
 		}
-	}
+		if ((1 << 4) & status) { /* AINT */
+			struct tsl2540_data *data = dev->data;
+			LOG_INF("Interrupt status(%#x): %#x: AINT", TSL2540_REG_STATUS, status);
+			if (data->als_handler) {
+				/*
+				 * TODO: Consider fetching the illuminance data and making it
+				 * available to the application; for example:
+				 *
+				 *	k_sem_take(&data->sem, K_FOREVER);
+				 *	...
+				 *	k_sem_give(&data->sem);
+				 */
 
-	if (data->als_handler) {
-		data->als_handler(dev, &(struct sensor_trigger){.type = SENSOR_TRIG_THRESHOLD,
-								.chan = SENSOR_CHAN_LIGHT});
+				data->als_handler(
+					dev, &(struct sensor_trigger){.type = SENSOR_TRIG_THRESHOLD,
+								      .chan = SENSOR_CHAN_LIGHT});
+			}
+		}
 	}
 }
 
@@ -97,7 +108,7 @@ int tsl2540_trigger_set(const struct device *dev, const struct sensor_trigger *t
 		if (trig->chan == SENSOR_CHAN_LIGHT) {
 			data->als_handler = handler;
 			set_INTENAB(dev, TSL2540_INT_EN_AEN);
-			set_CFG3(dev, TSL2540_CFG3_SAI | TSL2540_CFG3_INTRC);
+			set_CFG3(dev, TSL2540_CFG3_DEFAULT | TSL2540_CFG3_SAI | TSL2540_CFG3_INTRC);
 			set_ENABLE(dev, TSL2540_EN_ACTIVE);
 			flush_all(dev);
 		} else {
