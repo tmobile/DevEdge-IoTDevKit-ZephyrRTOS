@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,6 +23,7 @@
 #include <zephyr/bluetooth/audio/csip.h>
 #include <zephyr/bluetooth/iso.h>
 #include <zephyr/bluetooth/audio/audio.h>
+#include <zephyr/bluetooth/audio/bap.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +55,7 @@ int bt_cap_acceptor_register(const struct bt_csip_set_member_register_param *par
 
 /** Callback structure for CAP procedures */
 struct bt_cap_initiator_cb {
-#if defined(CONFIG_BT_AUDIO_UNICAST_CLIENT)
+#if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
 	/**
 	 * @brief Callback for bt_cap_initiator_unicast_discover().
 	 *
@@ -81,7 +82,7 @@ struct bt_cap_initiator_cb {
 	 * @param conn           Pointer to the connection where the error
 	 *                       occurred. NULL if @p err is 0.
 	 */
-	void (*unicast_start_complete)(struct bt_audio_unicast_group *unicast_group,
+	void (*unicast_start_complete)(struct bt_bap_unicast_group *unicast_group,
 				       int err, struct bt_conn *conn);
 
 	/**
@@ -94,7 +95,7 @@ struct bt_cap_initiator_cb {
 	 * @param conn           Pointer to the connection where the error
 	 *                       occurred. NULL if @p err is 0.
 	 */
-	void (*unicast_update_complete)(struct bt_audio_unicast_group *unicast_group,
+	void (*unicast_update_complete)(struct bt_bap_unicast_group *unicast_group,
 					int err, struct bt_conn *conn);
 
 	/**
@@ -107,9 +108,9 @@ struct bt_cap_initiator_cb {
 	 * @param conn           Pointer to the connection where the error
 	 *                       occurred. NULL if @p err is 0.
 	 */
-	void (*unicast_stop_complete)(struct bt_audio_unicast_group *unicast_group,
+	void (*unicast_stop_complete)(struct bt_bap_unicast_group *unicast_group,
 				      int err, struct bt_conn *conn);
-#endif /* CONFIG_BT_AUDIO_UNICAST_CLIENT */
+#endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
 };
 
 /**
@@ -142,8 +143,8 @@ union bt_cap_set_member {
 };
 
 struct bt_cap_stream {
-	struct bt_audio_stream bap_stream;
-	struct bt_audio_stream_ops *ops;
+	struct bt_bap_stream bap_stream;
+	struct bt_bap_stream_ops *ops;
 };
 
 /** @brief Register Audio operations for a Common Audio Profile stream.
@@ -153,8 +154,7 @@ struct bt_cap_stream {
  *  @param stream Stream object.
  *  @param ops    Stream operations structure.
  */
-void bt_cap_stream_ops_register(struct bt_cap_stream *stream,
-				struct bt_audio_stream_ops *ops);
+void bt_cap_stream_ops_register(struct bt_cap_stream *stream, struct bt_bap_stream_ops *ops);
 
 struct bt_cap_unicast_audio_start_param {
 	/** The type of the set. */
@@ -203,7 +203,7 @@ int bt_cap_initiator_register_cb(const struct bt_cap_initiator_cb *cb);
  * The @p unicast_group value can be used to update and stop the streams.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_UNICAST_CLIENT} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_UNICAST_CLIENT} must be enabled for this function
  * to be enabled.
  *
  * @param[in]  param          Parameters to start the audio streams.
@@ -212,13 +212,13 @@ int bt_cap_initiator_register_cb(const struct bt_cap_initiator_cb *cb);
  * @return 0 on success or negative error value on failure.
  */
 int bt_cap_initiator_unicast_audio_start(const struct bt_cap_unicast_audio_start_param *param,
-					 struct bt_audio_unicast_group **unicast_group);
+					 struct bt_bap_unicast_group **unicast_group);
 
 /**
  * @brief Update unicast audio streams for a unicast group.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_UNICAST_CLIENT} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_UNICAST_CLIENT} must be enabled for this function
  * to be enabled.
  *
  * @param unicast_group The group of unicast devices to update.
@@ -228,7 +228,7 @@ int bt_cap_initiator_unicast_audio_start(const struct bt_cap_unicast_audio_start
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_cap_initiator_unicast_audio_update(struct bt_audio_unicast_group *unicast_group,
+int bt_cap_initiator_unicast_audio_update(struct bt_bap_unicast_group *unicast_group,
 					  uint8_t meta_count,
 					  const struct bt_codec_data *meta);
 
@@ -236,7 +236,7 @@ int bt_cap_initiator_unicast_audio_update(struct bt_audio_unicast_group *unicast
  * @brief Stop unicast audio streams for a unicast group.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_UNICAST_CLIENT} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_UNICAST_CLIENT} must be enabled for this function
  * to be enabled.
  *
  * @param unicast_group The group of unicast devices to stop. The audio streams
@@ -245,7 +245,7 @@ int bt_cap_initiator_unicast_audio_update(struct bt_audio_unicast_group *unicast
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_cap_initiator_unicast_audio_stop(struct bt_audio_unicast_group *unicast_group);
+int bt_cap_initiator_unicast_audio_stop(struct bt_bap_unicast_group *unicast_group);
 
 struct bt_cap_initiator_broadcast_stream_param {
 	/** Audio stream */
@@ -306,7 +306,7 @@ struct bt_cap_initiator_broadcast_create_param {
 	 *   The string "Broadcast Code" shall be
 	 *   [42 72 6F 61 64 63 61 73 74 20 43 6F 64 65 00 00]
 	 */
-	uint8_t broadcast_code[BT_BAP_BROADCAST_CODE_SIZE];
+	uint8_t broadcast_code[BT_AUDIO_BROADCAST_CODE_SIZE];
 };
 
 /**
@@ -318,10 +318,10 @@ struct bt_cap_initiator_broadcast_create_param {
  * and the device will advertise audio announcements.
  *
  * This will allow the streams in the broadcast source to send audio by calling
- * bt_audio_stream_send().
+ * bt_bap_stream_send().
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param[in]  param             Parameters to start the audio streams.
@@ -338,7 +338,7 @@ int bt_cap_initiator_broadcast_audio_start(struct bt_cap_initiator_broadcast_cre
  * @brief Update broadcast audio streams for a Common Audio Profile broadcast source.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param broadcast_source The broadcast source to update.
@@ -356,7 +356,7 @@ int bt_cap_initiator_broadcast_audio_update(struct bt_cap_broadcast_source *broa
  * @brief Stop broadcast audio streams for a Common Audio Profile broadcast source.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param broadcast_source The broadcast source to stop. The audio streams
@@ -371,11 +371,11 @@ int bt_cap_initiator_broadcast_audio_stop(struct bt_cap_broadcast_source *broadc
  *
  * This can only be done after the broadcast source has been stopped by calling
  * bt_cap_initiator_broadcast_audio_stop() and after the
- * bt_audio_stream_ops.stopped() callback has been called for all streams in the
+ * bt_bap_stream_ops.stopped() callback has been called for all streams in the
  * broadcast source.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param broadcast_source The broadcast source to delete.
@@ -423,7 +423,7 @@ int bt_cap_initiator_broadcast_get_base(struct bt_cap_broadcast_source *source,
 
 struct bt_cap_unicast_to_broadcast_param {
 	/** The source unicast group with the streams. */
-	struct bt_audio_unicast_group *unicast_group;
+	struct bt_bap_unicast_group *unicast_group;
 
 	/**
 	 * @brief Whether or not to encrypt the streams.
@@ -455,8 +455,8 @@ struct bt_cap_unicast_to_broadcast_param {
  * will be deleted. This can only be done for source streams.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR},
- * @kconfig{CONFIG_BT_AUDIO_UNICAST_CLIENT} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_UNICAST_CLIENT} and
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param param         The parameters for the handover.
@@ -498,8 +498,8 @@ struct bt_cap_broadcast_to_unicast_param {
  * will be deleted.
  *
  * @note @kconfig{CONFIG_BT_CAP_INITIATOR},
- * @kconfig{CONFIG_BT_AUDIO_UNICAST_CLIENT} and
- * @kconfig{CONFIG_BT_AUDIO_BROADCAST_SOURCE} must be enabled for this function
+ * @kconfig{CONFIG_BT_BAP_UNICAST_CLIENT} and
+ * @kconfig{CONFIG_BT_BAP_BROADCAST_SOURCE} must be enabled for this function
  * to be enabled.
  *
  * @param[in]  param          The parameters for the handover.
@@ -508,7 +508,7 @@ struct bt_cap_broadcast_to_unicast_param {
  * @return 0 on success or negative error value on failure.
  */
 int bt_cap_initiator_broadcast_to_unicast(const struct bt_cap_broadcast_to_unicast_param *param,
-					  struct bt_audio_unicast_group **unicast_group);
+					  struct bt_bap_unicast_group **unicast_group);
 
 #ifdef __cplusplus
 }

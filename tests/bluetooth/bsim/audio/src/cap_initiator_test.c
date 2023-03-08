@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,31 +7,31 @@
 #if defined(CONFIG_BT_CAP_INITIATOR)
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/audio/bap_lc3_preset.h>
 #include <zephyr/bluetooth/audio/cap.h>
 #include "common.h"
-#include "unicast_common.h"
+#include "bap_unicast_common.h"
 
 
 /* When BROADCAST_ENQUEUE_COUNT > 1 we can enqueue enough buffers to ensure that
  * the controller is never idle
  */
 #define BROADCAST_ENQUEUE_COUNT 2U
-#define TOTAL_BUF_NEEDED (BROADCAST_ENQUEUE_COUNT * CONFIG_BT_AUDIO_BROADCAST_SRC_STREAM_COUNT)
+#define TOTAL_BUF_NEEDED	(BROADCAST_ENQUEUE_COUNT * CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT)
 
 BUILD_ASSERT(CONFIG_BT_ISO_TX_BUF_COUNT >= TOTAL_BUF_NEEDED,
 	     "CONFIG_BT_ISO_TX_BUF_COUNT should be at least "
-	     "BROADCAST_ENQUEUE_COUNT * CONFIG_BT_AUDIO_BROADCAST_SRC_STREAM_COUNT");
+	     "BROADCAST_ENQUEUE_COUNT * CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT");
 
 NET_BUF_POOL_FIXED_DEFINE(tx_pool,
 			  TOTAL_BUF_NEEDED,
 			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU), 8, NULL);
 
 extern enum bst_result_t bst_result;
-static struct bt_cap_stream broadcast_source_streams[CONFIG_BT_AUDIO_BROADCAST_SRC_STREAM_COUNT];
+static struct bt_cap_stream broadcast_source_streams[CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT];
 static struct bt_cap_stream *broadcast_streams[ARRAY_SIZE(broadcast_source_streams)];
-static struct bt_audio_lc3_preset broadcast_preset_16_2_1 =
-	BT_AUDIO_LC3_BROADCAST_PRESET_16_2_1(BT_AUDIO_LOCATION_FRONT_LEFT,
-					     BT_AUDIO_CONTEXT_TYPE_MEDIA);
+static struct bt_bap_lc3_preset broadcast_preset_16_2_1 = BT_BAP_LC3_BROADCAST_PRESET_16_2_1(
+	BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
 
 static K_SEM_DEFINE(sem_broadcast_started, 0U, ARRAY_SIZE(broadcast_streams));
 static K_SEM_DEFINE(sem_broadcast_stopped, 0U, ARRAY_SIZE(broadcast_streams));
@@ -41,19 +41,19 @@ CREATE_FLAG(flag_discovered);
 CREATE_FLAG(flag_mtu_exchanged);
 CREATE_FLAG(flag_broadcast_stopping);
 
-static void broadcast_started_cb(struct bt_audio_stream *stream)
+static void broadcast_started_cb(struct bt_bap_stream *stream)
 {
 	printk("Stream %p started\n", stream);
 	k_sem_give(&sem_broadcast_started);
 }
 
-static void broadcast_stopped_cb(struct bt_audio_stream *stream)
+static void broadcast_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 {
-	printk("Stream %p stopped\n", stream);
+	printk("Stream %p stopped with reason 0x%02X\n", stream, reason);
 	k_sem_give(&sem_broadcast_stopped);
 }
 
-static void broadcast_sent_cb(struct bt_audio_stream *stream)
+static void broadcast_sent_cb(struct bt_bap_stream *stream)
 {
 	static uint8_t mock_data[CONFIG_BT_ISO_TX_MTU];
 	static bool mock_data_initialized;
@@ -88,8 +88,7 @@ static void broadcast_sent_cb(struct bt_audio_stream *stream)
 
 	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
 	net_buf_add_mem(buf, mock_data, broadcast_preset_16_2_1.qos.sdu);
-	ret = bt_audio_stream_send(stream, buf, seq_num++,
-				   BT_ISO_TIMESTAMP_NONE);
+	ret = bt_bap_stream_send(stream, buf, seq_num++, BT_ISO_TIMESTAMP_NONE);
 	if (ret < 0) {
 		/* This will end broadcasting on this stream. */
 		printk("Unable to broadcast data on %p: %d\n", stream, ret);
@@ -98,11 +97,9 @@ static void broadcast_sent_cb(struct bt_audio_stream *stream)
 	}
 }
 
-static struct bt_audio_stream_ops broadcast_stream_ops = {
-	.started = broadcast_started_cb,
-	.stopped = broadcast_stopped_cb,
-	.sent = broadcast_sent_cb
-};
+static struct bt_bap_stream_ops broadcast_stream_ops = {.started = broadcast_started_cb,
+							.stopped = broadcast_stopped_cb,
+							.sent = broadcast_sent_cb};
 
 static void cap_discovery_complete_cb(struct bt_conn *conn, int err,
 				      const struct bt_csip_set_coordinator_csis_inst *csis_inst)
@@ -175,7 +172,7 @@ static void init(void)
 		return;
 	}
 
-	if (IS_ENABLED(CONFIG_BT_AUDIO_UNICAST_CLIENT)) {
+	if (IS_ENABLED(CONFIG_BT_BAP_UNICAST_CLIENT)) {
 		bt_gatt_cb_register(&gatt_callbacks);
 
 		err = bt_cap_initiator_register_cb(&cap_cb);
@@ -484,24 +481,19 @@ static void test_cap_initiator_broadcast(void)
 }
 
 static const struct bst_test_instance test_cap_initiator[] = {
-#if defined(CONFIG_BT_AUDIO_UNICAST_CLIENT)
-	{
-		.test_id = "cap_initiator_unicast",
-		.test_post_init_f = test_init,
-		.test_tick_f = test_tick,
-		.test_main_f = test_cap_initiator_unicast
-	},
-#endif /* CONFIG_BT_AUDIO_UNICAST_CLIENT */
-#if defined(CONFIG_BT_AUDIO_BROADCAST_SOURCE)
-	{
-		.test_id = "cap_initiator_broadcast",
-		.test_post_init_f = test_init,
-		.test_tick_f = test_tick,
-		.test_main_f = test_cap_initiator_broadcast
-	},
-#endif /* CONFIG_BT_AUDIO_BROADCAST_SOURCE */
-	BSTEST_END_MARKER
-};
+#if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
+	{.test_id = "cap_initiator_unicast",
+	 .test_post_init_f = test_init,
+	 .test_tick_f = test_tick,
+	 .test_main_f = test_cap_initiator_unicast},
+#endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
+#if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
+	{.test_id = "cap_initiator_broadcast",
+	 .test_post_init_f = test_init,
+	 .test_tick_f = test_tick,
+	 .test_main_f = test_cap_initiator_broadcast},
+#endif /* CONFIG_BT_BAP_BROADCAST_SOURCE */
+	BSTEST_END_MARKER};
 
 struct bst_test_list *test_cap_initiator_install(struct bst_test_list *tests)
 {
