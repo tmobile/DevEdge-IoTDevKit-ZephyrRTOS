@@ -1,0 +1,109 @@
+# Copyright (c)	2021, NXP
+# Copyright (c)	2023 T-Mobile USA, Inc.
+# SPDX -License-Identifier: Apache-2.0
+
+DT_COMPAT_PMIC_REG := qorvo,act81461
+
+config REGULATOR_ACT81461
+	bool "PMIC Regulator Driver"
+	depends on $(dt_compat_enabled,$(DT_COMPAT_PMIC_REG))
+	default $(dt_compat_enabled,$(DT_COMPAT_PMIC_REG))
+	select	I2C
+	help
+	  Enable the pmic regulator driver
+
+if REGULATOR_ACT81461
+
+config REGULATOR_ACT81461_COMMON_INIT_PRIORITY
+	int "ACT81461 regulator driver parent init priority"
+	default 55
+	help
+	  Init priority for the QORVO parent regulator	driver.
+	  It must be greater than I2C init priority.
+
+config REGULATOR_ACT81461_INIT_PRIORITY
+	int "regulator driver parent init priority"
+	default 56
+	help
+	  Init priority for the QORVO regulator child driver. It must be
+	  greater than	parent REGULATOR_ACT81461_COMMON_INIT_PRIORITY.
+
+config REGULATOR_ACT81461_VOLTAGE_LIMITS
+	bool "Use voltage limits in voltage set functions"
+	default y
+
+if REGULATOR_ACT81461_VOLTAGE_LIMITS
+
+config REGULATOR_ACT81461_BUCKBOOST_VSET_MIN
+	int "Minimum allowable VSET value for the buck-boost converter (inclusive)"
+	range 0 54
+	default 1
+
+config REGULATOR_ACT81461_BUCKBOOST_VSET_MAX
+	int "Maximum allowable VSET value for the buck-boost converter (inclusive)"
+	range 0 54
+	default 6
+
+config REGULATOR_ACT81461_BUCK1_VSET_MIN
+	int "Minimum allowable VSET value for the buck1 buck converter (inclusive)"
+	range 0 60
+	default 24
+
+config REGULATOR_ACT81461_BUCK1_VSET_MAX
+	int "Maximum allowable VSET value for the buck1 buck converter (inclusive)"
+	range 0 60
+	default 27
+
+config REGULATOR_ACT81461_BUCK2_VSET_MIN
+	int "Minimum allowable VSET value for the buck2 buck converter (inclusive)"
+	range 0 60
+	default 24
+
+config REGULATOR_ACT81461_BUCK2_VSET_MAX
+	int "Maximum allowable VSET value for the buck2 buck converter (inclusive)"
+	range 0 60
+	default 27
+
+config REGULATOR_ACT81461_BOOST_VSET_MIN
+	int "Minimum allowable VSET value for the boost converter (inclusive)"
+	range 0 63
+	default 0
+
+config REGULATOR_ACT81461_BOOST_VSET_MAX
+	int "Maximum allowable VSET value for the boost converter (inclusive)"
+	range 0 63
+	default 2
+
+config REGULATOR_ACT81461_LDO1_VSET_MIN
+	int "Minimum allowable VSET value for LDO1 (inclusive)"
+	range 0 60
+	default 30
+
+config REGULATOR_ACT81461_LDO1_VSET_MAX
+	int "Maximum allowable VSET value for LDO1 (inclusive)"
+	range 0 60
+	default 39
+
+config REGULATOR_ACT81461_LDO2_VSET_MIN
+	int "Minimum allowable VSET value for LDO2 (inclusive)"
+	range 0 60
+	default 33
+
+config REGULATOR_ACT81461_LDO2_VSET_MAX
+	int "Maximum allowable VSET value for LDO2 (inclusive)"
+	range 0 60
+	default 39
+
+config REGULATOR_ACT81461_LDO3_VSET_MIN
+	int "Minimum allowable VSET value for LDO3 (inclusive)"
+	range 0 60
+	default 24
+
+config REGULATOR_ACT81461_LDO3_VSET_MAX
+	int "Maximum allowable VSET value for LDO3 (inclusive)"
+	range 0 60
+	default 26
+
+endif # REGULATOR_ACT81461_VOLTAGE_LIMITS
+
+endif # REGULATOR_ACT81461
