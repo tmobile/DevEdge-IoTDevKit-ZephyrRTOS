@@ -11,6 +11,41 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
 
+#define BATTERY_TABLE_LEN 15
+float battery_discharging_tbl[BATTERY_TABLE_LEN][2] = {
+	{4.160, 100.0 },
+	{4.100, 95.0  },
+	{4.058, 90.0  },
+	{3.962, 80.0  },
+	{3.915, 70.0  },
+	{3.842, 60.0  },
+	{3.798, 50.0  },
+	{3.764, 40.0  },
+	{3.742, 30.0  },
+	{3.702, 20.0  },
+	{3.660, 10.0  },
+	{3.594, 5.0   },
+	{3.397, 2.0   },
+	{3.257, 1.0   },
+	{2.772, 0.0   }};
+
+float battery_charging_tbl[BATTERY_TABLE_LEN][2] = {
+	{4.160, 100.0 },
+	{4.100, 95.0  },
+	{4.058, 90.0  },
+	{3.962, 80.0  },
+	{3.915, 70.0  },
+	{3.842, 60.0  },
+	{3.798, 50.0  },
+	{3.764, 40.0  },
+	{3.742, 30.0  },
+	{3.702, 20.0  },
+	{3.660, 10.0  },
+	{3.594, 5.0   },
+	{3.397, 2.0   },
+	{3.257, 1.0   },
+	{2.772, 0.0   }};
+
 static void powerup_led_on(struct k_timer *timer_id);
 
 K_TIMER_DEFINE(powerup_led_timer, powerup_led_on, NULL);
