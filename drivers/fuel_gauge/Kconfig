@@ -14,6 +14,7 @@ module-str = fuel_gauge
 source "subsys/logging/Kconfig.template.log_config"
 
 source "drivers/fuel_gauge/sbs_gauge/Kconfig"
+source "drivers/fuel_gauge/Kconfig.act81461"
 
 
 endif # FUEL_GAUGE

@@ -392,7 +392,7 @@ def dump_header_file(header_file, code_generation):
     if code_generation["copy_code"]:
         code_string += DATA_COPY_FUNCTION.format(code_generation["copy_code"])
     else:
-        code_string += DATA_COPY_FUNCTION.format("void;")
+        code_string += DATA_COPY_FUNCTION.format("return;")
     if code_generation["zero_code"]:
         code_string += BSS_ZEROING_FUNCTION.format(code_generation["zero_code"])
     else:
@@ -407,7 +407,7 @@ def parse_args():
     global args
     parser = argparse.ArgumentParser(
         description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+        formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
     parser.add_argument("-d", "--directory", required=True,
                         help="obj file's directory")
     parser.add_argument("-i", "--input_rel_dict", required=True,

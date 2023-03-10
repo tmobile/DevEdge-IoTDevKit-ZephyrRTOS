@@ -873,8 +873,7 @@ void bt_gatt_disconnected(struct bt_conn *conn)
 		if (attr == NULL) {
 			continue;
 		}
-		/* Check attribute user_data must be of type struct _bt_gatt_ccc
-		 */
+		/* Check attribute user_data must be of type struct _bt_gatt_ccc */
 		if (attr->write != bt_gatt_attr_write_ccc) {
 			continue;
 		}
@@ -927,6 +926,32 @@ void bt_gatt_disconnected(struct bt_conn *conn)
 
 			BT_DBG("ccc %p reseted", ccc);
 		}
+	}
+
+	/* Clear leftover CCCs */
+	for (int i = 0; i < RSI_BLE_MAX_NBR_ATT_REC; i++) {
+		attr = att_handle_table[i].attr;
+
+		if (attr == NULL) {
+			continue;
+		}
+
+		struct bt_gatt_ccc_cfg *cfg;
+
+		/* Check if attribute is a CCC */
+		if (attr->write != bt_gatt_attr_write_ccc) {
+			continue;
+		}
+
+		ccc = attr->user_data;
+
+		/* Check if there is a cfg for the peer */
+		cfg = find_ccc_cfg(conn, ccc);
+		if (cfg) {
+			memset(cfg, 0, sizeof(*cfg));
+		}
+
+		continue;
 	}
 }
 

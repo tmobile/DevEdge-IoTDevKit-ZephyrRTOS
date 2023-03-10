@@ -25,6 +25,8 @@
 
 #include "ticker/ticker.h"
 
+#include "pdu_df.h"
+#include "lll/pdu_vendor.h"
 #include "pdu.h"
 
 #include "lll.h"
@@ -54,7 +56,7 @@
 #include "ull_sched_internal.h"
 #include "ull_chan_internal.h"
 #include "ull_conn_internal.h"
-#include "ull_periph_internal.h"
+#include "ull_peripheral_internal.h"
 #include "ull_central_internal.h"
 
 #include "ull_iso_internal.h"
@@ -1032,6 +1034,15 @@ int ull_conn_reset(void)
 	return 0;
 }
 
+struct lll_conn *ull_conn_lll_get(uint16_t handle)
+{
+	struct ll_conn *conn;
+
+	conn = ll_conn_get(handle);
+
+	return &conn->lll;
+}
+
 #if defined(CONFIG_BT_CTLR_DATA_LENGTH)
 uint16_t ull_conn_default_tx_octets_get(void)
 {
@@ -1133,6 +1144,7 @@ int ull_conn_rx(memq_link_t *link, struct node_rx_pdu **rx)
 #endif /* CONFIG_BT_CTLR_RX_ENQUEUE_HOLD */
 
 #if !defined(CONFIG_BT_LL_SW_LLCP_LEGACY)
+	/* Handle possibly pending NTF/complete */
 	ull_cp_tx_ntf(conn);
 #endif /* CONFIG_BT_LL_SW_LLCP_LEGACY */
 
@@ -1147,13 +1159,13 @@ int ull_conn_rx(memq_link_t *link, struct node_rx_pdu **rx)
 		nack = ctrl_rx(link, rx, pdu_rx, conn);
 		return nack;
 #else /* CONFIG_BT_LL_SW_LLCP_LEGACY */
-		ARG_UNUSED(link);
 		ARG_UNUSED(pdu_rx);
-
-		ull_cp_rx(conn, *rx);
 
 		/* Mark buffer for release */
 		(*rx)->hdr.type = NODE_RX_TYPE_RELEASE;
+
+		ull_cp_rx(conn, link, *rx);
+
 		return 0;
 #endif /* CONFIG_BT_LL_SW_LLCP_LEGACY */
 	}
@@ -1544,6 +1556,7 @@ void ull_conn_done(struct node_rx_event_done *done)
 #endif /* CONFIG_BT_CTLR_RX_ENQUEUE_HOLD */
 
 #if !defined(CONFIG_BT_LL_SW_LLCP_LEGACY)
+	/* Handle possibly pending NTF/complete */
 	ull_cp_tx_ntf(conn);
 #endif /* CONFIG_BT_LL_SW_LLCP_LEGACY */
 
@@ -2341,7 +2354,7 @@ void ull_pdu_data_init(struct pdu_data *pdu)
 {
 #if defined(CONFIG_BT_CTLR_DF_CONN_CTE_TX) || defined(CONFIG_BT_CTLR_DF_CONN_CTE_RX)
 	pdu->cp = 0U;
-	pdu->resv = 0U;
+	pdu->octet3.resv[0] = 0U;
 #endif /* CONFIG_BT_CTLR_DF_CONN_CTE_TX || CONFIG_BT_CTLR_DF_CONN_CTE_RX */
 }
 
@@ -3302,6 +3315,19 @@ static inline int event_conn_upd_prep(struct ll_conn *conn, uint16_t lazy,
 					     llctrl.conn_update_ind.win_offset);
 			tx = CONTAINER_OF(pdu_ctrl_tx, struct node_tx, pdu);
 			ctrl_tx_enqueue(conn, tx);
+
+			/* Acquire the reserved Rx node */
+			rx = conn->llcp_rx;
+			LL_ASSERT(rx && rx->hdr.link);
+			conn->llcp_rx = rx->hdr.link->mem;
+
+			/* Mark for buffer for release */
+			rx->hdr.type = NODE_RX_TYPE_RELEASE;
+
+			/* enqueue rx node towards Thread */
+			ll_rx_put(rx->hdr.link, rx);
+			ll_rx_sched();
+
 			return -ECANCELED;
 #endif /* CONFIG_BT_CTLR_CONN_PARAM_REQ */
 
@@ -6527,12 +6553,14 @@ void event_peripheral_iso_prep(struct ll_conn *conn, uint16_t event_counter,
 {
 	struct ll_conn_iso_group *cig;
 	uint16_t start_event_count;
+	uint16_t instant_latency;
 
 	start_event_count = conn->llcp_cis.conn_event_count;
 
 	cig = ll_conn_iso_group_get_by_id(conn->llcp_cis.cig_id);
 	LL_ASSERT(cig);
 
+#if defined(CONFIG_BT_CTLR_PERIPHERAL_ISO_EARLY_CIG_START)
 	if (!cig->started) {
 		/* Start ISO peripheral one event before the requested instant
 		 * for first CIS. This is done to be able to accept small CIS
@@ -6540,11 +6568,15 @@ void event_peripheral_iso_prep(struct ll_conn *conn, uint16_t event_counter,
 		 */
 		start_event_count--;
 	}
+#endif /* CONFIG_BT_CTLR_PERIPHERAL_ISO_EARLY_CIG_START */
 
 	/* Start ISO peripheral one event before the requested instant */
-	if (event_counter == start_event_count) {
+	instant_latency = (event_counter - start_event_count) & 0xffff;
+	if (instant_latency <= 0x7fff) {
 		/* Start CIS peripheral */
-		ull_conn_iso_start(conn, ticks_at_expire, conn->llcp_cis.cis_handle);
+		ull_conn_iso_start(conn, ticks_at_expire,
+				   conn->llcp_cis.cis_handle,
+				   instant_latency);
 
 		conn->llcp_cis.state = LLCP_CIS_STATE_REQ;
 		conn->llcp_cis.ack = conn->llcp_cis.req;
@@ -8064,12 +8096,25 @@ uint16_t ull_conn_event_counter(struct ll_conn *conn)
 	struct lll_conn *lll;
 	uint16_t event_counter;
 
-	uint16_t lazy = conn->llcp.prep.lazy;
-
 	lll = &conn->lll;
 
-	/* Calculate current event counter */
-	event_counter = lll->event_counter + lll->latency_prepare + lazy;
+	/* Calculate current event counter. If refcount is non-zero, we have called
+	 * prepare and the LLL implementation has calculated and incremented the event
+	 * counter (RX path). In this case we need to subtract one from the current
+	 * event counter.
+	 * Otherwise we are in the TX path, and we calculate the current event counter
+	 * similar to LLL by taking the expected event counter value plus accumulated
+	 * latency.
+	 */
+	if (ull_ref_get(&conn->ull)) {
+		/* We are in post-prepare (RX path). Event counter is already
+		 * calculated and incremented by 1 for next event.
+		 */
+		event_counter = lll->event_counter - 1;
+	} else {
+		event_counter = lll->event_counter + lll->latency_prepare +
+				conn->llcp.prep.lazy;
+	}
 
 	return event_counter;
 }

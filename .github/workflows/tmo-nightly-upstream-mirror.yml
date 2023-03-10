@@ -12,10 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.MIRROR_TOKEN }}
+          ssh-key: ${{ secrets.MERGE_KEY }}
       - run: |
           echo "cloning upstream"
           git clone --mirror https://github.com/zephyrproject-rtos/zephyr.git
           cd zephyr.git
+          mkdir ~/.ssh
+          echo "${{ secrets.MERGE_KEY }}" > ~/.ssh/id_rsa
+          chmod 0400 ~/.ssh/id_rsa
+          ls -la ~/.ssh
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/id_rsa
           echo "pushing all from upstream to ours"
-          git push -f --all https://github.com/tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git
+          git push -f --all git@github.com:tmobile/DevEdge-IoTDevKit-ZephyrRTOS.git

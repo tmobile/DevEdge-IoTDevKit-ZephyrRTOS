@@ -1,0 +1,10 @@
+# Copyright (c)	2023 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config ACT81461_ALPC
+	bool "ACT81461 ALPC Charger Fuel Gauge"
+	default y
+	depends on DT_HAS_QORVO_ACT81461_ALPC_ENABLED
+	select I2C
+	help
+	  Enable driver for reading charger and battery information from the Qorvo ACT81461 PMIC

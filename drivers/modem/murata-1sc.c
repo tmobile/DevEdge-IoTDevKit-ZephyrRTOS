@@ -848,6 +848,127 @@ static int set_boot_delay(void)
 	return ret;
 }
 
+enum handshake_state {
+	init_suspend,
+	init_resume,
+	isr_init_resume,
+	suspend_wait_modem_to_host,
+	suspend_wait_rx,
+	resume_wait_modem_to_host,
+	resume_wait_rx,
+	isr_resume_wait_rx,
+};
+
+static enum handshake_state hifc_handshake_state;
+
+K_SEM_DEFINE(hifc_handshake_sem, 0, 1);
+
+static void hifc_handshake(struct k_timer *timer_id);
+
+K_TIMER_DEFINE(hifc_handshake_tmr, hifc_handshake, NULL);
+
+static int tmr_counter;
+static void hifc_handshake(struct k_timer *timer_id)
+{
+	char hifc_mode = *(char *)timer_id->user_data;
+
+	switch (hifc_handshake_state) {
+	case init_suspend:
+		gpio_pin_set_dt(&wake_mdm_gpio, 0);
+		tmr_counter = 0;
+		hifc_handshake_state = suspend_wait_modem_to_host;
+		break;
+	case suspend_wait_modem_to_host:
+		if (gpio_pin_get_dt(&wake_host_gpio) == 0) {
+			if (hifc_mode == 'A') {
+				tmr_counter = 0;
+				hifc_handshake_state = suspend_wait_rx;
+				gpio_pin_configure_dt(&mdm_tx_gpio,
+						GPIO_INPUT | GPIO_PULL_DOWN);
+			} else {
+				LOG_INF("Suspend successful");
+				k_sem_give(&hifc_handshake_sem);
+				k_timer_stop(timer_id);
+			}
+		} else if (tmr_counter < 20) {
+			tmr_counter++;
+		} else {
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+			LOG_ERR("wake_host_gpio did not go low");
+		}
+		break;
+	case suspend_wait_rx:
+		if (gpio_pin_get_dt(&wake_host_gpio) == 0) {
+			LOG_INF("Suspend successful");
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+		} else if (tmr_counter < 20) {
+			tmr_counter++;
+		} else {
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+			LOG_ERR("mdm_rx_gpio did not go low");
+		}
+		break;
+	case init_resume:
+		gpio_pin_set_dt(&wake_mdm_gpio, 1);
+	case isr_init_resume:
+		if (hifc_mode == 'B') {
+			hifc_handshake_state = resume_wait_modem_to_host;
+		} else {
+			hifc_handshake_state = isr_resume_wait_rx;
+			gpio_pin_configure_dt(&mdm_tx_gpio,
+					GPIO_OUTPUT_LOW | GPIO_PULL_DOWN);
+			gpio_pin_set_dt(&mdm_tx_gpio, 1);
+		}
+		tmr_counter = 0;
+		break;
+	case resume_wait_modem_to_host:
+		if (gpio_pin_get_dt(&wake_host_gpio) == 1) {
+			LOG_INF("Resume successful");
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+		} else if (tmr_counter < 20) {
+			tmr_counter++;
+		} else {
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+			LOG_ERR("wake_host_gpio did not go high");
+		}
+		break;
+	case isr_resume_wait_rx:
+		if (gpio_pin_get_dt(&mdm_rx_gpio) == 1) {
+			gpio_pin_set_dt(&wake_mdm_gpio, 1);
+			LOG_INF("Resume successful");
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+		} else if (tmr_counter < 20) {
+			tmr_counter++;
+		} else {
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+			LOG_ERR("mdm_rx_gpio did not go high (ISR)");
+		}
+	case resume_wait_rx:
+		if (gpio_pin_get_dt(&mdm_rx_gpio) == 1) {
+			gpio_pin_configure_dt(&mdm_tx_gpio,
+					GPIO_OUTPUT_LOW | GPIO_PULL_DOWN);
+			gpio_pin_set_dt(&mdm_tx_gpio, 1);
+			tmr_counter = 0;
+			hifc_handshake_state = resume_wait_modem_to_host;
+		} else if (tmr_counter < 20) {
+			tmr_counter++;
+		} else {
+			k_sem_give(&hifc_handshake_sem);
+			k_timer_stop(timer_id);
+			LOG_ERR("mdm_rx_gpio did not go high");
+		}
+		break;
+	}
+}
+
+
 /**
  * @brief Put the modem into resume (low-power) state
  *
@@ -855,60 +976,14 @@ static int set_boot_delay(void)
  */
 static bool enter_resume_state(char hifc_mode)
 {
-	int i = 0;
-
-	if (hifc_mode != 'A' && hifc_mode != 'B') {
-		LOG_ERR("Unsupported HIFC mode: %c", hifc_mode);
-		return -1;
-	}
-
-	/* set the HOST to MODEM gpio pin high */
-	gpio_pin_set_dt(&wake_mdm_gpio, 1);
-
-	if (hifc_mode == 'A') {
-		/* wait for the HOST_RX gpio from the modem to go high */
-		for (i = 0; i < 20; i++) {
-			if (gpio_pin_get_dt(&mdm_rx_gpio) == 1) {
-				break;
-			}
-			k_sleep(K_MSEC(100));
-		}
-		if (i == 20) {
-			LOG_ERR("mdm_rx_gpio did not go high");
-		}
-
-		/* Reconfigure TX as an output */
-		int ret = gpio_pin_configure_dt(&mdm_tx_gpio, GPIO_OUTPUT_LOW | GPIO_PULL_DOWN);
-		if (ret < 0) {
-			LOG_ERR("Failed to configure %s pin", "mdm_tx");
-		}
-
-		/* set HOST TX gpio pin high */
-		gpio_pin_set_dt(&mdm_tx_gpio, 1);
-	}
-
-	/* wait for the Modem to Host gpio pin from the modem to go high */
-	for (i = 0; i < 20; i++) {
-		if (gpio_pin_get_dt(&wake_host_gpio) == 1) {
-			break;
-		}
-		k_sleep(K_MSEC(100));
-	}
-	if (i == 20) {
-		LOG_ERR("wake_host_gpio did not go high");
-	}
-
-	if ((hifc_mode == 'A') && gpio_pin_get_dt(&mdm_rx_gpio) &&
-	    gpio_pin_get_dt(&wake_host_gpio)) {
-		LOG_INF("Resume successful");
-		return 0;
-	} else if ((hifc_mode == 'B') && gpio_pin_get_dt(&wake_host_gpio)) {
-		LOG_INF("Resume successful");
-		return 0;
-	}
-
-	LOG_ERR("Resume failed");
-	return -1;
+	gpio_pin_interrupt_configure_dt(&wake_host_gpio, GPIO_INT_DISABLE);
+	k_sem_reset(&hifc_handshake_sem);
+	hifc_handshake_state = init_resume;
+	hifc_handshake_tmr.user_data = &hifc_mode;
+	k_timer_start(&hifc_handshake_tmr, K_NO_WAIT, K_MSEC(100));
+	k_sem_take(&hifc_handshake_sem, K_FOREVER);
+	gpio_pin_interrupt_configure_dt(&wake_host_gpio, GPIO_INT_EDGE_RISING);
+	return tmr_counter < 20;
 }
 
 /**
@@ -918,57 +993,12 @@ static bool enter_resume_state(char hifc_mode)
  */
 static bool enter_suspend_state(char hifc_mode)
 {
-	int i = 0;
-
-	if (hifc_mode != 'A' && hifc_mode != 'B') {
-		LOG_ERR("Unsupported HIFC mode: %c", hifc_mode);
-		return -1;
-	}
-
-	/* set the HOST to MODEM gpio pin low */
-	gpio_pin_set_dt(&wake_mdm_gpio, 0);
-
-	/* wait for the MODEM to HOST gpio from the modem to go low */
-	for (i = 0; i < 20; i++) {
-		if (gpio_pin_get_dt(&wake_host_gpio) == 0) {
-			break;
-		}
-		k_sleep(K_MSEC(100));
-	}
-	if (i == 20) {
-		LOG_ERR("wake_host_gpio did not go low");
-	}
-
-	if (hifc_mode == 'A') {
-		/* Reconfigure TX as an input */
-		int ret = gpio_pin_configure_dt(&mdm_tx_gpio, GPIO_INPUT | GPIO_PULL_DOWN);
-		if (ret < 0) {
-			LOG_ERR("Failed to configure %s pin as input", "mdm_tx");
-		}
-
-		/* wait for the HOST RX gpio pin from the modem to go low */
-		for (i = 0; i < 20; i++) {
-			if (gpio_pin_get_dt(&mdm_rx_gpio) == 0) {
-				break;
-			}
-			k_sleep(K_MSEC(100));
-		}
-		if (i == 20) {
-			LOG_ERR("mdm_rx_gpio did not go low");
-		}
-	}
-
-	if ((hifc_mode == 'A') && (gpio_pin_get_dt(&mdm_rx_gpio) == 0) &&
-	    (gpio_pin_get_dt(&wake_host_gpio) == 0)) {
-		LOG_INF("Suspend successful");
-		return 0;
-	} else if ((hifc_mode == 'B') && (gpio_pin_get_dt(&wake_host_gpio) == 0)) {
-		LOG_INF("Suspend successful");
-		return 0;
-	}
-
-	LOG_ERR("Suspend failed");
-	return -1;
+	k_sem_reset(&hifc_handshake_sem);
+	hifc_handshake_state = init_suspend;
+	hifc_handshake_tmr.user_data = &hifc_mode;
+	k_timer_start(&hifc_handshake_tmr, K_NO_WAIT, K_MSEC(100));
+	k_sem_take(&hifc_handshake_sem, K_FOREVER);
+	return tmr_counter < 20;
 }
 
 /**
@@ -1023,36 +1053,32 @@ static int set_cfun(int on)
 }
 
 /**
- * @brief Set the PSM timer values that is passed in thru Parms
+ * @brief Set the PSM timer values that is passed in thru params
  *
  */
-static int set_psm_timer(struct set_cpsms_params *Parms)
+static int set_psm_timer(struct set_cpsms_params *params)
 {
 	char psm[100];
-	char t3312[PSM_TIME_LEN];
-	char t3314[PSM_TIME_LEN];
 	char t3412[PSM_TIME_LEN];
 	char t3324[PSM_TIME_LEN];
 	int ret;
 
-	strcpy(t3312, (const char *)byte_to_binary_str(Parms->t3312_mask));
-	strcpy(t3314, (const char *)byte_to_binary_str(Parms->t3314_mask));
-	strcpy(t3412, (const char *)byte_to_binary_str(Parms->t3412_mask));
-	strcpy(t3324, (const char *)byte_to_binary_str(Parms->t3324_mask));
+	strcpy(t3412, (const char *)byte_to_binary_str(params->t3412));
+	strcpy(t3324, (const char *)byte_to_binary_str(params->t3324));
 
-	if (Parms->t3312_mask == 0 || Parms->t3314_mask == 0) {
-		snprintf(psm, sizeof(psm), "AT+CPSMS=%d,,,\"%s\",\"%s\"", Parms->mode, t3412,
-			 t3324);
-	} else {
-		snprintf(psm, sizeof(psm), "AT+CPSMS=%d,\"%s\",\"%s\",\"%s\",\"%s\"", Parms->mode,
-			 t3312, t3314, t3412, t3324);
-	}
+	snprintf(psm, sizeof(psm), "AT+CPSMS=%d,,,\"%s\",\"%s\"", params->mode, t3412,
+			t3324);
 
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, psm, &mdata.sem_response,
 			     K_SECONDS(6));
 	if (ret < 0) {
 		LOG_ERR("%s ret:%d", psm, ret);
 	}
+
+	if (params->mode && !ret) {
+		enter_suspend_state('A');
+	}
+
 	return ret;
 }
 
@@ -1075,6 +1101,10 @@ static int set_edrx_timer(struct set_cedrxs_params *Parms)
 			     K_SECONDS(6));
 	if (ret < 0) {
 		LOG_ERR("%s ret:%d", at_cmd, ret);
+	}
+
+	if (Parms->mode && !ret) {
+		enter_suspend_state('A');
 	}
 	return ret;
 }
@@ -1643,7 +1673,7 @@ MODEM_CMD_DEFINE(on_cmd_dnsrslv)
  */
 static int get_dns_ip(const char *dn)
 {
-	char at_cmd[64];
+	char at_cmd[128];
 	int ret;
 
 	struct modem_cmd data_cmd[] = {
@@ -1977,7 +2007,7 @@ static int send_sms_msg(void *obj, const struct sms_out *sms)
 
 	snprintk(at_cmd, sizeof(at_cmd), "AT%%CMGSC=\"%s\"\r%s\x1a", sms->phone, sms->msg);
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
-			     MDM_CMD_RSP_TIME);
+			     MDM_CMD_LONG_RSP_TIME);
 	if (ret < 0) {
 		LOG_ERR("%s ret:%d", at_cmd, ret);
 	}
@@ -4918,6 +4948,31 @@ static const struct socket_op_vtable offload_socket_fd_op_vtable = {
 	.setsockopt = offload_setsockopt,
 };
 
+static struct gpio_callback mdm_wake_host_cb_data;
+K_SEM_DEFINE(mdm_transition_sem, 1, 1);
+
+/**
+ * @brief Callback to handle wakeup request from the modem
+ *
+ * @param port GPIO Port
+ * @param cb Pointer to callback data structure
+ * @param pins GPIO Pins
+ */
+void mdm_wake_host_cb(const struct device *port, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	int val = gpio_pin_get_dt(&wake_host_gpio);
+
+	if (val <= 0) {
+		return;
+	} else if (val > 0) {
+		hifc_handshake_state = isr_init_resume;
+	}
+
+	hifc_handshake_tmr.user_data = (void *)&s_hifc_mode;
+	k_timer_start(&hifc_handshake_tmr, K_NO_WAIT, K_MSEC(100));
+}
+
 /*
  * @brief Initialize the driver
  */
@@ -4973,6 +5028,15 @@ static int murata_1sc_init(const struct device *dev)
 		LOG_ERR("Failed to configure %s pin", "wake_host");
 		goto error;
 	}
+
+	ret = gpio_pin_interrupt_configure_dt(&wake_host_gpio, GPIO_INT_EDGE_RISING);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure %s pin", "wake_host");
+		goto error;
+	}
+
+	gpio_init_callback(&mdm_wake_host_cb_data, mdm_wake_host_cb, BIT(wake_host_gpio.pin));
+	gpio_add_callback(wake_host_gpio.port, &mdm_wake_host_cb_data);
 
 	ret = gpio_pin_configure_dt(&wake_mdm_gpio, GPIO_OUTPUT | GPIO_PULL_DOWN);
 	if (ret < 0) {

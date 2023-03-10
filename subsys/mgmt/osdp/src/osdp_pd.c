@@ -38,6 +38,9 @@ LOG_MODULE_DECLARE(osdp, CONFIG_OSDP_LOG_LEVEL);
 #define REPLY_NAK_LEN                  2
 #define REPLY_CCRYPT_LEN               33
 #define REPLY_RMAC_I_LEN               17
+#define REPLY_KEYPAD_LEN               2
+#define REPLY_RAW_LEN                  4
+#define REPLY_FMT_LEN                  3
 
 enum osdp_pd_error_e {
 	OSDP_PD_ERR_NONE = 0,
@@ -172,7 +175,7 @@ static int pd_translate_event(struct osdp_pd *pd, struct osdp_event *event)
 		/* POLL command cannot fail even when there are errors here */
 		return REPLY_ACK;
 	}
-	memcpy(pd->cmd_data, event, sizeof(struct osdp_event));
+	memcpy(pd->ephemeral_data, event, sizeof(struct osdp_event));
 	return reply_code;
 }
 
@@ -183,16 +186,79 @@ static bool do_command_callback(struct osdp_pd *pd, struct osdp_cmd *cmd)
 	ret = pd->command_callback(pd->command_callback_arg, cmd);
 	if (ret != 0) {
 		pd->reply_id = REPLY_NAK;
-		pd->cmd_data[0] = OSDP_PD_NAK_RECORD;
+		pd->ephemeral_data[0] = OSDP_PD_NAK_RECORD;
 		return false;
 	}
 	return true;
 }
 
+static int pd_cmd_cap_ok(struct osdp_pd *pd, struct osdp_cmd *cmd)
+{
+	struct osdp_pd_cap *cap = NULL;
+
+	/* Validate the cmd_id against a PD capabilities where applicable */
+	switch (pd->cmd_id) {
+	case CMD_ISTAT:
+		cap = &pd->cap[OSDP_PD_CAP_CONTACT_STATUS_MONITORING];
+		if (cap->num_items == 0 || cap->compliance_level == 0) {
+			break;
+		}
+		return 0; /* Remove this when REPLY_ISTATR is supported */
+	case CMD_OSTAT:
+		cap = &pd->cap[OSDP_PD_CAP_OUTPUT_CONTROL];
+		if (cap->num_items == 0 || cap->compliance_level == 0) {
+			break;
+		}
+		return 0; /* Remove this when REPLY_OSTATR is supported */
+	case CMD_OUT:
+		cap = &pd->cap[OSDP_PD_CAP_OUTPUT_CONTROL];
+		if (!cmd || cap->compliance_level == 0 ||
+		    cmd->output.output_no + 1 > cap->num_items) {
+			break;
+		}
+		return 1;
+	case CMD_LED:
+		cap = &pd->cap[OSDP_PD_CAP_READER_LED_CONTROL];
+		if (!cmd || cap->compliance_level == 0 ||
+		    cmd->led.led_number + 1 > cap->num_items) {
+			break;
+		}
+		return 1;
+	case CMD_BUZ:
+		cap = &pd->cap[OSDP_PD_CAP_READER_AUDIBLE_OUTPUT];
+		if (cap->num_items == 0 || cap->compliance_level == 0) {
+			break;
+		}
+		return 1;
+	case CMD_TEXT:
+		cap = &pd->cap[OSDP_PD_CAP_READER_TEXT_OUTPUT];
+		if (cap->num_items == 0 || cap->compliance_level == 0) {
+			break;
+		}
+		return 1;
+	case CMD_CHLNG:
+	case CMD_SCRYPT:
+	case CMD_KEYSET:
+		cap = &pd->cap[OSDP_PD_CAP_COMMUNICATION_SECURITY];
+		if (cap->compliance_level == 0) {
+			pd->reply_id = REPLY_NAK;
+			pd->ephemeral_data[0] = OSDP_PD_NAK_SC_UNSUP;
+			return 0;
+		}
+		return 1;
+	}
+
+	pd->reply_id = REPLY_NAK;
+	pd->ephemeral_data[0] = OSDP_PD_NAK_CMD_UNKNOWN;
+	LOG_ERR("PD is not capable of handling CMD(%02x); "
+		"Reply with NAK_CMD_UNKNOWN", pd->cmd_id);
+	return 0;
+}
+
 static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 {
 	int ret = OSDP_PD_ERR_GENERIC;
-	int i, pos = 0;
+	int pos = 0;
 	struct osdp_cmd cmd;
 	struct osdp_event *event;
 
@@ -226,11 +292,19 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		if (len != CMD_ISTAT_DATA_LEN) {
 			break;
 		}
+		if (!pd_cmd_cap_ok(pd, NULL)) {
+			ret = OSDP_PD_ERR_REPLY;
+			break;
+		}
 		pd->reply_id = REPLY_ISTATR;
 		ret = OSDP_PD_ERR_NONE;
 		break;
 	case CMD_OSTAT:
 		if (len != CMD_OSTAT_DATA_LEN) {
+			break;
+		}
+		if (!pd_cmd_cap_ok(pd, NULL)) {
+			ret = OSDP_PD_ERR_REPLY;
 			break;
 		}
 		pd->reply_id = REPLY_OSTATR;
@@ -269,6 +343,9 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		cmd.output.timer_count = buf[pos++];
 		cmd.output.timer_count |= buf[pos++] << 8;
 		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, &cmd)) {
+			break;
+		}
 		if (!do_command_callback(pd, &cmd)) {
 			break;
 		}
@@ -297,6 +374,9 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		cmd.led.permanent.on_color = buf[pos++];
 		cmd.led.permanent.off_color = buf[pos++];
 		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, &cmd)) {
+			break;
+		}
 		if (!do_command_callback(pd, &cmd)) {
 			break;
 		}
@@ -314,6 +394,9 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		cmd.buzzer.off_count = buf[pos++];
 		cmd.buzzer.rep_count = buf[pos++];
 		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, &cmd)) {
+			break;
+		}
 		if (!do_command_callback(pd, &cmd)) {
 			break;
 		}
@@ -336,10 +419,11 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		    cmd.text.length > OSDP_CMD_TEXT_MAX_LEN) {
 			break;
 		}
-		for (i = 0; i < cmd.text.length; i++) {
-			cmd.text.data[i] = buf[pos++];
-		}
+		memcpy(cmd.text.data, buf + pos, cmd.text.length);
 		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, &cmd)) {
+			break;
+		}
 		if (!do_command_callback(pd, &cmd)) {
 			break;
 		}
@@ -371,7 +455,7 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 			ret = OSDP_PD_ERR_REPLY;
 			break;
 		}
-		memcpy(pd->cmd_data, &cmd, sizeof(struct osdp_cmd));
+		memcpy(pd->ephemeral_data, &cmd, sizeof(struct osdp_cmd));
 		pd->reply_id = REPLY_COM;
 		ret = OSDP_PD_ERR_NONE;
 		break;
@@ -380,20 +464,24 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		if (len != CMD_KEYSET_DATA_LEN) {
 			break;
 		}
+		/* only key_type == 1 (SCBK) and key_len == 16 is supported */
+		if (buf[pos] != 1 || buf[pos + 1] != 16) {
+			LOG_ERR("Keyset invalid len/type: %d/%d",
+				buf[pos], buf[pos + 1]);
+			break;
+		}
+		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, NULL)) {
+			break;
+		}
 		/**
 		 * For CMD_KEYSET to be accepted, PD must be
 		 * ONLINE and SC_ACTIVE.
 		 */
 		if (!sc_is_active(pd)) {
 			pd->reply_id = REPLY_NAK;
-			pd->cmd_data[0] = OSDP_PD_NAK_SC_COND;
+			pd->ephemeral_data[0] = OSDP_PD_NAK_SC_COND;
 			LOG_ERR("Keyset with SC inactive");
-			break;
-		}
-		/* only key_type == 1 (SCBK) and key_len == 16 is supported */
-		if (buf[pos] != 1 || buf[pos + 1] != 16) {
-			LOG_ERR("Keyset invalid len/type: %d/%d",
-				buf[pos], buf[pos + 1]);
 			break;
 		}
 		cmd.id = OSDP_CMD_KEYSET;
@@ -404,7 +492,6 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 			LOG_ERR("Keyset without a command callback! The SC new "
 				"SCBK will be lost when the PD reboots.");
 		} else if (!do_command_callback(pd, &cmd)) {
-			ret = OSDP_PD_ERR_REPLY;
 			break;
 		}
 		memcpy(pd->sc.scbk, cmd.keyset.data, 16);
@@ -413,32 +500,35 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		pd->reply_id = REPLY_ACK;
 		ret = OSDP_PD_ERR_NONE;
 		break;
-	case CMD_CHLNG: {
-		int tmp = OSDP_PD_CAP_COMMUNICATION_SECURITY;
-		if (pd->cap[tmp].compliance_level == 0) {
-			pd->reply_id = REPLY_NAK;
-			pd->cmd_data[0] = OSDP_PD_NAK_SC_UNSUP;
+	case CMD_CHLNG:
+		if (len != CMD_CHLNG_DATA_LEN) {
 			break;
 		}
-		if (len != CMD_CHLNG_DATA_LEN) {
+		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, NULL)) {
 			break;
 		}
 		osdp_sc_init(pd);
 		sc_deactivate(pd);
-		for (i = 0; i < 8; i++) {
-			pd->sc.cp_random[i] = buf[pos++];
-		}
+		memcpy(pd->sc.cp_random, buf + pos, 8);
 		pd->reply_id = REPLY_CCRYPT;
 		ret = OSDP_PD_ERR_NONE;
 		break;
-	}
 	case CMD_SCRYPT:
 		if (len != CMD_SCRYPT_DATA_LEN) {
 			break;
 		}
-		for (i = 0; i < 16; i++) {
-			pd->sc.cp_cryptogram[i] = buf[pos++];
+		ret = OSDP_PD_ERR_REPLY;
+		if (!pd_cmd_cap_ok(pd, NULL)) {
+			break;
 		}
+		if (sc_is_active(pd)) {
+			pd->reply_id = REPLY_NAK;
+			pd->ephemeral_data[0] = OSDP_PD_NAK_SC_COND;
+			LOG_ERR("Out of order CMD_SCRYPT; has CP gone rogue?");
+			break;
+		}
+		memcpy(pd->sc.cp_cryptogram, buf + pos, CMD_SCRYPT_DATA_LEN);
 		pd->reply_id = REPLY_RMAC_I;
 		ret = OSDP_PD_ERR_NONE;
 		break;
@@ -446,7 +536,7 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 	default:
 		LOG_ERR("Unknown CMD(%02x)", pd->cmd_id);
 		pd->reply_id = REPLY_NAK;
-		pd->cmd_data[0] = OSDP_PD_NAK_CMD_UNKNOWN;
+		pd->ephemeral_data[0] = OSDP_PD_NAK_CMD_UNKNOWN;
 		return OSDP_PD_ERR_REPLY;
 	}
 
@@ -454,7 +544,7 @@ static int pd_decode_command(struct osdp_pd *pd, uint8_t *buf, int len)
 		LOG_ERR("Failed to decode command: CMD(%02x) Len:%d ret:%d",
 			pd->cmd_id, len, ret);
 		pd->reply_id = REPLY_NAK;
-		pd->cmd_data[0] = OSDP_PD_NAK_CMD_LEN;
+		pd->ephemeral_data[0] = OSDP_PD_NAK_CMD_LEN;
 		ret = OSDP_PD_ERR_REPLY;
 	}
 
@@ -479,10 +569,10 @@ static inline void assert_buf_len(int need, int have)
 static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 {
 	int ret = OSDP_PD_ERR_GENERIC;
-	int i, data_off, len = 0;
+	int i, len = 0;
 	struct osdp_cmd *cmd;
-
-	data_off = osdp_phy_packet_get_data_offset(pd, buf);
+	struct osdp_event *event;
+	int data_off = osdp_phy_packet_get_data_offset(pd, buf);
 #ifdef CONFIG_OSDP_SC_ENABLED
 	uint8_t *smb = osdp_phy_packet_get_smb(pd, buf);
 #endif
@@ -519,7 +609,7 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 	case REPLY_PDCAP:
 		assert_buf_len(REPLY_PDCAP_LEN, max_len);
 		buf[len++] = pd->reply_id;
-		for (i = 0; i < OSDP_PD_CAP_SENTINEL; i++) {
+		for (i = 1; i < OSDP_PD_CAP_SENTINEL; i++) {
 			if (pd->cap[i].function_code != i) {
 				continue;
 			}
@@ -547,6 +637,43 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 		buf[len++] = ISSET_FLAG(pd, PD_FLAG_R_TAMPER);
 		ret = OSDP_PD_ERR_NONE;
 		break;
+	case REPLY_KEYPPAD:
+		event = (struct osdp_event *)pd->ephemeral_data;
+		assert_buf_len(REPLY_KEYPAD_LEN + event->keypress.length, max_len);
+		buf[len++] = pd->reply_id;
+		buf[len++] = (uint8_t)event->keypress.reader_no;
+		buf[len++] = (uint8_t)event->keypress.length;
+		memcpy(buf + len, event->keypress.data, event->keypress.length);
+		len += event->keypress.length;
+		ret = OSDP_PD_ERR_NONE;
+		break;
+	case REPLY_RAW: {
+		int len_bytes;
+
+		event = (struct osdp_event *)pd->ephemeral_data;
+		len_bytes = (event->cardread.length + 7) / 8;
+		assert_buf_len(REPLY_RAW_LEN + len_bytes, max_len);
+		buf[len++] = pd->reply_id;
+		buf[len++] = (uint8_t)event->cardread.reader_no;
+		buf[len++] = (uint8_t)event->cardread.format;
+		buf[len++] = BYTE_0(event->cardread.length);
+		buf[len++] = BYTE_1(event->cardread.length);
+		memcpy(buf + len, event->cardread.data, len_bytes);
+		len += len_bytes;
+		ret = OSDP_PD_ERR_NONE;
+		break;
+	}
+	case REPLY_FMT:
+		event = (struct osdp_event *)pd->ephemeral_data;
+		assert_buf_len(REPLY_FMT_LEN + event->cardread.length, max_len);
+		buf[len++] = pd->reply_id;
+		buf[len++] = (uint8_t)event->cardread.reader_no;
+		buf[len++] = (uint8_t)event->cardread.direction;
+		buf[len++] = (uint8_t)event->cardread.length;
+		memcpy(buf + len, event->cardread.data, event->cardread.length);
+		len += event->cardread.length;
+		ret = OSDP_PD_ERR_NONE;
+		break;
 	case REPLY_COM:
 		assert_buf_len(REPLY_COM_LEN, max_len);
 		/**
@@ -559,7 +686,7 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 		 * TODO: Persist pd->address and pd->baud_rate via
 		 * subsys/settings
 		 */
-		cmd = (struct osdp_cmd *)pd->cmd_data;
+		cmd = (struct osdp_cmd *)pd->ephemeral_data;
 		buf[len++] = pd->reply_id;
 		buf[len++] = cmd->comset.address;
 		buf[len++] = BYTE_0(cmd->comset.baud_rate);
@@ -576,7 +703,7 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 	case REPLY_NAK:
 		assert_buf_len(REPLY_NAK_LEN, max_len);
 		buf[len++] = pd->reply_id;
-		buf[len++] = pd->cmd_data[0];
+		buf[len++] = pd->ephemeral_data[0];
 		ret = OSDP_PD_ERR_NONE;
 		break;
 #ifdef CONFIG_OSDP_SC_ENABLED
@@ -589,15 +716,10 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 		osdp_compute_session_keys(pd);
 		osdp_compute_pd_cryptogram(pd);
 		buf[len++] = pd->reply_id;
-		for (i = 0; i < 8; i++) {
-			buf[len++] = pd->sc.pd_client_uid[i];
-		}
-		for (i = 0; i < 8; i++) {
-			buf[len++] = pd->sc.pd_random[i];
-		}
-		for (i = 0; i < 16; i++) {
-			buf[len++] = pd->sc.pd_cryptogram[i];
-		}
+		memcpy(buf + len, pd->sc.pd_client_uid, 8);
+		memcpy(buf + len + 8, pd->sc.pd_random, 8);
+		memcpy(buf + len + 16, pd->sc.pd_cryptogram, 16);
+		len += 32;
 		smb[0] = 3;      /* length */
 		smb[1] = SCS_12; /* type */
 		smb[2] = ISSET_FLAG(pd, PD_FLAG_SC_USE_SCBKD) ? 0 : 1;
@@ -610,9 +732,8 @@ static int pd_build_reply(struct osdp_pd *pd, uint8_t *buf, int max_len)
 		assert_buf_len(REPLY_RMAC_I_LEN, max_len);
 		osdp_compute_rmac_i(pd);
 		buf[len++] = pd->reply_id;
-		for (i = 0; i < 16; i++) {
-			buf[len++] = pd->sc.r_mac[i];
-		}
+		memcpy(buf + len, pd->sc.r_mac, 16);
+		len += 16;
 		smb[0] = 3;       /* length */
 		smb[1] = SCS_14;  /* type */
 		if (osdp_verify_cp_cryptogram(pd) == 0) {
@@ -695,24 +816,61 @@ static int pd_send_reply(struct osdp_pd *pd)
 	return OSDP_PD_ERR_NONE;
 }
 
-static int pd_receve_packet(struct osdp_pd *pd)
+static int pd_decode_packet(struct osdp_pd *pd, int *one_pkt_len)
+{
+	int err, len;
+	uint8_t *buf;
+
+	err = osdp_phy_check_packet(pd, pd->rx_buf, pd->rx_buf_len, one_pkt_len);
+
+	/* Translate phy error codes to PD errors */
+	switch (err) {
+	case OSDP_ERR_PKT_NONE:
+		break;
+	case OSDP_ERR_PKT_NACK:
+		return OSDP_PD_ERR_REPLY;
+	case OSDP_ERR_PKT_WAIT:
+		return OSDP_PD_ERR_NO_DATA;
+	case OSDP_ERR_PKT_SKIP:
+		return OSDP_PD_ERR_IGNORE;
+	case OSDP_ERR_PKT_FMT:
+		return OSDP_PD_ERR_GENERIC;
+	default:
+		return err; /* propagate other errors as-is */
+	}
+
+	len = osdp_phy_decode_packet(pd, pd->rx_buf, *one_pkt_len, &buf);
+	if (len <= 0) {
+		if (len == OSDP_ERR_PKT_NACK) {
+			return OSDP_PD_ERR_REPLY; /* Send a NAK */
+		}
+		return OSDP_PD_ERR_GENERIC; /* fatal errors */
+	}
+
+	return pd_decode_command(pd, buf, len);
+}
+
+static int pd_receive_and_process_command(struct osdp_pd *pd)
 {
 	uint8_t *buf;
-	int rec_bytes, ret, was_empty, max_len;
+	int len, err, remaining;
 
-	was_empty = pd->rx_buf_len == 0;
 	buf = pd->rx_buf + pd->rx_buf_len;
-	max_len = sizeof(pd->rx_buf) - pd->rx_buf_len;
+	remaining = sizeof(pd->rx_buf) - pd->rx_buf_len;
 
-	rec_bytes = pd->channel.recv(pd->channel.data, buf, max_len);
-	if (rec_bytes <= 0) {
+	len = pd->channel.recv(pd->channel.data, buf, remaining);
+	if (len <= 0) { /* No data received */
 		return OSDP_PD_ERR_NO_DATA;
 	}
-	if (was_empty && rec_bytes > 0) {
-		/* Start of message */
-		pd->tstamp = osdp_millis_now();
-	}
-	pd->rx_buf_len += rec_bytes;
+
+	/**
+	 * We received some data on the bus; update pd->tstamp. A rouge CP can
+	 * send one byte at a time to extend this command's window but that
+	 * shouldn't cause any issues related to secure channel as it has it's
+	 * own timestamp.
+	 */
+	pd->tstamp = osdp_millis_now();
+	pd->rx_buf_len += len;
 
 	if (IS_ENABLED(CONFIG_OSDP_PACKET_TRACE)) {
 		/**
@@ -726,29 +884,34 @@ static int pd_receve_packet(struct osdp_pd *pd)
 		}
 	}
 
-	pd->reply_id = 0;    /* reset past reply ID so phy can send NAK */
-	pd->cmd_data[0] = 0; /* reset past NAK reason */
-	ret = osdp_phy_decode_packet(pd, pd->rx_buf, pd->rx_buf_len);
-	if (ret == OSDP_ERR_PKT_FMT) {
-		if (pd->reply_id != 0) {
-			pd->reply_id = REPLY_NAK;
-			pd->cmd_data[0] = OSDP_PD_NAK_RECORD;
-			return OSDP_PD_ERR_REPLY;
-		}
-		return OSDP_PD_ERR_GENERIC; /* fatal errors */
-	} else if (ret == OSDP_ERR_PKT_WAIT) {
-		/* rx_buf_len != pkt->len; wait for more data */
-		return OSDP_PD_ERR_NO_DATA;
-	} else if (ret == OSDP_ERR_PKT_SKIP) {
-		/* soft fail - discard this message */
-		pd->rx_buf_len = 0;
-		if (pd->channel.flush) {
-			pd->channel.flush(pd->channel.data);
-		}
-		return OSDP_PD_ERR_NO_DATA;
+	err = pd_decode_packet(pd, &len);
+
+	if (err == OSDP_PD_ERR_NO_DATA) {
+		return err;
 	}
-	pd->rx_buf_len = ret;
-	return OSDP_PD_ERR_NONE;
+
+	/* We are done with the packet (error or not). Remove processed bytes */
+	remaining = pd->rx_buf_len - len;
+	if (remaining) {
+		memmove(pd->rx_buf, pd->rx_buf + len, remaining);
+	}
+
+	/**
+	 * Store remaining length that needs to be processed.
+	 * State machine will be updated accordingly.
+	 */
+	pd->rx_buf_len = remaining;
+
+	return err;
+}
+
+static inline void pd_error_reset(struct osdp_pd *pd)
+{
+	sc_deactivate(pd);
+	if (pd->channel.flush) {
+		pd->channel.flush(pd->channel.data);
+	}
+	pd->rx_buf_len = 0;
 }
 
 void osdp_update(struct osdp *ctx)
@@ -756,50 +919,57 @@ void osdp_update(struct osdp *ctx)
 	int ret;
 	struct osdp_pd *pd = osdp_to_pd(ctx, 0);
 
-	switch (pd->state) {
-	case OSDP_PD_STATE_IDLE:
-		ret = pd_receve_packet(pd);
-		if (ret == OSDP_PD_ERR_GENERIC ||
-		    ((pd->rx_buf_len > 0 || sc_is_active(pd)) &&
-		     osdp_millis_since(pd->tstamp) > OSDP_RESP_TOUT_MS)) {
-			/**
-			 * When we receive a command from PD after a timeout,
-			 * any established secure channel must be discarded.
-			 */
-			LOG_ERR("receive errors/timeout");
-			pd->state = OSDP_PD_STATE_ERR;
-			break;
-		}
-		if (ret == OSDP_PD_ERR_NO_DATA) {
-			break;
-		}
-		if (ret == OSDP_PD_ERR_NONE) {
-			pd_decode_command(pd, pd->rx_buf, pd->rx_buf_len);
-		}
-		pd->state = OSDP_PD_STATE_SEND_REPLY;
-		__fallthrough;
-	case OSDP_PD_STATE_SEND_REPLY:
-		if (pd_send_reply(pd) == OSDP_PD_ERR_GENERIC) {
-			pd->state = OSDP_PD_STATE_ERR;
-			break;
-		}
-		pd->rx_buf_len = 0;
-		pd->state = OSDP_PD_STATE_IDLE;
-		break;
-	case OSDP_PD_STATE_ERR:
-		/**
-		 * PD error state is momentary as it doesn't maintain any state
-		 * between commands. We just clean up secure channel status and
-		 * go back to idle state.
-		 */
-		CLEAR_FLAG(pd, PD_FLAG_SC_ACTIVE);
-		pd->rx_buf_len = 0;
-		if (pd->channel.flush) {
-			pd->channel.flush(pd->channel.data);
-		}
-		pd->state = OSDP_PD_STATE_IDLE;
-		break;
+#ifdef CONFIG_OSDP_SC_ENABLED
+	/**
+	 * If secure channel is established, we need to make sure that
+	 * the session is valid before accepting a command.
+	 */
+	if (sc_is_active(pd) &&
+	    osdp_millis_since(pd->sc_tstamp) > OSDP_PD_SC_TIMEOUT_MS) {
+		LOG_INF("PD SC session timeout!");
+		sc_deactivate(pd);
 	}
+#endif
+
+	ret = pd_receive_and_process_command(pd);
+
+	if (ret == OSDP_PD_ERR_IGNORE) {
+		return;
+	}
+
+	if (ret == OSDP_PD_ERR_NO_DATA) {
+		if (pd->rx_buf_len == 0 ||
+		    osdp_millis_since(pd->tstamp) < OSDP_RESP_TOUT_MS) {
+			return;
+		}
+		LOG_DBG("rx_buf: %d", pd->rx_buf_len);
+		osdp_dump("Buf", pd->rx_buf, pd->rx_buf_len);
+	}
+
+	if (ret != OSDP_PD_ERR_NONE && ret != OSDP_PD_ERR_REPLY) {
+		LOG_ERR("CMD receive error/timeout - err:%d", ret);
+		pd_error_reset(pd);
+		return;
+	}
+
+#ifdef CONFIG_OSDP_SC_ENABLED
+	if (ret == OSDP_PD_ERR_NONE && sc_is_active(pd)) {
+		pd->sc_tstamp = osdp_millis_now();
+	}
+#endif
+
+	ret = pd_send_reply(pd);
+	if (ret != OSDP_PD_ERR_NONE) {
+		/**
+		 * PD received and decoded a valid command from CP but failed to
+		 * send the intended response?? This should not happen; but if
+		 * it did, we cannot do anything about it, just complain about
+		 * it and limp back home.
+		 */
+		LOG_WRN("REPLY send failed! CP may be waiting..");
+		return;
+	}
+
 }
 
 static void osdp_pd_set_attributes(struct osdp_pd *pd, struct osdp_pd_cap *cap,

@@ -172,7 +172,7 @@ static int vrt_handle_out(const struct device *dev,
 		return vrt_request_reply(dev, pkt, UVB_REPLY_STALL);
 	}
 
-	buf = udc_buf_peek(dev, ep, true);
+	buf = udc_buf_peek(dev, ep);
 	if (buf == NULL) {
 		LOG_DBG("reply NACK ep 0x%02x", ep);
 		return vrt_request_reply(dev, pkt, UVB_REPLY_NACK);
@@ -181,10 +181,10 @@ static int vrt_handle_out(const struct device *dev,
 	min_len = MIN(pkt->length, net_buf_tailroom(buf));
 	net_buf_add_mem(buf, pkt->data, min_len);
 
-	LOG_DBG("Handle data OUT, %zu | %u", pkt->length, net_buf_tailroom(buf));
+	LOG_DBG("Handle data OUT, %zu | %zu", pkt->length, net_buf_tailroom(buf));
 
 	if (net_buf_tailroom(buf) == 0 || pkt->length < ep_cfg->mps) {
-		buf = udc_buf_get(dev, ep, true);
+		buf = udc_buf_get(dev, ep);
 
 		if (ep == USB_CONTROL_EP_OUT) {
 			err = vrt_handle_ctrl_out(dev, buf);
@@ -239,13 +239,13 @@ static int vrt_handle_in(const struct device *dev,
 		return vrt_request_reply(dev, pkt, UVB_REPLY_STALL);
 	}
 
-	buf = udc_buf_peek(dev, ep, true);
+	buf = udc_buf_peek(dev, ep);
 	if (buf == NULL) {
 		LOG_DBG("reply NACK ep 0x%02x", ep);
 		return vrt_request_reply(dev, pkt, UVB_REPLY_NACK);
 	}
 
-	LOG_DBG("Handle data IN, %u | %u | %u",
+	LOG_DBG("Handle data IN, %zu | %u | %u",
 		pkt->length, buf->len, ep_cfg->mps);
 	min_len = MIN(pkt->length, buf->len);
 	memcpy(pkt->data, buf->data, min_len);
@@ -258,8 +258,8 @@ static int vrt_handle_in(const struct device *dev,
 			goto continue_in;
 		}
 
-		LOG_DBG("Finish data IN %u | %u", pkt->length, buf->len);
-		buf = udc_buf_get(dev, ep, true);
+		LOG_DBG("Finish data IN %zu | %u", pkt->length, buf->len);
+		buf = udc_buf_get(dev, ep);
 
 		if (ep == USB_CONTROL_EP_IN) {
 			err = isr_handle_ctrl_in(dev, buf);
@@ -443,12 +443,6 @@ static int udc_vrt_ep_clear_halt(const struct device *dev,
 	return 0;
 }
 
-static int udc_vrt_ep_flush(const struct device *dev,
-			    struct udc_ep_config *cfg)
-{
-	return -ENOTSUP;
-}
-
 static int udc_vrt_set_address(const struct device *dev, const uint8_t addr)
 {
 	struct udc_vrt_data *priv = udc_get_private(dev);
@@ -557,6 +551,7 @@ static int udc_vrt_driver_preinit(const struct device *dev)
 	k_fifo_init(&priv->fifo);
 
 	data->caps.rwup = true;
+	data->caps.mps0 = UDC_MPS0_64;
 	if (config->speed_idx == 2) {
 		data->caps.hs = true;
 		mps = 1024;
@@ -634,7 +629,6 @@ static const struct udc_api udc_vrt_api = {
 	.ep_disable = udc_vrt_ep_disable,
 	.ep_set_halt = udc_vrt_ep_set_halt,
 	.ep_clear_halt = udc_vrt_ep_clear_halt,
-	.ep_flush = udc_vrt_ep_flush,
 	.ep_enqueue = udc_vrt_ep_enqueue,
 	.ep_dequeue = udc_vrt_ep_dequeue,
 };

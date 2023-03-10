@@ -32,8 +32,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <zephyr/net/socket.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/types.h>
-
+#ifdef CONFIG_ARCH_POSIX
 #include <fcntl.h>
+#else
+#include <zephyr/posix/fcntl.h>
+#endif
+
 #if defined(CONFIG_LWM2M_DTLS_SUPPORT)
 #include <zephyr/net/tls_credentials.h>
 #endif
@@ -126,9 +130,7 @@ char *lwm2m_sprint_ip_addr(const struct sockaddr *addr)
 		return net_addr_ntop(AF_INET, &net_sin(addr)->sin_addr, buf, sizeof(buf));
 	}
 
-	LOG_ERR("Unknown IP address family:%d", addr->sa_family);
-	strcpy(buf, "unk");
-	return buf;
+	return "::";
 }
 
 static uint8_t to_hex_digit(uint8_t digit)
@@ -458,6 +460,15 @@ int lwm2m_engine_add_service(k_work_handler_t service, uint32_t period_ms)
 {
 	int i;
 
+	if (!service) {
+		return -EINVAL;
+	}
+
+	/* First, try if the service is already registered, and modify it*/
+	if (lwm2m_engine_update_service_period(service, period_ms) == 0) {
+		return 0;
+	}
+
 	/* find an unused service index node */
 	for (i = 0; i < MAX_PERIODIC_SERVICE; i++) {
 		if (!service_node_data[i].service_work) {
@@ -651,18 +662,14 @@ static int socket_send_message(struct lwm2m_ctx *client_ctx)
 
 	if (rc < 0) {
 		LOG_ERR("Failed to send packet, err %d", errno);
-		if (msg->type != COAP_TYPE_CON) {
-			lwm2m_reset_message(msg, true);
-		}
-
-		return -errno;
+		rc = -errno;
 	}
 
 	if (msg->type != COAP_TYPE_CON) {
 		lwm2m_reset_message(msg, true);
 	}
 
-	return 0;
+	return rc;
 }
 
 static void socket_reset_pollfd_events(void)
@@ -771,7 +778,15 @@ static void socket_loop(void)
 			}
 
 			if (sock_fds[i].revents & ZSOCK_POLLOUT) {
-				socket_send_message(sock_ctx[i]);
+				rc = socket_send_message(sock_ctx[i]);
+				/* Drop packets that cannot be send, CoAP layer handles retry */
+				/* Other fatal errors should trigger a recovery */
+				if (rc < 0 && rc != -EAGAIN) {
+					LOG_ERR("send() reported a socket error, %d", -rc);
+					if (sock_ctx[i] != NULL && sock_ctx[i]->fault_cb != NULL) {
+						sock_ctx[i]->fault_cb(-rc);
+					}
+				}
 			}
 		}
 	}
@@ -912,16 +927,16 @@ int lwm2m_socket_start(struct lwm2m_ctx *client_ctx)
 		goto error;
 	}
 
-	flags = fcntl(client_ctx->sock_fd, F_GETFL, 0);
+	flags = zsock_fcntl(client_ctx->sock_fd, F_GETFL, 0);
 	if (flags == -1) {
 		ret = -errno;
-		LOG_ERR("fcntl(F_GETFL) failed (%d)", ret);
+		LOG_ERR("zsock_fcntl(F_GETFL) failed (%d)", ret);
 		goto error;
 	}
-	ret = fcntl(client_ctx->sock_fd, F_SETFL, flags | O_NONBLOCK);
+	ret = zsock_fcntl(client_ctx->sock_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret == -1) {
 		ret = -errno;
-		LOG_ERR("fcntl(F_SETFL) failed (%d)", ret);
+		LOG_ERR("zsock_fcntl(F_SETFL) failed (%d)", ret);
 		goto error;
 	}
 

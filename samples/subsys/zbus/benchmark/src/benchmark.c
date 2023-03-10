@@ -10,11 +10,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util_macro.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/zbus/zbus.h>
 
-#if defined(CONFIG_ARCH_POSIX)
+#if defined(CONFIG_BOARD_NATIVE_POSIX)
 #include "native_rtc.h"
 #define GET_ARCH_TIME_NS() (native_rtc_gettime_us(RTC_CLOCK_PSEUDOHOSTREALTIME) * NSEC_PER_USEC)
+#elif defined(CONFIG_ARCH_POSIX)
+#error "This sample cannot be built for other POSIX arch boards than native_posix"
 #else
 #define GET_ARCH_TIME_NS() (k_cyc_to_ns_near32(sys_clock_cycle_get_32()))
 #endif
@@ -52,7 +55,7 @@ ZBUS_CHAN_DEFINE(bm_channel,		   /* Name */
 );
 
 #define BYTES_TO_BE_SENT (256LLU * 1024LLU)
-static uint64_t count;
+static atomic_t count;
 
 #if (CONFIG_BM_ASYNC == 1)
 ZBUS_SUBSCRIBER_DEFINE(s1, 4);
@@ -98,7 +101,7 @@ ZBUS_SUBSCRIBER_DEFINE(s16, 4);
                                                                                                    \
 			zbus_chan_finish(chan);                                                    \
                                                                                                    \
-			count += CONFIG_BM_MESSAGE_SIZE;                                           \
+			atomic_add(&count, CONFIG_BM_MESSAGE_SIZE);                                \
 		}                                                                                  \
 	}                                                                                          \
                                                                                                    \
@@ -219,7 +222,7 @@ static void producer_thread(void)
 	uint64_t i = ((BYTES_TO_BE_SENT * NSEC_PER_SEC) / MB(1)) / duration;
 	uint64_t f = ((BYTES_TO_BE_SENT * NSEC_PER_SEC * 100) / MB(1) / duration) % 100;
 
-	LOG_INF("Bytes sent = %lld, received = %llu", BYTES_TO_BE_SENT, count);
+	LOG_INF("Bytes sent = %lld, received = %lu", BYTES_TO_BE_SENT, atomic_get(&count));
 	LOG_INF("Average data rate: %llu.%lluMB/s", i, f);
 	LOG_INF("Duration: %u.%uus", duration / NSEC_PER_USEC, duration % NSEC_PER_USEC);
 

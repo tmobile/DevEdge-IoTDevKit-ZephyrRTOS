@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2018 Nordic Semiconductor ASA
- * Copyright (c) 2022 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +10,6 @@
 #include "shell_vt100.h"
 
 #define SHELL_MSG_CMD_NOT_SUPPORTED	"Command not supported.\n"
-#define SHELL_HELP_COMMENT		"Ignore lines beginning with 'rem '"
 #define SHELL_HELP_CLEAR		"Clear screen."
 #define SHELL_HELP_BACKENDS		"List active shell backends.\n"
 #define SHELL_HELP_BACKSPACE_MODE	"Toggle backspace key mode.\n"	      \
@@ -26,6 +24,9 @@
 #define SHELL_HELP_COLORS		"Toggle colored syntax."
 #define SHELL_HELP_COLORS_OFF		"Disable colored syntax."
 #define SHELL_HELP_COLORS_ON		"Enable colored syntax."
+#define SHELL_HELP_VT100		"Toggle vt100 commands."
+#define SHELL_HELP_VT100_OFF		"Disable vt100 commands."
+#define SHELL_HELP_VT100_ON		"Enable vt100 commands."
 #define SHELL_HELP_STATISTICS		"Shell statistics."
 #define SHELL_HELP_STATISTICS_SHOW	\
 	"Get shell statistics for the Logger module."
@@ -195,13 +196,6 @@ static int terminal_size_get(const struct shell *shell)
 	return ret_val;
 }
 
-static int cmd_comment(const struct shell *shell, size_t argc, char **argv)
-{
-	ARG_UNUSED(argv);
-
-	return 0;
-}
-
 static int cmd_clear(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argv);
@@ -265,6 +259,26 @@ static int cmd_colors_on(const struct shell *shell, size_t argc, char **argv)
 	ARG_UNUSED(argv);
 
 	z_flag_use_colors_set(shell, true);
+
+	return 0;
+}
+
+static int cmd_vt100_off(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	z_flag_use_vt100_set(sh, false);
+
+	return 0;
+}
+
+static int cmd_vt100_on(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argv);
+	ARG_UNUSED(argv);
+
+	z_flag_use_vt100_set(sh, true);
 
 	return 0;
 }
@@ -424,6 +438,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_colors,
 	SHELL_SUBCMD_SET_END
 );
 
+SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_vt100,
+	SHELL_COND_CMD_ARG(CONFIG_SHELL_VT100_COMMANDS, off, NULL,
+			   SHELL_HELP_VT100_OFF, cmd_vt100_off, 1, 0),
+	SHELL_COND_CMD_ARG(CONFIG_SHELL_VT100_COMMANDS, on, NULL,
+			   SHELL_HELP_VT100_ON, cmd_vt100_on, 1, 0),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_echo,
 	SHELL_CMD_ARG(off, NULL, SHELL_HELP_ECHO_OFF, cmd_echo_off, 1, 0),
 	SHELL_CMD_ARG(on, NULL, SHELL_HELP_ECHO_ON, cmd_echo_on, 1, 0),
@@ -452,6 +474,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_shell,
 			SHELL_HELP_BACKSPACE_MODE, NULL),
 	SHELL_COND_CMD(CONFIG_SHELL_VT100_COMMANDS, colors, &m_sub_colors,
 		       SHELL_HELP_COLORS, NULL),
+	SHELL_COND_CMD(CONFIG_SHELL_VT100_COMMANDS, vt100, &m_sub_vt100,
+		       SHELL_HELP_VT100, NULL),
 	SHELL_CMD_ARG(echo, &m_sub_echo, SHELL_HELP_ECHO, cmd_echo, 1, 1),
 	SHELL_COND_CMD(CONFIG_SHELL_STATS, stats, &m_sub_shell_stats,
 			SHELL_HELP_STATISTICS, NULL),
@@ -464,8 +488,6 @@ SHELL_STATIC_SUBCMD_SET_CREATE(m_sub_resize,
 	SHELL_SUBCMD_SET_END
 );
 
-SHELL_COND_CMD_ARG_REGISTER(CONFIG_SHELL_VT100_COMMANDS, rem, NULL,
-			    SHELL_HELP_COMMENT, cmd_comment, 1, 1);
 SHELL_COND_CMD_ARG_REGISTER(CONFIG_SHELL_VT100_COMMANDS, clear, NULL,
 			    SHELL_HELP_CLEAR, cmd_clear, 1, 0);
 SHELL_CMD_REGISTER(shell, &m_sub_shell, SHELL_HELP_SHELL, NULL);

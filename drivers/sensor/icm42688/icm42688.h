@@ -10,7 +10,6 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/spi.h>
-#include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 #include <stdlib.h>
 
@@ -42,6 +41,37 @@ enum icm42688_accel_fs {
 	ICM42688_ACCEL_FS_2G,
 };
 
+static inline enum icm42688_accel_fs icm42688_accel_fs_to_reg(uint8_t g)
+{
+	if (g >= 16) {
+		return ICM42688_ACCEL_FS_16G;
+	} else if (g >= 8) {
+		return ICM42688_ACCEL_FS_8G;
+	} else if (g >= 4) {
+		return ICM42688_ACCEL_FS_4G;
+	} else {
+		return ICM42688_ACCEL_FS_2G;
+	}
+}
+
+static inline void icm42688_accel_reg_to_fs(enum icm42688_accel_fs fs, struct sensor_value *out)
+{
+	switch (fs) {
+	case ICM42688_ACCEL_FS_16G:
+		sensor_g_to_ms2(16, out);
+		return;
+	case ICM42688_ACCEL_FS_8G:
+		sensor_g_to_ms2(8, out);
+		return;
+	case ICM42688_ACCEL_FS_4G:
+		sensor_g_to_ms2(4, out);
+		return;
+	case ICM42688_ACCEL_FS_2G:
+		sensor_g_to_ms2(2, out);
+		return;
+	}
+}
+
 /**
  * @brief Gyroscope scale options
  */
@@ -55,6 +85,57 @@ enum icm42688_gyro_fs {
 	ICM42688_GYRO_FS_31_25,
 	ICM42688_GYRO_FS_15_625,
 };
+
+static inline enum icm42688_gyro_fs icm42688_gyro_fs_to_reg(uint16_t dps)
+{
+	if (dps >= 2000) {
+		return ICM42688_GYRO_FS_2000;
+	} else if (dps >= 1000) {
+		return ICM42688_GYRO_FS_1000;
+	} else if (dps >= 500) {
+		return ICM42688_GYRO_FS_500;
+	} else if (dps >= 250) {
+		return ICM42688_GYRO_FS_250;
+	} else if (dps >= 125) {
+		return ICM42688_GYRO_FS_125;
+	} else if (dps >= 62) {
+		return ICM42688_GYRO_FS_62_5;
+	} else if (dps >= 31) {
+		return ICM42688_GYRO_FS_31_25;
+	} else {
+		return ICM42688_GYRO_FS_15_625;
+	}
+}
+
+static inline void icm42688_gyro_reg_to_fs(enum icm42688_gyro_fs fs, struct sensor_value *out)
+{
+	switch (fs) {
+	case ICM42688_GYRO_FS_2000:
+		sensor_degrees_to_rad(2000, out);
+		return;
+	case ICM42688_GYRO_FS_1000:
+		sensor_degrees_to_rad(1000, out);
+		return;
+	case ICM42688_GYRO_FS_500:
+		sensor_degrees_to_rad(500, out);
+		return;
+	case ICM42688_GYRO_FS_250:
+		sensor_degrees_to_rad(250, out);
+		return;
+	case ICM42688_GYRO_FS_125:
+		sensor_degrees_to_rad(125, out);
+		return;
+	case ICM42688_GYRO_FS_62_5:
+		sensor_10udegrees_to_rad(6250000, out);
+		return;
+	case ICM42688_GYRO_FS_31_25:
+		sensor_10udegrees_to_rad(3125000, out);
+		return;
+	case ICM42688_GYRO_FS_15_625:
+		sensor_10udegrees_to_rad(1562500, out);
+		return;
+	}
+}
 
 /**
  * @brief Accelerometer data rate options
@@ -77,6 +158,107 @@ enum icm42688_accel_odr {
 	ICM42688_ACCEL_ODR_500,
 };
 
+static inline enum icm42688_accel_odr icm42688_accel_hz_to_reg(uint16_t hz)
+{
+	if (hz >= 32000) {
+		return ICM42688_ACCEL_ODR_32000;
+	} else if (hz >= 16000) {
+		return ICM42688_ACCEL_ODR_16000;
+	} else if (hz >= 8000) {
+		return ICM42688_ACCEL_ODR_8000;
+	} else if (hz >= 4000) {
+		return ICM42688_ACCEL_ODR_4000;
+	} else if (hz >= 2000) {
+		return ICM42688_ACCEL_ODR_2000;
+	} else if (hz >= 1000) {
+		return ICM42688_ACCEL_ODR_1000;
+	} else if (hz >= 500) {
+		return ICM42688_ACCEL_ODR_500;
+	} else if (hz >= 200) {
+		return ICM42688_ACCEL_ODR_200;
+	} else if (hz >= 100) {
+		return ICM42688_ACCEL_ODR_100;
+	} else if (hz >= 50) {
+		return ICM42688_ACCEL_ODR_50;
+	} else if (hz >= 25) {
+		return ICM42688_ACCEL_ODR_25;
+	} else if (hz >= 12) {
+		return ICM42688_ACCEL_ODR_12_5;
+	} else if (hz >= 6) {
+		return ICM42688_ACCEL_ODR_6_25;
+	} else if (hz >= 3) {
+		return ICM42688_ACCEL_ODR_3_125;
+	} else {
+		return ICM42688_ACCEL_ODR_1_5625;
+	}
+}
+
+static inline void icm42688_accel_reg_to_hz(enum icm42688_accel_odr odr, struct sensor_value *out)
+{
+	switch (odr) {
+	case ICM42688_ACCEL_ODR_32000:
+		out->val1 = 32000;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_16000:
+		out->val1 = 1600;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_8000:
+		out->val1 = 8000;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_4000:
+		out->val1 = 4000;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_2000:
+		out->val1 = 2000;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_1000:
+		out->val1 = 1000;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_500:
+		out->val1 = 500;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_200:
+		out->val1 = 200;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_100:
+		out->val1 = 100;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_50:
+		out->val1 = 50;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_25:
+		out->val1 = 25;
+		out->val2 = 0;
+		return;
+	case ICM42688_ACCEL_ODR_12_5:
+		out->val1 = 12;
+		out->val2 = 500000;
+		return;
+	case ICM42688_ACCEL_ODR_6_25:
+		out->val1 = 6;
+		out->val2 = 250000;
+		return;
+	case ICM42688_ACCEL_ODR_3_125:
+		out->val1 = 3;
+		out->val2 = 125000;
+		return;
+	case ICM42688_ACCEL_ODR_1_5625:
+		out->val1 = 1;
+		out->val2 = 562500;
+		return;
+	}
+}
+
 /**
  * @brief Gyroscope data rate options
  */
@@ -94,6 +276,89 @@ enum icm42688_gyro_odr {
 	ICM42688_GYRO_ODR_12_5,
 	ICM42688_GYRO_ODR_500 = 0xF
 };
+
+static inline enum icm42688_gyro_odr icm42688_gyro_odr_to_reg(uint16_t hz)
+{
+	if (hz >= 32000) {
+		return ICM42688_GYRO_ODR_32000;
+	} else if (hz >= 16000) {
+		return ICM42688_GYRO_ODR_16000;
+	} else if (hz >= 8000) {
+		return ICM42688_GYRO_ODR_8000;
+	} else if (hz >= 4000) {
+		return ICM42688_GYRO_ODR_4000;
+	} else if (hz >= 2000) {
+		return ICM42688_GYRO_ODR_2000;
+	} else if (hz >= 1000) {
+		return ICM42688_GYRO_ODR_1000;
+	} else if (hz >= 500) {
+		return ICM42688_GYRO_ODR_500;
+	} else if (hz >= 200) {
+		return ICM42688_GYRO_ODR_200;
+	} else if (hz >= 100) {
+		return ICM42688_GYRO_ODR_100;
+	} else if (hz >= 50) {
+		return ICM42688_GYRO_ODR_50;
+	} else if (hz >= 25) {
+		return ICM42688_GYRO_ODR_25;
+	} else {
+		return ICM42688_GYRO_ODR_12_5;
+	}
+}
+
+static inline void icm42688_gyro_reg_to_odr(enum icm42688_gyro_odr odr, struct sensor_value *out)
+{
+	switch (odr) {
+	case ICM42688_GYRO_ODR_32000:
+		out->val1 = 32000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_16000:
+		out->val1 = 16000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_8000:
+		out->val1 = 8000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_4000:
+		out->val1 = 4000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_2000:
+		out->val1 = 2000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_1000:
+		out->val1 = 1000;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_500:
+		out->val1 = 500;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_200:
+		out->val1 = 200;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_100:
+		out->val1 = 100;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_50:
+		out->val1 = 50;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_25:
+		out->val1 = 25;
+		out->val2 = 0;
+		return;
+	case ICM42688_GYRO_ODR_12_5:
+		out->val1 = 12;
+		out->val2 = 500000;
+		return;
+	}
+}
 
 /**
  * @brief All sensor configuration options
@@ -122,11 +387,28 @@ struct icm42688_cfg {
 	/* TODO interrupt options */
 };
 
+struct icm42688_trigger_entry {
+	struct sensor_trigger trigger;
+	sensor_trigger_handler_t handler;
+};
+
 /**
  * @brief Device data (struct device)
  */
 struct icm42688_dev_data {
 	struct icm42688_cfg cfg;
+#ifdef CONFIG_ICM42688_TRIGGER
+#if defined(CONFIG_ICM42688_TRIGGER_OWN_THREAD)
+	struct k_sem gpio_sem;
+#elif defined(CONFIG_ICM42688_TRIGGER_GLOBAL_THREAD)
+	struct k_work work;
+#endif
+	const struct device *dev;
+	struct gpio_callback gpio_cb;
+	sensor_trigger_handler_t data_ready_handler;
+	const struct sensor_trigger *data_ready_trigger;
+	struct k_mutex mutex;
+#endif /* CONFIG_ICM42688_TRIGGER */
 };
 
 /**
@@ -158,6 +440,20 @@ int icm42688_reset(const struct device *dev);
  * @retval -errno Error
  */
 int icm42688_configure(const struct device *dev, struct icm42688_cfg *cfg);
+
+
+/**
+ * @brief Safely (re)Configure the sensor with the given configuration
+ *
+ * Will rollback to prior configuration if new configuration is invalid
+ *
+ * @param dev icm42688 device pointer
+ * @param cfg icm42688_cfg pointer
+ *
+ * @retval 0 success
+ * @retval -errno Error
+ */
+int icm42688_safely_configure(const struct device *dev, struct icm42688_cfg *cfg);
 
 /**
  * @brief Reads all channels
@@ -294,7 +590,7 @@ static inline void icm42688_accel_ms(struct icm42688_cfg *cfg, int32_t in, int32
 	*out_ms = in_ms / (sensitivity * 1000000LL);
 
 	/* micrometers/s^2 */
-	*out_ums = ((llabs(in_ms) - (llabs(*out_ms) * sensitivity * 1000000LL)) / sensitivity);
+	*out_ums = (in_ms - (*out_ms * sensitivity * 1000000LL)) / sensitivity;
 }
 
 /**
@@ -343,8 +639,8 @@ static inline void icm42688_gyro_rads(struct icm42688_cfg *cfg, int32_t in, int3
 	*out_rads = in10_rads / (sensitivity * 180LL * 1000000LL);
 
 	/* microrad/s */
-	*out_urads = ((llabs(in10_rads) - (llabs((*out_rads)) * sensitivity * 180LL * 1000000LL))) /
-		     (sensitivity * 180LL);
+	*out_urads =
+		(in10_rads - (*out_rads * sensitivity * 180LL * 1000000LL)) / (sensitivity * 180LL);
 }
 
 /**
@@ -359,15 +655,14 @@ static inline void icm42688_temp_c(int32_t in, int32_t *out_c, uint32_t *out_uc)
 {
 	int64_t sensitivity = 13248; /* value equivalent for x100 1c */
 
-	int64_t in100 = in * 100;
+	/* Offset by 25 degrees Celsius */
+	int64_t in100 = (in * 100) + (25 * sensitivity);
 
 	/* Whole celsius */
 	*out_c = in100 / sensitivity;
 
 	/* Micro celsius */
-	*out_uc = ((llabs(in100) - (llabs(*out_c)) * sensitivity) * 1000000LL) / sensitivity;
-
-	/* Shift whole celsius 25 degress */
-	*out_c = *out_c + 25;
+	*out_uc = ((in100 - (*out_c) * sensitivity) * INT64_C(1000000)) / sensitivity;
 }
+
 #endif /* ZEPHYR_DRIVERS_SENSOR_ICM42688_H_ */

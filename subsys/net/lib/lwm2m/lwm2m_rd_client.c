@@ -202,6 +202,8 @@ static void set_sm_state(uint8_t sm_state)
 			client.retries = 0;
 			event = LWM2M_RD_CLIENT_EVENT_NETWORK_ERROR;
 		}
+	} else if (sm_state == ENGINE_UPDATE_REGISTRATION) {
+		event = LWM2M_RD_CLIENT_EVENT_REG_UPDATE;
 	}
 
 	client.engine_state = sm_state;
@@ -326,7 +328,16 @@ static void socket_fault_cb(int error)
 
 	lwm2m_socket_close(client.ctx);
 
-	set_sm_state(ENGINE_NETWORK_ERROR);
+	/* Network error state causes engine to re-register,
+	 * so only trigger that state if we are not stopping the
+	 * engine.
+	 */
+	if (client.engine_state > ENGINE_IDLE &&
+		client.engine_state < ENGINE_SUSPENDED) {
+		set_sm_state(ENGINE_NETWORK_ERROR);
+	} else if (client.engine_state != ENGINE_SUSPENDED) {
+		sm_handle_failure_state(ENGINE_IDLE);
+	}
 }
 
 /* force re-update with remote peer */
@@ -565,8 +576,7 @@ static void do_deregister_timeout_cb(struct lwm2m_message *msg)
 {
 	LOG_WRN("De-Registration Timeout");
 
-	/* Abort de-registration and start from scratch */
-	sm_handle_timeout_state(msg, ENGINE_INIT);
+	sm_handle_timeout_state(msg, ENGINE_IDLE);
 }
 
 static bool sm_bootstrap_verify(bool bootstrap_server, int sec_obj_inst)
@@ -958,6 +968,7 @@ static void sm_handle_registration_update_failure(void)
 	k_mutex_lock(&client.mutex, K_FOREVER);
 	LOG_WRN("Registration Update fail -> trigger full registration");
 	client.engine_state = ENGINE_SEND_REGISTRATION;
+	lwm2m_engine_context_close(client.ctx);
 	k_mutex_unlock(&client.mutex);
 }
 
@@ -1001,6 +1012,8 @@ static int sm_do_registration(void)
 				lwm2m_engine_context_close(client.ctx);
 			}
 		}
+
+		client.last_update = 0;
 
 		client.ctx->bootstrap_mode = false;
 		ret = sm_select_security_inst(client.ctx->bootstrap_mode,
@@ -1504,7 +1517,7 @@ bool lwm2m_rd_client_is_registred(struct lwm2m_ctx *client_ctx)
 	return true;
 }
 
-static int lwm2m_rd_client_init(const struct device *dev)
+int lwm2m_rd_client_init(void)
 {
 	client.ctx = NULL;
 	client.rd_message.ctx = NULL;
@@ -1516,5 +1529,13 @@ static int lwm2m_rd_client_init(const struct device *dev)
 
 }
 
-SYS_INIT(lwm2m_rd_client_init, APPLICATION,
+static int sys_lwm2m_rd_client_init(const struct device *dev)
+{
+	ARG_UNUSED(dev);
+
+	return lwm2m_rd_client_init();
+}
+
+
+SYS_INIT(sys_lwm2m_rd_client_init, APPLICATION,
 	 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

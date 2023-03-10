@@ -26,19 +26,6 @@ ZEPHYR_BASE = os.getenv("ZEPHYR_BASE")
 if not ZEPHYR_BASE:
     sys.exit("$ZEPHYR_BASE environment variable undefined")
 
-try:
-    subproc = subprocess.run(['west', 'topdir'], check = True, stdout=subprocess.PIPE)
-    if subproc.returncode == 0:
-        topdir = subproc.stdout.strip().decode()
-        logger.debug(f"Project's top directory: {topdir}")
-except FileNotFoundError:
-    topdir = ZEPHYR_BASE
-    logger.warning(f"West is not installed. Using ZEPHYR_BASE {ZEPHYR_BASE} as project's top directory")
-except subprocess.CalledProcessError as e:
-    topdir = ZEPHYR_BASE
-    logger.warning(e)
-    logger.warning(f"Using ZEPHYR_BASE {ZEPHYR_BASE} as project's top directory")
-
 # Use this for internal comparisons; that's what canonicalization is
 # for. Don't use it when invoking other components of the build system
 # to avoid confusing and hard to trace inconsistencies in error messages
@@ -46,13 +33,14 @@ except subprocess.CalledProcessError as e:
 # components directly.
 # Note "normalization" is different from canonicalization, see os.path.
 canonical_zephyr_base = os.path.realpath(ZEPHYR_BASE)
-canonical_topdir = os.path.realpath(topdir)
+
 
 def add_parse_arguments(parser = None):
     if parser is None:
         parser = argparse.ArgumentParser(
             description=__doc__,
-            formatter_class=argparse.RawDescriptionHelpFormatter)
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            allow_abbrev=False)
     parser.fromfile_prefix_chars = "+"
 
     case_select = parser.add_argument_group("Test case selection",
@@ -279,6 +267,13 @@ structure in the main Zephyr tree: boards/<arch>/<board_name>/""")
                              "Only used in conjunction with gcovr. "
                              "Default to html. "
                              "Valid options are html, xml, csv, txt, coveralls, sonarqube.")
+
+    parser.add_argument("--test-config", action="store", default=os.path.join(ZEPHYR_BASE, "tests", "test_config.yaml"),
+        help="Path to file with plans and test configurations.")
+
+    parser.add_argument("--level", action="store",
+        help="Test level to be used. By default, no levels are used for filtering"
+             "and do the selection based on existing filters.")
 
     parser.add_argument(
         "-D", "--all-deltas", action="store_true",
@@ -755,6 +750,8 @@ class TwisterEnv:
             self.outdir = None
 
         self.hwm = None
+
+        self.test_config = options.test_config
 
     def discover(self):
         self.check_zephyr_version()

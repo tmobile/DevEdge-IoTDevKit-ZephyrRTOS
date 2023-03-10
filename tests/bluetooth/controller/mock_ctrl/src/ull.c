@@ -18,6 +18,8 @@
 #include "util/dbuf.h"
 #include "util.h"
 
+#include "pdu_df.h"
+#include "lll/pdu_vendor.h"
 #include "pdu.h"
 #include "ll.h"
 #include "ll_feat.h"
@@ -131,6 +133,12 @@ void ll_rx_mem_release(void **node_rx)
 
 		switch (rx_free->type) {
 		case NODE_RX_TYPE_DC_PDU:
+		case NODE_RX_TYPE_CONN_UPDATE:
+		case NODE_RX_TYPE_ENC_REFRESH:
+		case NODE_RX_TYPE_PHY_UPDATE:
+		case NODE_RX_TYPE_CIS_REQUEST:
+		case NODE_RX_TYPE_CIS_ESTABLISHED:
+
 			ll_rx_link_inc_quota(1);
 			mem_release(rx_free, &mem_pdu_rx.free);
 			break;
@@ -172,7 +180,10 @@ void ll_rx_release(void *node_rx)
 
 void ll_rx_put(memq_link_t *link, void *rx)
 {
-	sys_slist_append(&ut_rx_q, (sys_snode_t *)rx);
+	if (((struct node_rx_hdr *)rx)->type != NODE_RX_TYPE_RELEASE) {
+		/* Only put/sched if node was not marked for release */
+		sys_slist_append(&ut_rx_q, (sys_snode_t *)rx);
+	}
 }
 
 void ll_rx_sched(void)
