@@ -105,16 +105,19 @@ static void ase_status_changed(struct bt_bap_ep *ep, uint8_t old_state, uint8_t 
 {
 	struct bt_ascs_ase *ase = CONTAINER_OF(ep, struct bt_ascs_ase, ep);
 	struct bt_conn *conn = ase->ascs->conn;
-	struct bt_conn_info conn_info;
 
 	LOG_DBG("ase %p, ep %p", ase, ep);
 
-	bt_conn_get_info(conn, &conn_info);
+	if (conn != NULL) {
+		struct bt_conn_info conn_info;
 
-	if (conn != NULL && conn_info.state == BT_CONN_STATE_CONNECTED) {
-		ascs_ep_get_status(ep, &ase_buf);
+		bt_conn_get_info(conn, &conn_info);
 
-		bt_gatt_notify(conn, ase->attr, ase_buf.data, ase_buf.len);
+		if (conn_info.state == BT_CONN_STATE_CONNECTED) {
+			ascs_ep_get_status(ep, &ase_buf);
+
+			bt_gatt_notify(conn, ase->attr, ase_buf.data, ase_buf.len);
+		}
 	}
 }
 
@@ -1158,12 +1161,20 @@ static void ase_stream_add(struct bt_ascs *ascs, struct bt_ascs_ase *ase,
 	stream->ep = &ase->ep;
 }
 
+static void ascs_init(struct bt_ascs *ascs, struct bt_conn *conn)
+{
+	memset(ascs, 0, sizeof(*ascs));
+
+	ascs->conn = bt_conn_ref(conn);
+	sys_slist_init(&ascs->ases);
+}
+
 static struct bt_ascs *ascs_get(struct bt_conn *conn)
 {
 	struct bt_ascs *session = &sessions[bt_conn_index(conn)];
 
 	if (session->conn == NULL) {
-		session->conn = bt_conn_ref(conn);
+		ascs_init(session, conn);
 	}
 
 	return session;
@@ -1194,6 +1205,8 @@ void ascs_ep_init(struct bt_bap_ep *ep, uint8_t id)
 
 static void ase_init(struct bt_ascs_ase *ase, uint8_t id)
 {
+	memset(ase, 0, sizeof(*ase));
+
 	ascs_ep_init(&ase->ep, id);
 
 	/* Lookup ASE characteristic */
@@ -1218,10 +1231,9 @@ static struct bt_ascs_ase *ase_new(struct bt_ascs *ascs, uint8_t id)
 		return NULL;
 	}
 
-	sys_slist_append(&ascs->ases, &ase->node);
-
 	ase_init(ase, id);
 	ase->ascs = ascs;
+	sys_slist_append(&ascs->ases, &ase->node);
 
 	return ase;
 }

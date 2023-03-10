@@ -164,6 +164,8 @@ Boards & SoC Support
 
 * Added support for these ARM boards:
 
+  * Seeed Studio Wio Terminal
+
 * Added support for these ARM64 boards:
 
 * Added support for these RISC-V boards:
@@ -203,8 +205,11 @@ Boards & SoC Support
 Build system and infrastructure
 *******************************
 
-* Fixed an issue whereby whereby older versions of the Zephyr SDK toolchain
-  were used instead of the latest compatible version.
+* Fixed an issue whereby older versions of the Zephyr SDK toolchain were used
+  instead of the latest compatible version.
+
+* Fixed an issue whereby building an application with sysbuild and specifying
+  mcuboot's verification to be checksum only did not build a bootable image.
 
 Drivers and Sensors
 *******************
