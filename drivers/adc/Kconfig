@@ -88,4 +88,5 @@ source "drivers/adc/Kconfig.rpi_pico"
 
 source "drivers/adc/Kconfig.xmc4xxx"
 
+source "drivers/adc/Kconfig.gecko"
 endif # ADC

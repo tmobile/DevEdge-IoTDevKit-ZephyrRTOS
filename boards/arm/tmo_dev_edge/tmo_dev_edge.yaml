@@ -14,7 +14,8 @@ supported:
   - pwm
   - nvs
   - watchdog
-  - counter
+  - adc
+
 testing:
   default: true
   ignore_tags:
