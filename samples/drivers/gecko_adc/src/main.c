@@ -58,7 +58,6 @@ void main(void)
 
 	struct adc_gecko_data *data = batt_dev->data;
 
-
 	static const struct adc_channel_cfg ch_cfg = {
 		.reference        = ADC_REF_INTERNAL,
 		.acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 32),

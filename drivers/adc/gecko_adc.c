@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2022 T-Mobile USA, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #define DT_DRV_COMPAT silabs_adc_gecko
 
 #include <string.h>

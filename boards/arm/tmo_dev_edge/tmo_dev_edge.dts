@@ -11,8 +11,6 @@
 #include <dt-bindings/pwm/pwm.h>
 #include "tmo_dev_edge-pinctrl.dtsi"
 
-
-
 / {
 	model = "Silicon Labs EFM32PG STK3402A board";
 	compatible = "tmo,dev_edge";
