@@ -35,7 +35,7 @@ properties:
     type: int
     required: true
     description:
-      This property selects the ADC source frequency: 
+      This property selects the ADC source frequency. 
 
   en-gpios:
     type: phandle-array
