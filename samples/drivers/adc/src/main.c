@@ -69,7 +69,8 @@ void main(void)
 				printk("Could not read (%d)\n", err);
 				continue;
 			} else {
-				printk("%"PRIu16, buf);
+				uint32_t millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
+				printk("%"PRIu16, millivolts);
 			}
 
 			/* conversion to mV may not be supported, skip if not */
