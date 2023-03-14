@@ -17,7 +17,7 @@
 #include <zephyr/drivers/adc/gecko_adc/gecko_adc.h>
 #include "battery_ctrl.h"
 
-#define ADC_DEVICE_NODE		DT_INST(0, sbs_sbs_battery)
+#define ADC_DEVICE_NODE		DT_INST(0, silabs_adc_gecko)
 
 static void battery_apply_filter(float *bv)
 {
@@ -54,6 +54,7 @@ void main(void)
 	uint8_t battery_attached;
 	uint8_t fault;
 	uint8_t percent;
+	uint32_t millivolts = 0;
 
 	struct adc_gecko_data *data = batt_dev->data;
 
@@ -92,6 +93,7 @@ void main(void)
 		seq.channels = 1; // HWID
 		err = adc_read(batt_dev, &seq);
 		if (err >= 0) {
+			millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
 			printk("HWID %d\n", data->mVolts);
 		}
 
@@ -100,8 +102,9 @@ void main(void)
 
 		if (battery_attached != 0) {
 			err = adc_read(batt_dev, &seq);
-			printk("VBATT (volts) %dmV\n", data->mVolts);
-			percent = battery_millivolts_to_percent(data->mVolts);
+			millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
+			printk("VBATT (volts) %dmV\n", millivolts);
+			percent = battery_millivolts_to_percent(millivolts);
 			printk("VBATT(percent) %d%%\n", percent);
 		}
 

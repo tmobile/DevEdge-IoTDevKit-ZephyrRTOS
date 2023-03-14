@@ -271,11 +271,6 @@ manifest:
     - name: zscilib
       path: modules/lib/zscilib
       revision: ca070ddabdaf67175a2da901d0bd62e8899371c5
-    - name: dfu_gecko
-      url: git@github.com:tmobile/DevEdge-IoTDevKit-Zephyr-dfu-gecko.git
-      revision: ff3074ade2db045c95e72eb07ab089f70536274f
-      path: modules/hal/silabs/gecko/dfu_gecko
-      revision: 0035be5e6a45e4ab89755b176d305d7a877fc79c
     - name: thrift
       path: modules/lib/thrift
       revision: 10023645a0e6cb7ce23fcd7fd3dbac9f18df6234

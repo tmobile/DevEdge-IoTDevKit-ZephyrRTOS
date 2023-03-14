@@ -2,7 +2,7 @@
 
 description: Silabs Gecko ADC node
 
-compatible: "sbs,sbs-battery"
+compatible: "silabs,adc-gecko"
 
 include: adc-controller.yaml
 
@@ -19,28 +19,28 @@ properties:
     description:
       Number of channels available
   
-  vbat-aport:
+  adc-channel-10:
     type: int
     required: true
-    description: |
+    description:
       This property selects the ADC channel for battery voltage detection.
 
-  hwid-aport:
+  adc-channel-23:
     type: int
     required: true
-    description: |
+    description:
       This property selects the ADC channel for battery ID detection.
 
   frequency:
     type: int
     required: true
-    description: |
+    description:
       This property selects the ADC source frequency: 
 
   en-gpios:
     type: phandle-array
     required: false
-    description: 
+    description:
       Chip select enable/disable.
 
 io-channel-cells:

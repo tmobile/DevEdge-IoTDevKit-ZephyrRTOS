@@ -106,15 +106,15 @@
 	};
 
 	adc0:adc0@40002000 {
-		compatible = "sbs,sbs-battery";
+		compatible = "silabs,adc-gecko";
         status = "okay";
 		reg = <0x40002000 0x400>;
 		frequency= <16000000>;
 		en-gpios = <&gpiok 0 GPIO_ACTIVE_HIGH>;
 		#io-channel-cells = <1>;
 		num-channels = <32>;
-		hwid-aport = <151>;
-		vbat-aport = <106>;
+		adc-channel-23 = <151>;
+		adc-channel-10 = <106>;
 	};
 };
 
