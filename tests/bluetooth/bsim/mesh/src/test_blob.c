@@ -879,8 +879,6 @@ static void test_cli_trans_complete(void)
 {
 	int err;
 
-	tm_set_phy_max_resync_offset(100000);
-
 	bt_mesh_test_cfg_set(NULL, 400);
 	bt_mesh_device_setup(&prov, &cli_comp);
 	blob_cli_prov_and_conf(BLOB_CLI_ADDR);
@@ -923,8 +921,6 @@ static void test_cli_trans_complete(void)
 
 static void test_srv_trans_complete(void)
 {
-	tm_set_phy_max_resync_offset(100000);
-
 	bt_mesh_test_cfg_set(NULL, 400);
 	bt_mesh_device_setup(&prov, &srv_comp);
 	blob_srv_prov_and_conf(bt_mesh_test_own_addr_get(BLOB_CLI_ADDR));
@@ -954,14 +950,6 @@ static void test_srv_trans_complete(void)
 static void test_cli_trans_resume(void)
 {
 	int err;
-	struct bt_mesh_test_sync_ctx sync = {
-		.chan_nmbr = (uint32_t[]){ SYNC_CHAN },
-		.dev_nmbr = (uint32_t[]){ SRV1_DEV },
-		.cnt = 1
-	};
-
-	bt_mesh_test_sync_init(&sync);
-	tm_set_phy_max_resync_offset(100000);
 
 	bt_mesh_test_cfg_set(NULL, 800);
 	bt_mesh_device_setup(&prov, &cli_comp);
@@ -1007,8 +995,6 @@ static void test_cli_trans_resume(void)
 
 	ASSERT_TRUE(blob_cli.state == BT_MESH_BLOB_CLI_STATE_SUSPENDED);
 
-	/* Sync with the server device to enable scanning again. */
-	ASSERT_TRUE(bt_mesh_test_sync(sync.chan_id[0], 3));
 	/* Initiate resumption of BLOB transfer */
 	err = bt_mesh_blob_cli_resume(&blob_cli);
 	if (err) {
@@ -1026,15 +1012,6 @@ static void test_cli_trans_resume(void)
 
 static void test_srv_trans_resume(void)
 {
-	struct bt_mesh_test_sync_ctx sync = {
-		.chan_nmbr = (uint32_t[]){ SYNC_CHAN },
-		.dev_nmbr = (uint32_t[]){ 0 },
-		.cnt = 1
-	};
-
-	bt_mesh_test_sync_init(&sync);
-	tm_set_phy_max_resync_offset(100000);
-
 	bt_mesh_test_cfg_set(NULL, 800);
 	bt_mesh_device_setup(&prov, &srv_comp);
 	blob_srv_prov_and_conf(bt_mesh_test_own_addr_get(BLOB_CLI_ADDR));
@@ -1065,8 +1042,8 @@ static void test_srv_trans_resume(void)
 
 	ASSERT_TRUE(blob_srv.phase == BT_MESH_BLOB_XFER_PHASE_SUSPENDED);
 
-	/* Wait for BLOB client to suspend */
-	ASSERT_TRUE(bt_mesh_test_sync(sync.chan_id[0], 400));
+	/* Wait for BLOB client to suspend. Measured experimentally. */
+	k_sleep(K_SECONDS(140));
 
 	bt_mesh_scan_enable();
 
@@ -1089,8 +1066,6 @@ static void test_srv_trans_resume(void)
 static void test_cli_trans_persistency_pull(void)
 {
 	int err;
-
-	tm_set_phy_max_resync_offset(100000);
 
 	bt_mesh_test_cfg_set(NULL, 240);
 	bt_mesh_device_setup(&prov, &cli_comp);
@@ -1129,8 +1104,6 @@ static void test_cli_trans_persistency_pull(void)
 
 static void test_srv_trans_persistency_pull(void)
 {
-	tm_set_phy_max_resync_offset(100000);
-
 	bt_mesh_test_cfg_set(NULL, 240);
 	bt_mesh_device_setup(&prov, &srv_comp);
 	blob_srv_prov_and_conf(bt_mesh_test_own_addr_get(BLOB_CLI_ADDR));
@@ -1197,7 +1170,6 @@ static int fail_on_block_start(const struct bt_mesh_blob_io *io,
 
 static void cli_common_fail_on_init(void)
 {
-	tm_set_phy_max_resync_offset(100000);
 	bt_mesh_test_cfg_set(NULL, 800);
 	bt_mesh_device_setup(&prov, &cli_comp);
 	blob_cli_prov_and_conf(BLOB_CLI_ADDR);
@@ -1259,8 +1231,6 @@ static void test_cli_fail_on_persistency(void)
 
 static void common_fail_on_srv_init(const struct bt_mesh_comp *comp)
 {
-	tm_set_phy_max_resync_offset(100000);
-
 	bt_mesh_test_cfg_set(NULL, 800);
 	bt_mesh_device_setup(&prov, comp);
 	blob_srv_prov_and_conf(bt_mesh_test_own_addr_get(BLOB_CLI_ADDR));

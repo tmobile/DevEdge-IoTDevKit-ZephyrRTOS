@@ -262,11 +262,6 @@ void bt_mesh_test_setup(void)
 {
 	static struct bt_mesh_prov prov;
 
-	/* Ensure those test devices will not drift more than
-	 * 100ms for each other in emulated time
-	 */
-	tm_set_phy_max_resync_offset(100000);
-
 	net_buf_simple_init(pub.msg, 0);
 	net_buf_simple_init(vnd_pub.msg, 0);
 
@@ -289,6 +284,11 @@ void bt_mesh_test_cfg_set(const struct bt_mesh_test_cfg *my_cfg, int wait_time)
 	bst_ticker_set_next_tick_absolute(wait_time * USEC_PER_SEC);
 	bst_result = In_progress;
 	cfg = my_cfg;
+
+	/* Ensure those test devices will not drift more than
+	 * 100ms for each other in emulated time
+	 */
+	tm_set_phy_max_resync_offset(100000);
 }
 
 static struct bt_mesh_test_msg *blocking_recv(k_timeout_t timeout)
@@ -501,81 +501,6 @@ int bt_mesh_test_send_ra(uint16_t addr, uint8_t *data, size_t len,
 void bt_mesh_test_ra_cb_setup(void (*cb)(uint8_t *, size_t))
 {
 	ra_cb = cb;
-}
-
-void bt_mesh_test_sync_init(struct bt_mesh_test_sync_ctx *ctx)
-{
-	ctx->chan_id = bs_open_back_channel(get_device_nbr(),
-						  ctx->dev_nmbr,
-						  ctx->chan_nmbr, ctx->cnt);
-}
-
-static bool wait_for_sync(uint32_t channel_id, int *wait, uint8_t msg_len)
-{
-	int size;
-
-	while (true) {
-		size = bs_bc_is_msg_received(channel_id);
-
-		if (size < 0) {
-			FAIL("Sync channel error: %d", size);
-		} else if (size > 0) {
-			ASSERT_EQUAL(size, msg_len);
-			return true;
-		} else if (*wait <= 0) {
-			return false;
-		}
-
-		k_sleep(K_MSEC(100));
-		*wait -= 100;
-	}
-}
-
-bool bt_mesh_test_sync_multi(struct bt_mesh_test_sync_ctx *ctx, uint32_t channel, uint16_t wait_sec)
-{
-	const uint32_t barrier_msg = 0xC0FFEE;
-	uint32_t recv_msg;
-	int wait = wait_sec * MSEC_PER_SEC;
-
-	for (int i = 0; i < ctx->cnt; i++) {
-		if (ctx->chan_nmbr[i] != channel) {
-			continue;
-		}
-
-		if (!wait_for_sync(ctx->chan_id[i], &wait, sizeof(barrier_msg))) {
-			return false;
-		}
-
-		bs_bc_receive_msg(ctx->chan_id[i], (uint8_t *)&recv_msg, sizeof(recv_msg));
-		ASSERT_EQUAL(barrier_msg, recv_msg);
-	}
-
-	for (int i = 0; i < ctx->cnt; i++) {
-		if (ctx->chan_nmbr[i] != channel) {
-			continue;
-		}
-
-		bs_bc_send_msg(ctx->chan_id[i], (uint8_t *)&barrier_msg, sizeof(barrier_msg));
-	}
-
-	return true;
-}
-
-bool bt_mesh_test_sync(uint32_t channel_id, uint16_t wait_sec)
-{
-	const uint32_t barrier_msg = 0xC0FFEE;
-	uint32_t recv_msg;
-	int wait = wait_sec * MSEC_PER_SEC;
-
-	bs_bc_send_msg(channel_id, (uint8_t *)&barrier_msg, sizeof(barrier_msg));
-
-	if (!wait_for_sync(channel_id, &wait, sizeof(barrier_msg))) {
-		return false;
-	}
-
-	bs_bc_receive_msg(channel_id, (uint8_t *)&recv_msg, sizeof(recv_msg));
-	ASSERT_EQUAL(barrier_msg, recv_msg);
-	return true;
 }
 
 uint16_t bt_mesh_test_own_addr_get(uint16_t start_addr)
