@@ -6,6 +6,7 @@ tests:
   kernel.common:
     build_on_all: true
   kernel.common.tls:
+    platform_exclude: efm32pg_stk3402a
     # ARCMWDT can't handle THREAD_LOCAL_STORAGE with USERSPACE, see #52570 for details
     filter: >
       CONFIG_ARCH_HAS_THREAD_LOCAL_STORAGE and CONFIG_TOOLCHAIN_SUPPORTS_THREAD_LOCAL_STORAGE
@@ -14,22 +15,26 @@ tests:
       - CONFIG_THREAD_LOCAL_STORAGE=y
   kernel.common.misra:
     # Some configurations are known-incompliant and won't build
+    platform_exclude: efm32pg_stk3402a
     filter: not ((CONFIG_I2C or CONFIG_SPI) and CONFIG_USERSPACE)
     integration_platforms:
       - native_posix
     extra_configs:
       - CONFIG_MISRA_SANE=y
   kernel.common.nano32:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_KERNEL_COHERENCE
     extra_configs:
       - CONFIG_CBPRINTF_NANO=y
       - CONFIG_CBPRINTF_REDUCED_INTEGRAL=y
   kernel.common.nano64:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_KERNEL_COHERENCE
     extra_configs:
       - CONFIG_CBPRINTF_NANO=y
       - CONFIG_CBPRINTF_FULL_INTEGRAL=y
   kernel.common.picolibc:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_PICOLIBC_SUPPORTED
     tags: picolibc
     extra_configs:

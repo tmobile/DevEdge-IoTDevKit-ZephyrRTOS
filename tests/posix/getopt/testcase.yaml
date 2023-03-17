@@ -3,15 +3,18 @@ common:
   tags: posix getopt
 tests:
   portability.posix.getopt:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - qemu_x86
     min_flash: 64
     min_ram: 32
   portability.posix.getopt.newlib:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1
     extra_configs:
       - CONFIG_NEWLIB_LIBC=y
   portability.posix.getopt.picolibc:
+    platform_exclude: efm32pg_stk3402a
     tags: picolibc
     filter: CONFIG_PICOLIBC_SUPPORTED
     extra_configs:

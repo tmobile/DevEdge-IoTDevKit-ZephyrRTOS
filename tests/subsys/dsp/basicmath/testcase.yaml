@@ -1,5 +1,6 @@
 tests:
   zdsp.basicmath:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1 or CONFIG_ARCH_POSIX
     integration_platforms:
       - frdm_k64f
@@ -10,6 +11,7 @@ tests:
     min_flash: 128
     min_ram: 64
   zdsp.basicmath.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: (CONFIG_CPU_HAS_FPU and TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
       - mps2_an521_remote

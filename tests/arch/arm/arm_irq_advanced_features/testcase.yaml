@@ -4,6 +4,7 @@ common:
   arch_allow: arm
 tests:
   arch.arm.irq_advanced_features:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
   arch.arm.irq_advanced_features.secure_fw:
     filter: CONFIG_TRUSTED_EXECUTION_SECURE

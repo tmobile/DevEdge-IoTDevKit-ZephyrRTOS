@@ -2,6 +2,7 @@ common:
   filter: TOOLCHAIN_HAS_NEWLIB == 1
 tests:
   libraries.libc.newlib.thread_safety:
+    platform_exclude: efm32pg_stk3402a
     tags: clib newlib
     min_ram: 64
     testcases:
@@ -28,6 +29,7 @@ tests:
     - sinit_lock
     - tz_lock
   libraries.libc.newlib.thread_safety.userspace:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_userspace.conf
     filter: CONFIG_ARCH_HAS_USERSPACE
     tags: clib newlib userspace
@@ -41,6 +43,7 @@ tests:
     - sinit_lock
     - tz_lock
   libraries.libc.newlib.thread_safety.userspace.stress:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_userspace.conf
     extra_configs:
     - CONFIG_NEWLIB_THREAD_SAFETY_TEST_STRESS=y
@@ -60,6 +63,7 @@ tests:
     - tz_lock
     timeout: 120
   libraries.libc.newlib_nano.thread_safety:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
     - CONFIG_NEWLIB_LIBC_NANO=y
     filter: CONFIG_HAS_NEWLIB_LIBC_NANO
@@ -91,6 +95,7 @@ tests:
     - sinit_lock
     - tz_lock
   libraries.libc.newlib_nano.thread_safety.userspace:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_userspace.conf
     extra_configs:
     - CONFIG_NEWLIB_LIBC_NANO=y

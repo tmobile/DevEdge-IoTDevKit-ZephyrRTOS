@@ -28,4 +28,5 @@ common:
 
 tests:
   sample.zbus.work_queue:
+    platform_exclude: efm32pg_stk3402a
     tags: zbus

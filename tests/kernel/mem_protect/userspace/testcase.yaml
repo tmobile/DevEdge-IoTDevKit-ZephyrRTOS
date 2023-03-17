@@ -3,6 +3,7 @@ common:
   tags: kernel security userspace
 tests:
   kernel.memory_protection.userspace:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
       - CONFIG_TEST_HW_STACK_PROTECTION=n

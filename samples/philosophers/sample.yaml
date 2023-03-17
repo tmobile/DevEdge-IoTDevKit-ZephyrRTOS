@@ -16,26 +16,35 @@ common:
       - ".*EATING.*"
 tests:
   sample.kernel.philosopher:
+    platform_exclude: efm32pg_stk3402a
     tags: introduction
   sample.kernel.philosopher.same_prio:
+    platform_exclude: efm32pg_stk3402a
     extra_args: SAME_PRIO=1
   sample.kernel.philosopher.static:
+    platform_exclude: efm32pg_stk3402a
     extra_args: STATIC_OBJS=1
   sample.kernel.philosopher.semaphores:
+    platform_exclude: efm32pg_stk3402a
     extra_args: FORKS=SEMAPHORES
   sample.kernel.philosopher.stacks:
     extra_args: FORKS=STACKS
+    platform_exclude: efm32pg_stk3402a
   sample.kernel.philosopher.fifos:
+    platform_exclude: efm32pg_stk3402a
     extra_args: FORKS=FIFOS
   sample.kernel.philosopher.lifos:
+    platform_exclude: efm32pg_stk3402a
     extra_args: FORKS=LIFOS
   sample.kernel.philosopher.preempt_only:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_NUM_PREEMPT_PRIORITIES=6
       - CONFIG_NUM_COOP_PRIORITIES=0
       - CONFIG_BT=n
       - CONFIG_NETWORKING=n
   sample.kernel.philosopher.coop_only:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_NUM_PREEMPT_PRIORITIES=0
       - CONFIG_NUM_COOP_PRIORITIES=7

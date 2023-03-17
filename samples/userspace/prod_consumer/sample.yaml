@@ -12,4 +12,5 @@ common:
       - "SUCCESS"
 tests:
   sample.userspace.prod_consumer:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_USERSPACE

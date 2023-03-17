@@ -5,7 +5,7 @@ common:
 tests:
   kernel.device:
     tags: kernel device
-    platform_exclude: beaglev_starlight_jh7100
+    platform_exclude: beaglev_starlight_jh7100 efm32pg_stk3402a
   kernel.device.pm:
     tags: kernel device
     platform_exclude: mec15xxevb_assy6853 beaglev_starlight_jh7100

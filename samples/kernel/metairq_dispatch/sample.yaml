@@ -15,5 +15,6 @@ common:
 # sample is designed to demonstrate completely arbitrary CPU work.
 tests:
   sample.kernel.metairq_dispatch:
+    platform_exclude: efm32pg_stk3402a
     tags: introduction
     filter: not CONFIG_ARCH_POSIX

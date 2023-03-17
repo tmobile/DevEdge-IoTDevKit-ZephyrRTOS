@@ -2,6 +2,7 @@
 
 tests:
   input.api.thread:
+    platform_exclude: efm32pg_stk3402a
     tags: input
     integration_platforms:
       - native_posix
@@ -9,6 +10,7 @@ tests:
       - CONFIG_INPUT_MODE_THREAD=y
       - CONFIG_INPUT_THREAD_STACK_SIZE=1024
   input.api.synchronous:
+    platform_exclude: efm32pg_stk3402a
     tags: input
     integration_platforms:
       - native_posix

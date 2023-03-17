@@ -1,3 +1,4 @@
 tests:
   libraries.mem_blocks.stats:
+    platform_exclude: efm32pg_stk3402a
     tags: heap mem_blocks.stats

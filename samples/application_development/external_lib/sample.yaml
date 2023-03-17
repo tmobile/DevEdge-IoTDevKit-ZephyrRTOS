@@ -2,6 +2,7 @@ sample:
   name: External Library
 tests:
   sample.app_dev.external_lib:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: external

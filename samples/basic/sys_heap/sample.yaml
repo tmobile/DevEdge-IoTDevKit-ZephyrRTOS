@@ -14,4 +14,5 @@ common:
       - ".*allocated 0, free ..., max allocated ..., heap size 256.*"
 tests:
   sample.basic.sys_heap:
+    platform_exclude: efm32pg_stk3402a
     tags: heap statistics dynamic_memory

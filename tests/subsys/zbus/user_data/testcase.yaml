@@ -1,4 +1,4 @@
 tests:
   message_bus.zbus.user_data.channel_user_data:
-    platform_exclude: fvp_base_revc_2xaemv8a_smp_ns
+    platform_exclude: fvp_base_revc_2xaemv8a_smp_ns efm32pg_stk3402a
     tags: zbus

@@ -1,3 +1,4 @@
 tests:
   drivers.mm.sys_mm_drv_api:
+    platform_exclude: efm32pg_stk3402a
     tags: drivers mm

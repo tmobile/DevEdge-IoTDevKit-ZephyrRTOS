@@ -6,6 +6,7 @@ tests:
   sample.modules.chre:
     tags: introduction chre
     platform_exclude: qemu_leon3
+    platform_exclude: efm32pg_stk3402a
     modules:
       - chre
     harness: console

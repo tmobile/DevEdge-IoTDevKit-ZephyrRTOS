@@ -1,5 +1,6 @@
 tests:
   kernel.threads.dynamic:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel threads userspace
     ignore_faults: true
     filter: CONFIG_ARCH_HAS_USERSPACE

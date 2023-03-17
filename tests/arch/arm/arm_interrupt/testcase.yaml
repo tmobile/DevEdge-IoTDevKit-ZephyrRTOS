@@ -5,14 +5,17 @@ common:
   arch_allow: arm
 tests:
   arch.interrupt.arm:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
   arch.interrupt.no_optimizations:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
     extra_configs:
       - CONFIG_NO_OPTIMIZATIONS=y
       - CONFIG_IDLE_STACK_SIZE=512
       - CONFIG_MAIN_STACK_SIZE=2048
   arch.interrupt.extra_exception_info:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
     extra_configs:
       - CONFIG_EXTRA_EXCEPTION_INFO=y

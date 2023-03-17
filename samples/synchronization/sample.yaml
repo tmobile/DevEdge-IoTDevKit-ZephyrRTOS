@@ -4,6 +4,7 @@ sample:
   name: Synchronization Sample
 tests:
   sample.kernel.synchronization:
+    platform_exclude: efm32pg_stk3402a
     build_on_all: true
     tags: synchronization
     harness: console

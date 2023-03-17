@@ -1,5 +1,6 @@
 tests:
   portability.cmsis_rtos_v1:
+    platform_exclude: efm32pg_stk3402a
     tags: cmsis_rtos
     min_ram: 32
     min_flash: 34

@@ -3,10 +3,12 @@ common:
     - native_posix
 tests:
   libraries.smf.flat:
+    platform_exclude: efm32pg_stk3402a
     tags: smf
     testcases:
       - smf_flat
   libraries.smf.hierarchical:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_SMF_ANCESTOR_SUPPORT=y
     tags: smf

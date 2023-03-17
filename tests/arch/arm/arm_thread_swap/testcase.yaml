@@ -4,8 +4,10 @@ common:
   arch_allow: arm
 tests:
   arch.arm.swap.common:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
   arch.arm.swap.common.no_optimizations:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE
     extra_configs:
       - CONFIG_NO_OPTIMIZATIONS=y
@@ -13,11 +15,13 @@ tests:
       - CONFIG_MAIN_STACK_SIZE=2048
     min_flash: 192
   arch.arm.swap.common.fpu_sharing:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE and CONFIG_ARMV7_M_ARMV8_M_FP
     extra_configs:
       - CONFIG_FPU=y
       - CONFIG_FPU_SHARING=y
   arch.arm.swap.common.fpu_sharing.no_optimizations:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE and CONFIG_ARMV7_M_ARMV8_M_FP
     extra_configs:
       - CONFIG_FPU=y

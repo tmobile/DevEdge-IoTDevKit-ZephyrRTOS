@@ -3,24 +3,25 @@ common:
 tests:
   libraries.libc.minimal.mem_alloc:
     extra_args: CONF_FILE=prj.conf
-    platform_exclude: twr_ke18f
+    platform_exclude: twr_ke18f efm32pg_stk3402a
     tags: clib minimal_libc userspace
   libraries.libc.minimal.mem_alloc_negative_testing:
     extra_args: CONF_FILE=prj_negative_testing.conf
-    platform_exclude: twr_ke18f
+    platform_exclude: twr_ke18f efm32pg_stk3402a
     tags: clib minimal_libc userspace
   libraries.libc.newlib.mem_alloc:
     extra_args: CONF_FILE=prj_newlib.conf
     filter: TOOLCHAIN_HAS_NEWLIB == 1
     min_ram: 16
-    platform_exclude: twr_ke18f native_posix_64 nrf52_bsim
+    platform_exclude: twr_ke18f native_posix_64 nrf52_bsim efm32pg_stk3402a
     tags: clib newlib userspace
   libraries.libc.newlib_nano.mem_alloc:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_newlibnano.conf
     filter: CONFIG_HAS_NEWLIB_LIBC_NANO
     tags: clib newlib userspace
   libraries.libc.picolibc.mem_alloc:
     extra_args: CONF_FILE=prj_picolibc.conf
     filter: CONFIG_PICOLIBC_SUPPORTED
-    platform_exclude: twr_ke18f native_posix_64 nrf52_bsim
+    platform_exclude: twr_ke18f native_posix_64 nrf52_bsim efm32pg_stk3402a
     tags: clib picolibc userspace

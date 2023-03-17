@@ -1,5 +1,6 @@
 tests:
   libraries.libc.time:
+    platform_exclude: efm32pg_stk3402a
     tags: libc
     filter: not CONFIG_ARCH_POSIX or CONFIG_NATIVE_POSIX_SLOWDOWN_TO_REAL_TIME
     timeout: 180

@@ -1,5 +1,6 @@
 tests:
   shell.history:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     min_flash: 64

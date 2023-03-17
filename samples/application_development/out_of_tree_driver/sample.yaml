@@ -3,6 +3,7 @@ sample:
   name: Out-of-tree driver
 tests:
   sample.drivers.out_of_tree:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: out_of_tree

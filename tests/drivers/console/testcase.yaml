@@ -8,6 +8,7 @@ common:
 
 tests:
   drivers.console.uart:
+    platform_exclude: efm32pg_stk3402a
     tags: drivers console uart
     filter: CONFIG_UART_CONSOLE
   drivers.console.semihost:

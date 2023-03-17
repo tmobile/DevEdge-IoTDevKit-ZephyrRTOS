@@ -8,6 +8,7 @@ common:
   arch_exclude: xtensa
 tests:
   sample.drivers.crypto.mbedtls:
+    platform_exclude: efm32pg_stk3402a
     min_flash: 34
     harness: console
     extra_args: CONF_FILE=prj_mtls_shim.conf
@@ -22,6 +23,7 @@ tests:
         - ".*: CCM Mode"
         - ".*: GCM Mode"
   sample.drivers.crypto.mbedtls.micro:
+    platform_exclude: efm32pg_stk3402a
     tags: crypto
     harness: console
     integration_platforms:

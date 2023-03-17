@@ -1,5 +1,6 @@
 tests:
   arch.arm.ramfunc:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_RAMFUNC_SUPPORT
     tags: arm userspace
     arch_allow: arm

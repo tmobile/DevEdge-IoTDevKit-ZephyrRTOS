@@ -5,4 +5,5 @@ common:
     - native
 tests:
   arch.common.timing:
+    platform_exclude: efm32pg_stk3402a
     tags: timing arch

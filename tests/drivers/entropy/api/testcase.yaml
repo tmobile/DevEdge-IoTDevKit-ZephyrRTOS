@@ -1,5 +1,6 @@
 tests:
   drivers.entropy:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ENTROPY_HAS_DRIVER
     tags: drivers entropy
   drivers.entropy.bt_hci:

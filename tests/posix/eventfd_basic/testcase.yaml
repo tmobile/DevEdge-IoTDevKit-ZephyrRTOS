@@ -4,27 +4,33 @@ common:
   min_ram: 32
 tests:
   portability.posix.eventfd_basic:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_POSIX_API=n
   portability.posix.eventfd_basic.posix_api:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_POSIX_API=y
   portability.posix.eventfd_basic.newlib:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1
     extra_configs:
       - CONFIG_NEWLIB_LIBC=y
       - CONFIG_POSIX_API=n
   portability.posix.eventfd_basic.newlib.posix_api:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1
     extra_configs:
       - CONFIG_NEWLIB_LIBC=y
       - CONFIG_POSIX_API=y
   portability.posix.eventfd_basic.picolibc:
+    platform_exclude: efm32pg_stk3402a
     tags: picolibc
     filter: CONFIG_PICOLIBC_SUPPORTED
     extra_configs:
       - CONFIG_PICOLIBC=y
   portability.posix.eventfd_basic.picolibc.posix_api:
+    platform_exclude: efm32pg_stk3402a
     tags: picolibc
     filter: CONFIG_PICOLIBC_SUPPORTED
     extra_configs:

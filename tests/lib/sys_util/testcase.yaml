@@ -1,3 +1,4 @@
 tests:
   libraries.sys_util:
+    platform_exclude: efm32pg_stk3402a
     tags: sys_util

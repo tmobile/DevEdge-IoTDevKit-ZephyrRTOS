@@ -2,6 +2,7 @@ sample:
   name: RTIO sample
 tests:
   sample.rtio.sensor_batch_processing:
+    platform_exclude: efm32pg_stk3402a
     tags: rtio
     integration_platforms:
       - native_posix

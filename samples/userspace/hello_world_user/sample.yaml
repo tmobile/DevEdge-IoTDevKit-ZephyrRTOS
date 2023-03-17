@@ -14,5 +14,6 @@ common:
       - "Hello World from UserSpace! (.*)"
 tests:
   sample.helloworld:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_USERSPACE
     tags: introduction

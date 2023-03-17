@@ -12,6 +12,7 @@ tests:
   os.mgmt.info_no_hooks:
     # FIXME: Exclude architectures that lack a reboot handler function
     # FIXME: Exclude systems whereby the processor type is not known and emits a warning
+    platform_exclude: efm32pg_stk3402a
     arch_exclude: arm64 nios2 sparc arc xtensa mips posix
     tags: os_mgmt_info
     extra_configs:
@@ -42,6 +43,7 @@ tests:
   os.mgmt.info_build_date:
     # FIXME: Exclude architectures that lack a reboot handler function
     # FIXME: Exclude systems whereby the processor type is not known and emits a warning
+    platform_exclude: efm32pg_stk3402a
     arch_exclude: arm64 nios2 sparc arc xtensa mips posix
     tags: os_mgmt_info
     extra_configs:

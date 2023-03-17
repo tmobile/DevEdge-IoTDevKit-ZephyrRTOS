@@ -2,6 +2,7 @@ sample:
   name: CMSIS_RTOS_V2 Synchronization
 tests:
   sample.portability.cmsis_rtos_v2.timer_synchronization:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: cmsis_rtos

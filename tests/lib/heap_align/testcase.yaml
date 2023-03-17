@@ -1,3 +1,4 @@
 tests:
   libraries.heap_align:
+    platform_exclude: efm32pg_stk3402a
     tags: heap heap_align

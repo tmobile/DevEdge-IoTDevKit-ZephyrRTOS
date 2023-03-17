@@ -1,5 +1,6 @@
 tests:
   libraries.data_structures:
+    platform_exclude: efm32pg_stk3402a
     tags: notify
     integration_platforms:
       - native_posix

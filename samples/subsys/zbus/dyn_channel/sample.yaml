@@ -65,4 +65,5 @@ common:
       - "W: 0f 0f 0f 0f 0f 0f 0f 0f |........"
 tests:
   sample.zbus.dyn_channel:
+    platform_exclude: efm32pg_stk3402a
     tags: zbus

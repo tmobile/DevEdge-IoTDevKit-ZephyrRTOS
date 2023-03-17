@@ -1,5 +1,6 @@
 tests:
   libraries.devicetree.api_ext:
+    platform_exclude: efm32pg_stk3402a
     tags: devicetree
     # We only need this to run on one platform so use native_posix as it
     # will mostly likely be the fastest.

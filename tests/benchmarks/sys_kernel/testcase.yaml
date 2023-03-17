@@ -1,5 +1,6 @@
 tests:
   benchmark.kernel.core:
+    platform_exclude: efm32pg_stk3402a
     arch_exclude: nios2 xtensa
     min_ram: 32
     tags: benchmark

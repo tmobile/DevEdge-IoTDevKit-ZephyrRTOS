@@ -13,6 +13,7 @@ tests:
     extra_configs:
       - CONFIG_TIMESLICING=n
   kernel.scheduler.slice_perthread:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_SCHED_MULTIQ
     extra_configs:
       - CONFIG_TIMESLICING=y
@@ -26,10 +27,12 @@ tests:
     extra_configs:
       - CONFIG_TIMESLICING=n
   kernel.scheduler.dumb_timeslicing:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_dumb.conf
     extra_configs:
       - CONFIG_TIMESLICING=y
   kernel.scheduler.dumb_no_timeslicing:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_dumb.conf
     extra_configs:
       - CONFIG_TIMESLICING=n

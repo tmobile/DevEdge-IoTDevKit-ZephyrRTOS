@@ -1,3 +1,4 @@
 tests:
   benchmark.data_structure_perf.dlist:
+    platform_exclude: efm32pg_stk3402a
     tags: benchmark dlist

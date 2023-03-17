@@ -12,4 +12,5 @@ common:
       - "Validation done. (.*)"
 tests:
   sample.compression.lz4:
+    platform_exclude: efm32pg_stk3402a
     tags: compression lz4

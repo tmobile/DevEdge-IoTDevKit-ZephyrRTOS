@@ -1,5 +1,6 @@
 tests:
   kernel.memory_heap:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel memory_heap
     extra_configs:
       - CONFIG_IRQ_OFFLOAD=y

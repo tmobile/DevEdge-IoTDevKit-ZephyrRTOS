@@ -27,6 +27,7 @@ tests:
     integration_platforms:
       - nrf52840dk_nrf52840
   drivers.flash.default:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_FLASH_HAS_DRIVER_ENABLED and
         not CONFIG_TRUSTED_EXECUTION_NONSECURE) and
         dt_label_with_parent_compat_enabled("storage_partition", "fixed-partitions"))

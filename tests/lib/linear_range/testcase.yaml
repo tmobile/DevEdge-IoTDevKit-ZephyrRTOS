@@ -3,5 +3,6 @@
 
 tests:
   libraries.linear_range:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix

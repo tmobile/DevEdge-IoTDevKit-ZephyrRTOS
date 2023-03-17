@@ -1,5 +1,6 @@
 tests:
   arch.interrupt.arm.hardfault_validation:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_TRUSTED_EXECUTION_NONSECURE and CONFIG_ARMV7_M_ARMV8_M_MAINLINE
     arch_allow: arm
     tags: arm

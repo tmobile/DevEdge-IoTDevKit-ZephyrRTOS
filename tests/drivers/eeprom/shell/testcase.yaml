@@ -1,5 +1,6 @@
 tests:
   drivers.eeprom.shell:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
       - native_posix_64

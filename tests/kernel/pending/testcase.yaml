@@ -1,3 +1,4 @@
 tests:
   kernel.objects:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel

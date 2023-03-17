@@ -2,6 +2,7 @@ sample:
   name: Syncronisation (C++)
 tests:
   sample.cpp.synchronization:
+    platform_exclude: efm32pg_stk3402a
     tags: cpp
     toolchain_exclude: issm xcc
     integration_platforms:

@@ -13,11 +13,13 @@ tests:
     extra_configs:
       - CONFIG_RTIO_SUBMIT_SEM=y
   rtio.api.userspace:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
       - CONFIG_USERSPACE=y
     tags: rtio userspace
   rtio.api.userspace.submit_sem:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_ARCH_HAS_USERSPACE
     extra_configs:
       - CONFIG_USERSPACE=y

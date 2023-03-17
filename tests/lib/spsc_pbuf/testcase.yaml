@@ -3,14 +3,14 @@ tests:
     integration_platforms:
       - native_posix
     # Exclude platform which does not link with cache functions
-    platform_exclude: ast1030_evb
+    platform_exclude: ast1030_evb efm32pg_stk3402a
     timeout: 120
 
   libraries.spsc_pbuf_cache:
     integration_platforms:
       - native_posix
     # Exclude platform which does not link with cache functions
-    platform_exclude: ast1030_evb
+    platform_exclude: ast1030_evb efm32pg_stk3402a
     timeout: 120
     extra_configs:
       - CONFIG_SPSC_PBUF_CACHE_ALWAYS=y
@@ -19,7 +19,7 @@ tests:
     integration_platforms:
       - native_posix
     # Exclude platform which does not link with cache functions
-    platform_exclude: ast1030_evb
+    platform_exclude: ast1030_evb efm32pg_stk3402a
     timeout: 120
     extra_configs:
       - CONFIG_SPSC_PBUF_CACHE_NEVER=y
@@ -28,7 +28,7 @@ tests:
     integration_platforms:
       - native_posix
     # Exclude platform which does not link with cache functions
-    platform_exclude: ast1030_evb
+    platform_exclude: ast1030_evb efm32pg_stk3402a
     timeout: 120
     extra_configs:
       - CONFIG_SPSC_PBUF_UTILIZATION=y

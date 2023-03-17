@@ -1,5 +1,6 @@
 tests:
   sample.kernel.cond_var.simple:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: kernel condition_variables

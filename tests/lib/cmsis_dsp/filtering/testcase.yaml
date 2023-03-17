@@ -8,6 +8,7 @@ tests:
     tags: cmsis_dsp
     skip: true
   libraries.cmsis_dsp.filtering.biquad:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -22,6 +23,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_BIQUAD=y
   libraries.cmsis_dsp.filtering.biquad.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -35,6 +37,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_BIQUAD=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.filtering.decim:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -49,6 +52,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_DECIM=y
   libraries.cmsis_dsp.filtering.decim.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -62,6 +66,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_DECIM=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.filtering.fir:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -76,6 +81,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_FIR=y
   libraries.cmsis_dsp.filtering.fir.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -89,6 +95,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_FIR=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.filtering.misc:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -103,6 +110,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_MISC=y
   libraries.cmsis_dsp.filtering.misc.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:

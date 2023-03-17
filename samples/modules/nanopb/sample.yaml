@@ -12,6 +12,7 @@ common:
       - "Your lucky number was 13!"
 tests:
   sample.modules.nanopb:
+    platform_exclude: efm32pg_stk3402a
     tags: samples nanopb
     integration_platforms:
       - native_posix

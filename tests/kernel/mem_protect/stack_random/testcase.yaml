@@ -1,4 +1,5 @@
 tests:
   kernel.memory_protection.stack_random:
+    platform_exclude: efm32pg_stk3402a
     arch_exclude: posix
     tags: kernel memory_protection

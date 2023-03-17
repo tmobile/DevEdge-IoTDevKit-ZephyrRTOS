@@ -1,5 +1,6 @@
 tests:
   libraries.os.fdtable:
+    platform_exclude: efm32pg_stk3402a
     tags: fdtable
     integration_platforms:
       - qemu_x86

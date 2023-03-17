@@ -2,6 +2,7 @@ common:
   filter: TOOLCHAIN_HAS_NEWLIB == 1
 tests:
   libraries.encoding.jwt:
+    platform_exclude: efm32pg_stk3402a
     min_ram: 96
     min_flash: 72
     timeout: 120

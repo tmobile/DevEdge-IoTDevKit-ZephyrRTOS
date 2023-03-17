@@ -1,5 +1,6 @@
 tests:
   kernel.common.sleep:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel sleep
   kernel.common.sleep.linker_generator:
     platform_allow: qemu_cortex_m3

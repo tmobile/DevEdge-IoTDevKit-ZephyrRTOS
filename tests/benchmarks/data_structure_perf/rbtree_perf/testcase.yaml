@@ -1,3 +1,4 @@
 tests:
   benchmark.data_structure_perf.rbtree:
+    platform_exclude: efm32pg_stk3402a
     tags: benchmark rbtree

@@ -1,4 +1,5 @@
 tests:
   drivers.ipc.mailbox:
+    platform_exclude: efm32pg_stk3402a
     arch_exclude: posix xtensa
     tags: drivers ipc

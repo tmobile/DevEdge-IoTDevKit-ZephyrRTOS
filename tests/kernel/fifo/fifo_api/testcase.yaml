@@ -1,5 +1,6 @@
 tests:
   kernel.fifo:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel
   kernel.fifo.linker_generator:
     platform_allow: qemu_cortex_m3

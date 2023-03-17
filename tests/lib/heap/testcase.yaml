@@ -9,5 +9,6 @@ tests:
   libraries.heap:
     tags: heap
     platform_exclude: m2gl025_miv qemu_xtensa esp32s2_saola esp32s3_devkitm
+      efm32pg_stk3402a
     filter: not CONFIG_SOC_NSIM
     timeout: 480

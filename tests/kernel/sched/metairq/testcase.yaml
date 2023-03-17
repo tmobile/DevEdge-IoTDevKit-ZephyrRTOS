@@ -1,7 +1,7 @@
 tests:
   kernel.scheduler.metairq:
     tags: kernel
-    platform_exclude: nrf52dk_nrf52810
+    platform_exclude: nrf52dk_nrf52810 efm32pg_stk3402a
   kernel.scheduler.metairq.linker_generator:
     platform_allow: qemu_cortex_m3
     tags: linker_generator

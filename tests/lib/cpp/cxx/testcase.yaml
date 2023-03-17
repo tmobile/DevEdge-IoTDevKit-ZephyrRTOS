@@ -7,14 +7,17 @@ common:
 
 tests:
   cpp.main.minimal:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_MINIMAL_LIBC=y
   cpp.main.newlib:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1
     min_ram: 32
     extra_configs:
       - CONFIG_NEWLIB_LIBC=y
   cpp.main.newlib_nano:
+    platform_exclude: efm32pg_stk3402a
     filter: TOOLCHAIN_HAS_NEWLIB == 1 and CONFIG_HAS_NEWLIB_LIBC_NANO
     min_ram: 24
     extra_configs:

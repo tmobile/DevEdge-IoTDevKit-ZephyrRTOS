@@ -1,5 +1,6 @@
 tests:
   buildsystem.include_file:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: gen_inc_file

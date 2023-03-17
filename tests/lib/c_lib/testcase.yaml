@@ -3,18 +3,22 @@ common:
   platform_exclude: native_posix native_posix_64 nrf52_bsim
 tests:
   libraries.libc:
+    platform_exclude: efm32pg_stk3402a
     ignore_faults: true
   libraries.libc.picolibc:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_PICOLIBC_SUPPORTED
     tags: picolibc
     ignore_faults: true
     extra_configs:
       - CONFIG_PICOLIBC=y
   libraries.libc.minimal.strerror_table:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_MINIMAL_LIBC=y
       - CONFIG_MINIMAL_LIBC_STRING_ERROR_TABLE=y
   libraries.libc.minimal.no_strerror_table:
+    platform_exclude: efm32pg_stk3402a
     extra_configs:
       - CONFIG_MINIMAL_LIBC=y
       - CONFIG_MINIMAL_LIBC_STRING_ERROR_TABLE=n

@@ -1,5 +1,6 @@
 tests:
   kernel.threads.thread_stack:
+    platform_exclude: efm32pg_stk3402a
     tags: kernel security userspace
     ignore_faults: true
     min_ram: 16

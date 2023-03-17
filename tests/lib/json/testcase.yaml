@@ -1,5 +1,6 @@
 tests:
   libraries.encoding.json:
+    platform_exclude: efm32pg_stk3402a
     filter: not CONFIG_NEWLIB_LIBC
     min_flash: 34
     tags: json

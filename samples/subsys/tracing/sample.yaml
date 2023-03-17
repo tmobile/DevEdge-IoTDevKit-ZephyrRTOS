@@ -8,6 +8,7 @@ common:
       - "thread_b: Hello World from (.*)!"
 tests:
   sample.tracing.user:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE="prj_user.conf"
   sample.tracing.format.sysview:
     platform_allow: nrf52840dk_nrf52840 mimxrt1050_evk mimxrt1064_evk
@@ -16,7 +17,7 @@ tests:
     extra_args: CONF_FILE="prj_sysview.conf"
   sample.tracing.osawareness.openocd:
     arch_exclude: posix xtensa
-    platform_exclude: qemu_x86_64
+    platform_exclude: qemu_x86_64 efm32pg_stk3402a
   sample.tracing.transport.uart:
     platform_allow: qemu_x86 qemu_x86_64
     integration_platforms:

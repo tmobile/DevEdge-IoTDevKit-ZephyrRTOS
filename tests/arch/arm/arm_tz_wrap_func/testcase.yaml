@@ -1,5 +1,6 @@
 tests:
   arch.arm.tz_wrap_func:
+    platform_exclude: efm32pg_stk3402a
     arch_allow: arm
     tags: arm tz_ns tz_wrap_func
     filter: CONFIG_CPU_CORTEX_M

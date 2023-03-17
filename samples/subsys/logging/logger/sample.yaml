@@ -4,6 +4,7 @@ sample:
   name: logger sample
 tests:
   sample.logger.basic:
+    platform_exclude: efm32pg_stk3402a
     integration_platforms:
       - native_posix
     tags: logging

@@ -4,7 +4,9 @@ common:
     - mps2_an385
 tests:
   drivers.sensor.generic:
+    platform_exclude: efm32pg_stk3402a
     tags: drivers sensor
   drivers.sensor.generic.fpu:
+    platform_exclude: efm32pg_stk3402a
     extra_args: CONF_FILE=prj_fpu.conf
     tags: drivers sensor

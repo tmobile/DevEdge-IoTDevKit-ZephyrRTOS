@@ -1,5 +1,6 @@
 tests:
   libraries.cmsis_dsp.statistics:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -11,6 +12,7 @@ tests:
     min_flash: 128
     min_ram: 64
   libraries.cmsis_dsp.statistics.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and
       CONFIG_CPU_HAS_FPU and TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:

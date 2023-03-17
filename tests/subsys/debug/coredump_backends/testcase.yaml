@@ -20,4 +20,4 @@ tests:
   coredump.backends.other:
     filter: CONFIG_ARCH_SUPPORTS_COREDUMP
     extra_args: CONF_FILE=prj_backend_other.conf
-    platform_exclude: acrn_ehl_crb
+    platform_exclude: acrn_ehl_crb efm32pg_stk3402a

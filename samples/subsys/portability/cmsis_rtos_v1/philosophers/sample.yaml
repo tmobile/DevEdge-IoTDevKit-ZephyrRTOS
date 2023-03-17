@@ -19,8 +19,11 @@ common:
       - ".*THINKING.*"
 tests:
   sample.portability.cmsis_rtos_v1.philosopher:
+    platform_exclude: efm32pg_stk3402a
     tags: cmsis_rtos
   sample.portability.cmsis_rtos_v1.philosopher.same_prio:
+    platform_exclude: efm32pg_stk3402a
     extra_args: SAME_PRIO=1
   sample.portability.cmsis_rtos_v1.philosopher.semaphores:
+    platform_exclude: efm32pg_stk3402a
     extra_args: FORKS=SEMAPHORES

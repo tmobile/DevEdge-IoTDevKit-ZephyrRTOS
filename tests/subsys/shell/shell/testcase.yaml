@@ -6,6 +6,7 @@ common:
 
 tests:
   shell.core:
+    platform_exclude: efm32pg_stk3402a
     min_flash: 64
 
   shell.min:

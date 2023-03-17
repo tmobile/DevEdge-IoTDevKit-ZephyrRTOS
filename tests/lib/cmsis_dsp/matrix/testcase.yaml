@@ -5,6 +5,7 @@ tests:
     tags: cmsis_dsp
     skip: true
   libraries.cmsis_dsp.matrix.unary_q7:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -19,6 +20,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_Q7=y
   libraries.cmsis_dsp.matrix.unary_q7.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -32,6 +34,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_Q7=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.matrix.unary_q15:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -46,6 +49,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_Q15=y
   libraries.cmsis_dsp.matrix.unary_q15.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -59,6 +63,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_Q15=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.matrix.unary_q31:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -73,6 +78,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_Q31=y
   libraries.cmsis_dsp.matrix.unary_q31.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -112,6 +118,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_F16=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.matrix.unary_f32:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -126,6 +133,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_F32=y
   libraries.cmsis_dsp.matrix.unary_f32.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -139,6 +147,7 @@ tests:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_F32=y
       - CONFIG_FPU=y
   libraries.cmsis_dsp.matrix.unary_f64:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and TOOLCHAIN_HAS_NEWLIB == 1) or
       CONFIG_ARCH_POSIX
     integration_platforms:
@@ -153,6 +162,7 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_MATRIX_UNARY_F64=y
   libraries.cmsis_dsp.matrix.unary_f64.fpu:
+    platform_exclude: efm32pg_stk3402a
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU and
       TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -174,7 +184,7 @@ tests:
       - mps2_an521
       - native_posix
     tags: cmsis_dsp
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -187,7 +197,7 @@ tests:
       - mps2_an521_remote
       - mps3_an547
     tags: cmsis_dsp fpu
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -203,7 +213,7 @@ tests:
       - mps2_an521
       - native_posix
     tags: cmsis_dsp
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 144
     extra_args: CONF_FILE=prj_base.conf
@@ -216,7 +226,7 @@ tests:
       - mps2_an521_remote
       - mps3_an547
     tags: cmsis_dsp fpu
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 144
     extra_args: CONF_FILE=prj_base.conf
@@ -232,7 +242,7 @@ tests:
       - mps2_an521
       - native_posix
     tags: cmsis_dsp
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -245,7 +255,7 @@ tests:
       - mps2_an521_remote
       - mps3_an547
     tags: cmsis_dsp fpu
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -287,7 +297,7 @@ tests:
       - mps2_an521
       - native_posix
     tags: cmsis_dsp
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -300,7 +310,7 @@ tests:
       - mps2_an521_remote
       - mps3_an547
     tags: cmsis_dsp fpu
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -316,7 +326,7 @@ tests:
       - mps2_an521
       - native_posix
     tags: cmsis_dsp
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf
@@ -329,7 +339,7 @@ tests:
       - mps2_an521_remote
       - mps3_an547
     tags: cmsis_dsp fpu
-    platform_exclude: frdm_kw41z
+    platform_exclude: frdm_kw41z efm32pg_stk3402a
     min_flash: 128
     min_ram: 128
     extra_args: CONF_FILE=prj_base.conf

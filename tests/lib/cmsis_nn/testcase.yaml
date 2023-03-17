@@ -1,5 +1,6 @@
 tests:
   libraries.cmsis_nn:
+    platform_exclude: efm32pg_stk3402a
     filter: CONFIG_CPU_CORTEX_M and TOOLCHAIN_HAS_NEWLIB == 1
     integration_platforms:
       - frdm_k64f

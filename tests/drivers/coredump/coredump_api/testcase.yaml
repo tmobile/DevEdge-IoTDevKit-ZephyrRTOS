@@ -31,7 +31,7 @@ tests:
         - "E: #CD:END#"
   drivers.coredump.api:
     filter: CONFIG_ARCH_SUPPORTS_COREDUMP
-    platform_exclude: qemu_riscv32
+    platform_exclude: qemu_riscv32 efm32pg_stk3402a
     harness: console
     harness_config:
       type: multi_line

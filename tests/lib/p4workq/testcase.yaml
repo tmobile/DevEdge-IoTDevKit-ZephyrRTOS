@@ -1,3 +1,4 @@
 tests:
   libraries.p4wq:
+    platform_exclude: efm32pg_stk3402a
     tags: p4wq

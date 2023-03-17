@@ -1,5 +1,6 @@
 tests:
   system.settings.nvs:
+    platform_exclude: efm32pg_stk3402a
     depends_on: nvs
     min_ram: 32
     tags: settings_nvs

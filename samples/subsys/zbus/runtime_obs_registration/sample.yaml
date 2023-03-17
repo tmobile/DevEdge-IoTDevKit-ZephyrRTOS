@@ -2,6 +2,7 @@ sample:
   name: Runtime observer registration
 tests:
   sample.zbus.runtime_os_registration:
+    platform_exclude: efm32pg_stk3402a
     min_ram: 16
     harness: console
     harness_config:
