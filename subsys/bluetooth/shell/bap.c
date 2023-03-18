@@ -995,14 +995,14 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	} else if (!strcmp(argv[1], "sink")) {
 		ep = snks[index];
 
-		named_preset = default_source_preset;
+		named_preset = default_sink_preset;
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
 	} else if (!strcmp(argv[1], "source")) {
 		ep = srcs[index];
 
-		named_preset = default_sink_preset;
+		named_preset = default_source_preset;
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
 	} else {
 		shell_error(sh, "Unsupported dir: %s", argv[1]);
@@ -1057,6 +1057,10 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 
 				return SHELL_CMD_HELP_PRINTED;
 			}
+		} else {
+			shell_help(sh);
+
+			return SHELL_CMD_HELP_PRINTED;
 		}
 	}
 
@@ -1064,16 +1068,25 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	memcpy(&uni_stream->qos, &named_preset->preset.qos, sizeof(uni_stream->qos));
 	memcpy(&uni_stream->codec, &named_preset->preset.codec, sizeof(uni_stream->codec));
 	/* Need to update the `bt_data.data` pointer to the new value after copying the codec */
+	/* Need to copy from the data pointer, as the preset->value is empty, as they are defined as
+	 * compound literals
+	 */
 	for (size_t i = 0U; i < ARRAY_SIZE(uni_stream->codec.data); i++) {
+		const struct bt_codec_data *preset_data = &named_preset->preset.codec.data[i];
 		struct bt_codec_data *data = &uni_stream->codec.data[i];
 
 		data->data.data = data->value;
+		data->data.data_len = preset_data->data.data_len;
+		memcpy(data->value, preset_data->data.data, preset_data->data.data_len);
 	}
 
 	for (size_t i = 0U; i < ARRAY_SIZE(uni_stream->codec.meta); i++) {
-		struct bt_codec_data *data = &uni_stream->codec.meta[i];
+		const struct bt_codec_data *preset_meta = &named_preset->preset.codec.meta[i];
+		struct bt_codec_data *meta = &uni_stream->codec.meta[i];
 
-		data->data.data = data->value;
+		meta->data.data = meta->value;
+		meta->data.data_len = preset_meta->data.data_len;
+		memcpy(meta->value, preset_meta->data.data, preset_meta->data.data_len);
 	}
 
 	/* If location has been modifed, we update the location in the codec configuration */
@@ -1784,19 +1797,35 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 	shell_print(ctx_shell, "Stream %p released\n", stream);
 
 #if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
-	/* The current shell application only supports a single stream in
-	 * the unicast group, so when that gets disconnected, we delete the
-	 * unicast group so that it can be recreated when settings the QoS
-	 */
 	if (default_unicast_group != NULL) {
-		int err = bt_bap_unicast_group_delete(default_unicast_group);
+		bool group_can_be_deleted = true;
 
-		if (err != 0) {
-			shell_error(ctx_shell,
-				    "Failed to delete unicast group: %d",
-				    err);
-		} else {
-			default_unicast_group = NULL;
+		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
+			if (unicast_streams[i].stream.ep != NULL) {
+				struct bt_bap_ep_info ep_info;
+
+				bt_bap_ep_get_info(unicast_streams[i].stream.ep, &ep_info);
+
+				if (ep_info.state != BT_BAP_EP_STATE_CODEC_CONFIGURED &&
+				    ep_info.state != BT_BAP_EP_STATE_IDLE) {
+					group_can_be_deleted = false;
+					break;
+				}
+			}
+		}
+
+		if (group_can_be_deleted) {
+			int err;
+
+			shell_print(ctx_shell, "All streams released, deleting group\n");
+
+			err = bt_bap_unicast_group_delete(default_unicast_group);
+
+			if (err != 0) {
+				shell_error(ctx_shell, "Failed to delete unicast group: %d", err);
+			} else {
+				default_unicast_group = NULL;
+			}
 		}
 	}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT */

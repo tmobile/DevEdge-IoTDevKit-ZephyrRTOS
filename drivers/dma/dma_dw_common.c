@@ -475,8 +475,7 @@ int dw_dma_start(const struct device *dev, uint32_t channel)
 	dw_write(dev_cfg->base, DW_LLP(channel), llp);
 	LOG_DBG("ctrl_lo %x, masked ctrl_lo %x, LLP %x",
 		lli->ctrl_lo, masked_ctrl_lo, dw_read(dev_cfg->base, DW_LLP(channel)));
-#endif /* CONFIG_DMA_DW_HW_LLI */
-
+#else
 	/* channel needs to start from scratch, so write SAR and DAR */
 	dw_write(dev_cfg->base, DW_SAR(channel), lli->sar);
 	dw_write(dev_cfg->base, DW_DAR(channel), lli->dar);
@@ -484,6 +483,7 @@ int dw_dma_start(const struct device *dev, uint32_t channel)
 	/* program CTL_LO and CTL_HI */
 	dw_write(dev_cfg->base, DW_CTRL_LOW(channel), lli->ctrl_lo);
 	dw_write(dev_cfg->base, DW_CTRL_HIGH(channel), lli->ctrl_hi);
+#endif /* CONFIG_DMA_DW_HW_LLI */
 
 	/* program CFG_LO and CFG_HI */
 	dw_write(dev_cfg->base, DW_CFG_LOW(channel), chan_data->cfg_lo);
@@ -552,14 +552,23 @@ int dw_dma_stop(const struct device *dev, uint32_t channel)
 		 chan_data->cfg_lo | DW_CFGL_SUSPEND | DW_CFGL_DRAIN);
 
 	/* now we wait for FIFO to be empty */
-	bool timeout = WAIT_FOR(dw_read(dev_cfg->base, DW_CFG_LOW(channel)) & DW_CFGL_FIFO_EMPTY,
+	bool fifo_empty = WAIT_FOR(dw_read(dev_cfg->base, DW_CFG_LOW(channel)) & DW_CFGL_FIFO_EMPTY,
 				DW_DMA_TIMEOUT, k_busy_wait(DW_DMA_TIMEOUT/10));
-	if (timeout) {
+	if (!fifo_empty) {
 		LOG_ERR("%s: dma %d channel drain time out", __func__, channel);
+		return -ETIMEDOUT;
 	}
 #endif
 
 	dw_write(dev_cfg->base, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel));
+
+	/* now we wait for channel to be disabled */
+	bool is_disabled = WAIT_FOR(!(dw_read(dev_cfg->base, DW_DMA_CHAN_EN) & DW_CHAN(channel)),
+				    DW_DMA_TIMEOUT, k_busy_wait(DW_DMA_TIMEOUT/10));
+	if (!is_disabled) {
+		LOG_ERR("%s: dma %d channel disable timeout", __func__, channel);
+		return -ETIMEDOUT;
+	}
 
 #if CONFIG_DMA_DW_HW_LLI
 	for (i = 0; i < chan_data->lli_count; i++) {
