@@ -3,10 +3,10 @@ name: Run tests with twister
 on:
   push:
     branches:
-    - v2.7-branch
+    - topic-2.7-riscv
   pull_request_target:
     branches:
-    - v2.7-branch
+    - topic-2.7-riscv
   schedule:
     # Run at 00:00 on Saturday
     - cron: '20 0 * * 6'
