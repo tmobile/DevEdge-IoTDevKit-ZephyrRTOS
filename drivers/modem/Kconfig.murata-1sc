@@ -9,6 +9,7 @@ menuconfig MODEM_MURATA_1SC
 		select MODEM_CMD_HANDLER
 		select MODEM_IFACE_UART
 		select MODEM_SOCKET
+		select NET_SOCKETS
 		select NET_SOCKETS_OFFLOAD
 		select BASE64
 		imply GPIO

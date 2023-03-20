@@ -13,14 +13,16 @@
 
 #define LOG_MODULE_NAME modem_shell
 
-#include "modem_sms.h"
-
 #include <zephyr/kernel.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/shell/shell.h>
 #include <zephyr/drivers/console/uart_mux.h>
+
+#if defined(CONFIG_MODEM_SMS)
+#include <zephyr/drivers/modem/sms.h>
+#endif /* CONFIG_MODEM_SMS */
 
 #include <zephyr/sys/printk.h>
 
@@ -241,6 +243,7 @@ static int cmd_modem_info(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
+#if defined(CONFIG_MODEM_SMS)
 static int cmd_modem_sms_send(const struct shell *shell, size_t argc,
 			      char *argv[])
 {
@@ -278,7 +281,7 @@ static int cmd_modem_sms_send(const struct shell *shell, size_t argc,
 		snprintk(sms.phone, sizeof(sms.phone), "%s", argv[2]);
 		snprintk(sms.msg, sizeof(sms.msg), "%s", argv[3]);
 
-		ret = ms_ctx->send_sms(ms_ctx, &sms);
+		ret = ms_ctx->send_sms(&sms);
 		if (ret == 0) {
 			shell_fprintf(shell, SHELL_NORMAL,
 				      "SMS msg was sent\n");
@@ -321,7 +324,7 @@ static int cmd_modem_sms_recv(const struct shell *shell, size_t argc,
 		}
 
 		sms.timeout = K_SECONDS(wait);
-		ret = ms_ctx->recv_sms(ms_ctx, &sms);
+		ret = ms_ctx->recv_sms(&sms);
 		if (ret < 0) {
 			shell_fprintf(shell, SHELL_ERROR,
 				      "recv_sms returned error %d, errno:%d\n",
@@ -350,6 +353,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(modem_cmd_sms,
 					 cmd_modem_sms_recv),
 			       SHELL_SUBCMD_SET_END);
 
+#endif /* CONFIG_MODEM_SMS */
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_modem,
 	SHELL_CMD(info, NULL, "Show information for a modem", cmd_modem_info),
@@ -358,8 +363,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		  "Send an AT <command> to a registered modem "
 		  "receiver",
 		  cmd_modem_send),
+#if defined(CONFIG_MODEM_SMS)
 	SHELL_CMD(sms, &modem_cmd_sms, "Send or receive SMS message via modem",
 		  NULL),
+#endif /* CONFIG_MODEM_SMS */
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 

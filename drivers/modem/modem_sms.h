@@ -1,47 +1,23 @@
-/** @file
- * @brief Modem SMS for SMS common structure.
- *
- * Modem SMS handling for modem driver.
- */
-
 /*
- * Copyright (c) 2022 T-Mobile USA, Inc.
+ * Copyright (c) 2023 T-Mobile USA, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_SMS_H_
-#define ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_SMS_H_
+#ifndef ZEPHYR_DRIVERS_MODEM_MODEM_SMS_H_
+#define ZEPHYR_DRIVERS_MODEM_MODEM_SMS_H_
 
-#include <zephyr/kernel.h>
-
-#define SMS_PHONE_MAX_LEN 16
-#define SMS_TIME_MAX_LEN  26
-
-/*
- * All fields in sms_out and sms_in are NULL terminated
+/**
+ * @brief Notify all registered callbacks of a received SMS message
+ *
+ * @param dev Device pointer of modem which received the SMS message
+ * @param sms Received SMS message
+ * @param csms_ref CSMS Reference number (if available, value is set to -1 if not)
+ * @param csms_idx CSMS Index number (if available, value is set to 0 if not)
+ * @param csms_tot CSMS Total segment count (if available, value is set to 1 if not)
+ *
  */
+void notify_sms_recv(const struct device *dev, struct sms_in *sms, int csms_ref, int csms_idx,
+		       int csms_tot);
 
-struct sms_out {
-	char phone[SMS_PHONE_MAX_LEN];
-	char msg[CONFIG_MODEM_SMS_OUT_MSG_MAX_LEN + 1];
-};
-
-struct sms_in {
-	char phone[SMS_PHONE_MAX_LEN];
-	char time[SMS_TIME_MAX_LEN];
-	char msg[CONFIG_MODEM_SMS_IN_MSG_MAX_LEN + 1];
-	uint8_t csms_ref;
-	uint8_t csms_idx;
-	k_timeout_t timeout;
-};
-
-typedef int (*send_sms_func_t)(void *obj, const struct sms_out *sms);
-typedef int (*recv_sms_func_t)(void *obj, struct sms_in *sms);
-
-enum io_ctl {
-	SMS_SEND,
-	SMS_RECV,
-};
-
-#endif /* ZEPHYR_INCLUDE_DRIVERS_MODEM_MODEM_SMS_H_ */
+#endif /* ZEPHYR_DRIVERS_MODEM_MODEM_SMS_H_ */
