@@ -67,6 +67,13 @@ config MODEM_ON_DELAY
 		help
 		  This value is for murata-1sc driver to wait before turn cfun=1
 
+config MURATA_MODEM_SNI_BUFFER_SZ
+		int "Max size for a server name"
+		default 64
+		range 40 1000
+		help
+		  This value is for murata-1sc driver to wait before turn cfun=1
+
 config MODEM_DEMO_LOW_POWERMODE
 		bool "low-power mode (essentially disable the modem)"
 		help
