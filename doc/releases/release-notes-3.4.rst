@@ -104,14 +104,31 @@ Changes in this release
    | :kconfig:option:`CONFIG_HWINFO`                  |
    +--------------------------------------------------+
 
+* The sensor driver API clarified :c:func:`sensor_trigger_set` to state that
+  the user-allocated sensor trigger will be stored by the driver as a pointer,
+  rather than a copy, and passed back to the handler. This enables the handler
+  to use :c:macro:`CONTAINER_OF` to retrieve a context pointer when the trigger
+  is embedded in a larger struct and requires that the trigger is not allocated
+  on the stack. Applications that allocate a sensor trigger on the stack need
+  to be updated.
+
 Removed APIs in this release
 ============================
 
 Deprecated in this release
 ==========================
 
+* Configuring applications with ``prj_<board>.conf`` files has been deprecated,
+  this should be replaced by using a prj.conf with the common configuration and
+  board-specific configuration in board Kconfig fragments in the ``boards``
+  folder of the application.
+
 Stable API changes in this release
 ==================================
+
+* Removed `bt_set_oob_data_flag` and replaced it with two new API calls:
+  * :c:func:`bt_le_oob_set_sc_flag` for setting/clearing OOB flag in SC pairing
+  * :c:func:`bt_le_oob_set_legacy_flag` for setting/clearing OOB flag in legacy paring
 
 New APIs in this release
 ========================
@@ -300,6 +317,11 @@ Drivers and Sensors
 
 * PECI
 
+* Retained memory
+
+  * Retained memory (retained_mem) driver has been added with backends for
+    Nordic nRF GPREGRET, and uninitialised RAM.
+
 Trusted Firmware-M
 ******************
 * Pin control
@@ -332,6 +354,9 @@ Trusted Firmware-M
 
 Networking
 **********
+* Wi-Fi
+
+  * TWT intervals are changed from milli-seconds to micro-seconds, interval variables are also renamed.
 
 USB
 ***

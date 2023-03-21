@@ -8,5 +8,7 @@ toolchain:
   - xtools
 supported:
   - gpio
+  - counter
+  - watchdog
 ram: 12
 flash: 32
