@@ -1207,7 +1207,7 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 	}
 }
 
-struct bt_conn *bt_conn_lookup_handle(uint16_t handle, enum bt_conn_type type)
+struct bt_conn *bt_conn_lookup_handle(uint16_t handle, int type)
 {
 	struct bt_conn *conn;
 
