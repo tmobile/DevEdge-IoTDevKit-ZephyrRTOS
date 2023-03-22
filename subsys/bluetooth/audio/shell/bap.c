@@ -23,6 +23,7 @@
 #include <zephyr/bluetooth/audio/audio.h>
 #include <zephyr/bluetooth/audio/bap.h>
 #include <zephyr/bluetooth/audio/bap_lc3_preset.h>
+#include <zephyr/bluetooth/audio/cap.h>
 #include <zephyr/bluetooth/audio/pacs.h>
 
 #include "shell/bt.h"
@@ -31,31 +32,20 @@
 #define CONTEXT BT_AUDIO_CONTEXT_TYPE_CONVERSATIONAL | BT_AUDIO_CONTEXT_TYPE_MEDIA
 
 #if defined(CONFIG_BT_BAP_UNICAST)
-#define UNICAST_SERVER_STREAM_COUNT \
-	COND_CODE_1(CONFIG_BT_ASCS, \
-		    (CONFIG_BT_ASCS_ASE_SNK_COUNT + CONFIG_BT_ASCS_ASE_SRC_COUNT), (0))
-#define UNICAST_CLIENT_STREAM_COUNT                                                                \
-	COND_CODE_1(CONFIG_BT_BAP_UNICAST_CLIENT,                                                  \
-		    (CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT +                                  \
-		     CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT),                                  \
-		    (0))
 
-static struct unicast_stream {
-	struct bt_bap_stream stream;
-	struct bt_codec codec;
-	struct bt_codec_qos qos;
-} unicast_streams[UNICAST_SERVER_STREAM_COUNT + UNICAST_CLIENT_STREAM_COUNT];
+struct unicast_stream unicast_streams[CONFIG_BT_MAX_CONN *
+				      (UNICAST_SERVER_STREAM_COUNT + UNICAST_CLIENT_STREAM_COUNT)];
 
 static const struct bt_codec_qos_pref qos_pref = BT_CODEC_QOS_PREF(true, BT_GAP_LE_PHY_2M, 0u, 60u,
 								   20000u, 40000u, 20000u, 40000u);
 
 #if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
-static struct bt_bap_unicast_group *default_unicast_group;
+struct bt_bap_unicast_group *default_unicast_group;
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
-static struct bt_bap_ep *snks[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
+struct bt_bap_ep *snks[CONFIG_BT_MAX_CONN][CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
-static struct bt_bap_ep *srcs[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT];
+struct bt_bap_ep *srcs[CONFIG_BT_MAX_CONN][CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT];
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
 #endif /* CONFIG_BT_BAP_UNICAST */
@@ -74,11 +64,6 @@ static struct bt_bap_stream *txing_stream;
 static struct bt_bap_stream *default_stream;
 static uint16_t seq_num;
 static size_t rx_cnt;
-
-struct named_lc3_preset {
-	const char *name;
-	struct bt_bap_lc3_preset preset;
-};
 
 static const struct named_lc3_preset lc3_unicast_presets[] = {
 	{"8_1_1", BT_BAP_LC3_UNICAST_PRESET_8_1_1(LOCATION, CONTEXT)},
@@ -153,8 +138,8 @@ static const struct named_lc3_preset lc3_broadcast_presets[] = {
 };
 
 /* Default to 16_2_1 */
-static const struct named_lc3_preset *default_sink_preset = &lc3_unicast_presets[3];
-static const struct named_lc3_preset *default_source_preset = &lc3_unicast_presets[3];
+const struct named_lc3_preset *default_sink_preset = &lc3_unicast_presets[3];
+const struct named_lc3_preset *default_source_preset = &lc3_unicast_presets[3];
 static const struct named_lc3_preset *default_broadcast_source_preset = &lc3_broadcast_presets[3];
 static bool initialized;
 
@@ -428,9 +413,9 @@ static void set_unicast_stream(struct bt_bap_stream *stream)
 {
 	default_stream = stream;
 
-	for (size_t i = 0; i < ARRAY_SIZE(unicast_streams); i++) {
-		if (stream == &unicast_streams[i].stream) {
-			shell_print(ctx_shell, "Default stream: %zu", i + 1);
+	for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
+		if (stream == &unicast_streams[i].stream.bap_stream) {
+			shell_print(ctx_shell, "Default stream: %u", i + 1);
 		}
 	}
 }
@@ -462,7 +447,7 @@ static int cmd_select_unicast(const struct shell *sh, size_t argc, char *argv[])
 		return -ENOEXEC;
 	}
 
-	stream = &unicast_streams[index].stream;
+	stream = &unicast_streams[index].stream.bap_stream;
 
 	set_unicast_stream(stream);
 
@@ -472,7 +457,7 @@ static int cmd_select_unicast(const struct shell *sh, size_t argc, char *argv[])
 static struct bt_bap_stream *stream_alloc(void)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(unicast_streams); i++) {
-		struct bt_bap_stream *stream = &unicast_streams[i].stream;
+		struct bt_bap_stream *stream = &unicast_streams[i].stream.bap_stream;
 
 		if (!stream->conn) {
 			return stream;
@@ -713,48 +698,60 @@ static int set_metadata(struct bt_codec *codec, const char *meta_str)
 #if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
 static uint8_t stream_dir(const struct bt_bap_stream *stream)
 {
+	if (stream->conn) {
+		uint8_t conn_index = bt_conn_index(stream->conn);
+
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
-	for (size_t i = 0; i < ARRAY_SIZE(snks); i++) {
-		if (snks[i] != NULL && stream->ep == snks[i]) {
-			return BT_AUDIO_DIR_SINK;
+		for (size_t i = 0; i < ARRAY_SIZE(snks[conn_index]); i++) {
+			const struct bt_bap_ep *snk_ep = snks[conn_index][i];
+
+			if (snk_ep != NULL && stream->ep == snk_ep) {
+				return BT_AUDIO_DIR_SINK;
+			}
 		}
-	}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
-	for (size_t i = 0; i < ARRAY_SIZE(srcs); i++) {
-		if (srcs[i] != NULL && stream->ep == srcs[i]) {
-			return BT_AUDIO_DIR_SOURCE;
+		for (size_t i = 0; i < ARRAY_SIZE(srcs[conn_index]); i++) {
+			const struct bt_bap_ep *src_ep = srcs[conn_index][i];
+
+			if (src_ep != NULL && stream->ep == src_ep) {
+				return BT_AUDIO_DIR_SOURCE;
+			}
 		}
-	}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
+	}
 
 	__ASSERT(false, "Invalid stream");
 	return 0;
 }
 
-static void print_remote_codec(struct bt_codec *codec, uint8_t index, enum bt_audio_dir dir)
+static void print_remote_codec(const struct bt_conn *conn, struct bt_codec *codec, uint8_t index,
+			       enum bt_audio_dir dir)
 {
-	shell_print(ctx_shell, "#%u: codec %p dir 0x%02x", index, codec, dir);
+	shell_print(ctx_shell, "conn %p: #%u: codec %p dir 0x%02x",
+		    conn, index, codec, dir);
 
 	print_codec(codec);
 }
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
-static void add_sink(struct bt_bap_ep *ep, uint8_t index)
+static void add_sink(const struct bt_conn *conn, struct bt_bap_ep *ep,
+		     uint8_t index)
 {
-	shell_print(ctx_shell, "Sink #%u: ep %p", index, ep);
+	shell_print(ctx_shell, "Conn: %p, Sink #%u: ep %p", conn, index, ep);
 
-	snks[index] = ep;
+	snks[bt_conn_index(conn)][index] = ep;
 }
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
-static void add_source(struct bt_bap_ep *ep, uint8_t index)
+static void add_source(const struct bt_conn *conn, struct bt_bap_ep *ep,
+		       uint8_t index)
 {
-	shell_print(ctx_shell, "Source #%u: ep %p", index, ep);
+	shell_print(ctx_shell, "Conn: %p, Source #%u: ep %p", conn, index, ep);
 
-	srcs[index] = ep;
+	srcs[bt_conn_index(conn)][index] = ep;
 }
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
 
@@ -762,20 +759,20 @@ static void discover_cb(struct bt_conn *conn, struct bt_codec *codec, struct bt_
 			struct bt_bap_unicast_client_discover_params *params)
 {
 	if (codec != NULL) {
-		print_remote_codec(codec, params->num_caps, params->dir);
+		print_remote_codec(conn, codec, params->num_caps, params->dir);
 		return;
 	}
 
 	if (ep) {
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
 		if (params->dir == BT_AUDIO_DIR_SINK) {
-			add_sink(ep, params->num_eps);
+			add_sink(conn, ep, params->num_eps);
 		}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
 		if (params->dir == BT_AUDIO_DIR_SOURCE) {
-			add_source(ep, params->num_eps);
+			add_source(conn, ep, params->num_eps);
 		}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0*/
 
@@ -791,20 +788,20 @@ static void discover_all(struct bt_conn *conn, struct bt_codec *codec, struct bt
 			 struct bt_bap_unicast_client_discover_params *params)
 {
 	if (codec != NULL) {
-		print_remote_codec(codec, params->num_caps, params->dir);
+		print_remote_codec(conn, codec, params->num_caps, params->dir);
 		return;
 	}
 
 	if (ep) {
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
 		if (params->dir == BT_AUDIO_DIR_SINK) {
-			add_sink(ep, params->num_eps);
+			add_sink(conn, ep, params->num_eps);
 		}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
 		if (params->dir == BT_AUDIO_DIR_SOURCE) {
-			add_source(ep, params->num_eps);
+			add_source(conn, ep, params->num_eps);
 		}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0*/
 
@@ -965,15 +962,17 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	struct unicast_stream *uni_stream;
 	struct bt_bap_ep *ep = NULL;
 	unsigned long index;
+	uint8_t conn_index;
 	int err = 0;
 
 	if (!default_conn) {
 		shell_error(sh, "Not connected");
 		return -ENOEXEC;
 	}
+	conn_index = bt_conn_index(default_conn);
 
 	if (default_stream == NULL) {
-		default_stream = &unicast_streams[0].stream;
+		default_stream = &unicast_streams[0].stream.bap_stream;
 	}
 
 	index = shell_strtoul(argv[2], 0, &err);
@@ -993,14 +992,14 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
 	} else if (!strcmp(argv[1], "sink")) {
-		ep = snks[index];
+		ep = snks[conn_index][index];
 
 		named_preset = default_sink_preset;
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
 	} else if (!strcmp(argv[1], "source")) {
-		ep = srcs[index];
+		ep = srcs[conn_index][index];
 
 		named_preset = default_source_preset;
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
@@ -1113,7 +1112,6 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 			return -ENOEXEC;
 		}
 	} else {
-
 		err = bt_bap_stream_config(default_conn, default_stream, ep, &uni_stream->codec);
 		if (err != 0) {
 			shell_error(sh, "Unable to config stream: %d", err);
@@ -1264,7 +1262,7 @@ static int create_unicast_group(const struct shell *sh)
 	memset(&group_param, 0, sizeof(group_param));
 
 	for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
-		struct bt_bap_stream *stream = &unicast_streams[i].stream;
+		struct bt_bap_stream *stream = &unicast_streams[i].stream.bap_stream;
 		struct unicast_stream *uni_stream =
 			CONTAINER_OF(stream, struct unicast_stream, stream);
 
@@ -1497,50 +1495,59 @@ static int cmd_disable(const struct shell *sh, size_t argc, char *argv[])
 	return 0;
 }
 
-static int cmd_list(const struct shell *sh, size_t argc, char *argv[])
-{
-	int i;
-
-	shell_print(sh, "Configured Channels:");
-
-	for (i = 0; i < ARRAY_SIZE(unicast_streams); i++) {
-		struct bt_bap_stream *stream = &unicast_streams[i].stream;
-
-		if (stream->conn) {
-			shell_print(sh, "  %s#%u: stream %p ep %p group %p",
-				    stream == default_stream ? "*" : " ", i,
-				    stream, stream->ep, stream->group);
-		}
-	}
-
 #if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
+static void conn_list_eps(struct bt_conn *conn, void *data)
+{
+	const struct shell *sh = (const struct shell *)data;
+	uint8_t conn_index = bt_conn_index(conn);
+
+	shell_print(sh, "Conn: %p", conn);
+	shell_print(sh, "  Sinks:");
+
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0
-	shell_print(sh, "Sinks:");
+	for (size_t i = 0U; i < ARRAY_SIZE(snks[conn_index]); i++) {
+		const struct bt_bap_ep *ep = snks[conn_index][i];
 
-	for (i = 0; i < ARRAY_SIZE(snks); i++) {
-		struct bt_bap_ep *ep = snks[i];
-
-		if (ep) {
-			shell_print(sh, "  #%u: ep %p", i, ep);
+		if (ep != NULL) {
+			shell_print(sh, "    #%u: ep %p", i, ep);
 		}
 	}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0 */
 
 #if CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0
-	shell_print(sh, "Sources:");
+	shell_print(sh, "  Sources:");
 
-	for (i = 0; i < ARRAY_SIZE(srcs); i++) {
-		struct bt_bap_ep *ep = srcs[i];
+	for (size_t i = 0U; i < ARRAY_SIZE(srcs[conn_index]); i++) {
+		const struct bt_bap_ep *ep = srcs[conn_index][i];
 
-		if (ep) {
-			shell_print(sh, "  #%u: ep %p", i, ep);
+		if (ep != NULL) {
+			shell_print(sh, "    #%u: ep %p", i, ep);
 		}
 	}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0 */
+}
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
+
+#if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
+static int cmd_list(const struct shell *sh, size_t argc, char *argv[])
+{
+	shell_print(sh, "Configured Channels:");
+
+	for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
+		struct bt_bap_stream *stream = &unicast_streams[i].stream.bap_stream;
+
+		if (stream->conn != NULL) {
+			shell_print(sh, "  %s#%u: stream %p dir 0x%02x group %p",
+				    stream == default_stream ? "*" : " ", i, stream,
+				    stream_dir(stream), stream->group);
+		}
+	}
+
+	bt_conn_foreach(BT_CONN_TYPE_LE, conn_list_eps, (void *)sh);
 
 	return 0;
 }
+#endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
 
 static int cmd_release(const struct shell *sh, size_t argc, char *argv[])
 {
@@ -1801,10 +1808,12 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 		bool group_can_be_deleted = true;
 
 		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
-			if (unicast_streams[i].stream.ep != NULL) {
+			const struct bt_bap_stream *stream = &unicast_streams[i].stream.bap_stream;
+
+			if (stream->ep != NULL) {
 				struct bt_bap_ep_info ep_info;
 
-				bt_bap_ep_get_info(unicast_streams[i].stream.ep, &ep_info);
+				bt_bap_ep_get_info(stream->ep, &ep_info);
 
 				if (ep_info.state != BT_BAP_EP_STATE_CODEC_CONFIGURED &&
 				    ep_info.state != BT_BAP_EP_STATE_IDLE) {
@@ -2338,7 +2347,7 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 
 #if defined(CONFIG_BT_BAP_UNICAST)
 	for (i = 0; i < ARRAY_SIZE(unicast_streams); i++) {
-		bt_bap_stream_cb_register(&unicast_streams[i].stream, &stream_ops);
+		bt_bap_stream_cb_register(&unicast_streams[i].stream.bap_stream, &stream_ops);
 	}
 #endif /* CONFIG_BT_BAP_UNICAST */
 
@@ -2523,6 +2532,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(qos, NULL, "Send QoS configure for Unicast Group", cmd_qos, 1, 0),
 	SHELL_CMD_ARG(enable, NULL, "[context]", cmd_enable, 1, 1),
 	SHELL_CMD_ARG(stop, NULL, NULL, cmd_stop, 1, 0),
+	SHELL_CMD_ARG(list, NULL, NULL, cmd_list, 1, 0),
 #endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
 #if defined(CONFIG_BT_BAP_UNICAST_SERVER)
 	SHELL_CMD_ARG(print_ase_info, NULL, "Print ASE info for default connection",
@@ -2532,8 +2542,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(start, NULL, NULL, cmd_start, 1, 0),
 	SHELL_CMD_ARG(disable, NULL, NULL, cmd_disable, 1, 0),
 	SHELL_CMD_ARG(release, NULL, NULL, cmd_release, 1, 0),
-	SHELL_CMD_ARG(list, NULL, NULL, cmd_list, 1, 0),
-	SHELL_CMD_ARG(select_unicast, NULL, "<stream>", cmd_select_unicast, 2, 0),
+	SHELL_CMD_ARG(select_unicast, NULL, "<stream>",
+		      cmd_select_unicast, 2, 0),
 #endif /* CONFIG_BT_BAP_UNICAST */
 	SHELL_CMD_ARG(preset, NULL, "<sink, source, broadcast> [preset]", cmd_preset, 2, 1),
 	SHELL_CMD_ARG(send, NULL, "Send to Audio Stream [data]", cmd_send, 1, 1),
