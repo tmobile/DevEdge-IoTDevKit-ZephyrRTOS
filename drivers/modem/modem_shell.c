@@ -270,6 +270,11 @@ static int cmd_modem_sms_send(const struct shell *shell, size_t argc,
 			return -ENOEXEC;
 		}
 
+		if (strlen(argv[3]) > (sizeof(sms.msg) - 1)) {
+			shell_fprintf(shell, SHELL_WARNING,
+					  "Specified message longer than maximum, truncating message\n");
+		}
+
 		snprintk(sms.phone, sizeof(sms.phone), "%s", argv[2]);
 		snprintk(sms.msg, sizeof(sms.msg), "%s", argv[3]);
 
