@@ -229,6 +229,8 @@ void ascs_ep_set_state(struct bt_bap_ep *ep, uint8_t state)
 
 		switch (state) {
 		case BT_BAP_EP_STATE_IDLE:
+			bt_bap_stream_detach(stream);
+
 			if (ops->released != NULL) {
 				ops->released(stream);
 			}
@@ -394,7 +396,6 @@ void ascs_ep_set_state(struct bt_bap_ep *ep, uint8_t state)
 					bt_bap_iso_unbind_ep(ep->iso, ep);
 				}
 
-				bt_bap_stream_detach(stream);
 				ascs_ep_set_state(ep, BT_BAP_EP_STATE_IDLE);
 			} else {
 				/* Either the client or the server may disconnect the
@@ -967,6 +968,7 @@ static void ascs_cp_rsp_success(uint8_t id, uint8_t op)
 
 static void ase_release(struct bt_ascs_ase *ase)
 {
+	uint8_t ase_id = ASE_ID(ase);
 	int err;
 
 	LOG_DBG("ase %p state %s", ase, bt_bap_ep_state_str(ase->ep.status.state));
@@ -983,14 +985,14 @@ static void ase_release(struct bt_ascs_ase *ase)
 	}
 
 	if (err) {
-		ascs_cp_rsp_add_errno(ASE_ID(ase), BT_ASCS_RELEASE_OP, err,
-				      BT_BAP_ASCS_REASON_NONE);
+		ascs_cp_rsp_add_errno(ase_id, BT_ASCS_RELEASE_OP, err, BT_BAP_ASCS_REASON_NONE);
 		return;
 	}
 
 	ascs_ep_set_state(&ase->ep, BT_BAP_EP_STATE_RELEASING);
+	/* At this point, `ase` object might have been free'd if automously went to Idle */
 
-	ascs_cp_rsp_success(ASE_ID(ase), BT_ASCS_RELEASE_OP);
+	ascs_cp_rsp_success(ase_id, BT_ASCS_RELEASE_OP);
 }
 
 static void ase_disable(struct bt_ascs_ase *ase)
@@ -1061,9 +1063,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		stream = ase->ep.stream;
 
 		if (ase->ep.status.state != BT_BAP_EP_STATE_IDLE) {
-			/* ase_process will handle the final state transition into idle
-			 * state, where the ase finally will be deallocated
-			 */
 			ase_release(ase);
 
 			if (stream != NULL) {
@@ -1564,14 +1563,57 @@ int bt_ascs_config_ase(struct bt_conn *conn, struct bt_bap_stream *stream, struc
 	return 0;
 }
 
+static bool codec_config_len_is_valid(struct net_buf_simple *buf)
+{
+	const struct bt_ascs_config_op *req;
+	struct net_buf_simple_state state;
+
+	net_buf_simple_save(buf, &state);
+
+	if (buf->len < sizeof(*req)) {
+		LOG_WRN("Malformed ASE Config");
+		return false;
+	}
+
+	req = net_buf_simple_pull_mem(buf, sizeof(*req));
+	if (req->num_ases < 1) {
+		LOG_WRN("Number_of_ASEs parameter value is less than 1");
+		return false;
+	}
+
+	for (uint8_t i = 0U; i < req->num_ases; i++) {
+		const struct bt_ascs_config *cfg;
+
+		if (buf->len < sizeof(*cfg)) {
+			LOG_WRN("Malformed ASE Config: len %u < %zu", buf->len, sizeof(*cfg));
+			return false;
+		}
+
+		cfg = net_buf_simple_pull_mem(buf, sizeof(*cfg));
+		if (buf->len < cfg->cc_len) {
+			LOG_WRN("Malformed ASE Codec Config len %u != %u", buf->len, cfg->cc_len);
+			return false;
+		}
+
+		(void)net_buf_simple_pull_mem(buf, cfg->cc_len);
+	}
+
+	if (buf->len > 0) {
+		LOG_WRN("Unexpected data");
+		return false;
+	}
+
+	net_buf_simple_restore(buf, &state);
+
+	return true;
+}
+
 static ssize_t ascs_config(struct bt_ascs *ascs, struct net_buf_simple *buf)
 {
 	const struct bt_ascs_config_op *req;
 	const struct bt_ascs_config *cfg;
-	int i;
 
-	if (buf->len < sizeof(*req)) {
-		LOG_WRN("Malformed ASE Config");
+	if (!codec_config_len_is_valid(buf)) {
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
 
@@ -1579,30 +1621,11 @@ static ssize_t ascs_config(struct bt_ascs *ascs, struct net_buf_simple *buf)
 
 	LOG_DBG("num_ases %u", req->num_ases);
 
-	if (req->num_ases < 1) {
-		LOG_WRN("Number_of_ASEs parameter value is less than 1");
-		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
-	} else if (buf->len < req->num_ases * sizeof(*cfg)) {
-		LOG_WRN("Malformed ASE Config: len %u < %zu", buf->len,
-			req->num_ases * sizeof(*cfg));
-		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
-	}
-
-	for (i = 0; i < req->num_ases; i++) {
+	for (uint8_t i = 0; i < req->num_ases; i++) {
 		struct bt_ascs_ase *ase;
 		int err;
 
-		if (buf->len < sizeof(*cfg)) {
-			LOG_WRN("Malformed ASE Config: len %u < %zu", buf->len, sizeof(*cfg));
-			return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
-		}
-
 		cfg = net_buf_simple_pull_mem(buf, sizeof(*cfg));
-
-		if (buf->len < cfg->cc_len) {
-			LOG_WRN("Malformed ASE Codec Config len %u != %u", buf->len, cfg->cc_len);
-			return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
-		}
 
 		LOG_DBG("ase 0x%02x cc_len %u", cfg->ase, cfg->cc_len);
 

@@ -86,7 +86,7 @@ struct cert_cmd_t {
 };
 
 struct mdm_sock_tls_s {
-	char host[MAX_FILENAME_LEN + 1];
+	char host[CONFIG_MURATA_MODEM_SNI_BUFFER_SZ + 1];
 	uint8_t profile;
 	bool sni_valid;
 	bool peer_verify_disable;
@@ -2919,6 +2919,8 @@ static int offload_socket(int family, int type, int proto)
 	return ret;
 }
 
+#define ALLOCATE_CMD_SZ sizeof("AT%SOCKETCMD=\"ALLOCATE\",1,\"TCP\",\"OPEN\",\"\",XXXXX,XXXXX")
+
 /**
  * @brief Connect with a TCP or UDP peer
  */
@@ -2928,7 +2930,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 	uint16_t dst_port = 0;
 	uint16_t src_port = 0;
 	char protocol[5];
-	char at_cmd[100];
+	char at_cmd[ALLOCATE_CMD_SZ + CONFIG_MURATA_MODEM_SNI_BUFFER_SZ];
 	int ret;
 
 	LOG_DBG("In %s, sock->id: %d, sock->sock_fd: %d", __func__, sock->id, sock->sock_fd);
@@ -4313,7 +4315,7 @@ static int offload_setsockopt(void *obj, int level, int optname, const void *opt
 				optlen, sd);
 			murata_sock_tls_info[sd].sni_valid = true;
 			strncpy(murata_sock_tls_info[sd].host, optval,
-				MIN(optlen, MAX_FILENAME_LEN));
+				MIN(optlen, CONFIG_MURATA_MODEM_SNI_BUFFER_SZ));
 			retval = 0;
 			break;
 		case TLS_CIPHERSUITE_LIST:
