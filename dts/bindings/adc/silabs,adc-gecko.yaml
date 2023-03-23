@@ -2,16 +2,16 @@ description: Silabs Gecko ADC node
 
 compatible: "silabs,adc-gecko"
 
-include: adc-controller.yaml
+include: [adc-controller.yaml, pinctrl-device.yaml]
 
 properties:
 
   "#io-channel-cells":
     const: 1
 
-  "num-channels":
+  num-channels:
     type: int
-    required: true
+    required: false
     description:
       Number of channels available
 
@@ -20,6 +20,30 @@ properties:
     required: true
     description:
       This property selects the ADC source frequency.
+
+  vbatt-aport:
+    type: int
+    required: false
+    description:
+     This property selects the ADC channel for battery voltage detection.
+
+  hwid-aport:
+    type: int
+    required: false
+    description:
+      This property selects the ADC channel for battery ID detection.
+
+  en-gpios:
+    type: phandle-array
+    description:
+      Chip select enable/disable.
+
+  vref-mv:
+    type: int
+    required: false
+    default: 3300
+    description:
+      Indicate the reference voltage of the ADC in mV.
 
 io-channel-cells:
   - input

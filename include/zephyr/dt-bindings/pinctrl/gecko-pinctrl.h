@@ -85,6 +85,9 @@
 #define GECKO_FUN_SPI_CS_LOC  20U
 #define GECKO_FUN_SPI_SCK_LOC  21U
 
+#define GECKO_ADC_CH10 151U
+#define GECKO_ADC_CH22 106U
+
 /** @} */
 
 /**
@@ -108,5 +111,6 @@
 #define GECKO_LOC(fun, loc)                                                                        \
 	(((GECKO_LOCATION(##loc##) & GECKO_LOC_MSK) << GECKO_LOC_POS) |                            \
 	 ((GECKO_FUN_##fun##_LOC & GECKO_FUN_MSK) << GECKO_FUN_POS))
+
 
 #endif /* ZEPHYR_INCLUDE_DT_BINDINGS_PINCTRL_GECKO_PINCTRL_H_ */

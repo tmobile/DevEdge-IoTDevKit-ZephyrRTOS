@@ -32,7 +32,7 @@ static const struct adc_dt_spec adc_channels[] = {
 void main(void)
 {
 	int err;
-	uint16_t buf;
+	int16_t buf;
 	struct adc_sequence sequence = {
 		.buffer = &buf,
 		/* buffer size in bytes, not number of samples */
