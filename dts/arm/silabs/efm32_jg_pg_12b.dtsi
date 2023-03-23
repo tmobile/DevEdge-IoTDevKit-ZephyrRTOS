@@ -278,6 +278,15 @@
 			compatible = "silabs,gecko-letimer";
 			reg = <0x40046000 0x54>;
 			interrupts = <27 1>;
+			status = "disabled";
+		};
+		adc0: adc0@40002000 {
+			compatible = "silabs,gecko-adc";
+			reg = <0x40002000 0x4>;
+			num-channels = <32>;
+			#io-channel-cells = <1>;
+			frequency= <16000000>;
+			status = "disabled";
 		};
 	};
 };

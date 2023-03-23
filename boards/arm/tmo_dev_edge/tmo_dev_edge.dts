@@ -104,6 +104,21 @@
 	};
 };
 
+/*
+adc0: adc0@40002000 {
+	compatible = "silabs,adc-gecko";
+	status = "okay";
+	reg = <0x40002000 0x400>;
+	frequency= <16000000>;
+	#io-channel-cells = <1>;
+	num-channels = <32>;
+};
+*/
+
+&adc0 {
+	status = "okay";
+};
+
 &cpu0 {
 	clock-frequency = <38400000>;
 };
