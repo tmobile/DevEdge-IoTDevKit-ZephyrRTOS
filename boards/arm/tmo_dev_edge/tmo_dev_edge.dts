@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2017 Christian Taedcke
  * Copyright (c) 2019 Lemonbeat GmbH
  * Copyright (c) 2023 T-Mobile USA, Inc.
@@ -103,14 +103,21 @@
 		regulator-boot-on;
 	};
 
-	adc0:adc0@40002000 {
+	adc:adc@40002000 {
 		compatible = "silabs,adc-gecko";
-		status = "okay";
+		status = "disabled";
 		reg = <0x40002000 0x400>;
 		frequency= <16000000>;
+		en-gpios = <&gpiok 0 GPIO_ACTIVE_HIGH>;
 		#io-channel-cells = <1>;
-		num-channels = <32>;
+		vref-mv = <3300>;
 	};
+};
+
+&adc {
+	status = "okay";
+	pinctrl-0 = <&adc_default>;
+	pinctrl-names = "default";
 };
 
 &cpu0 {

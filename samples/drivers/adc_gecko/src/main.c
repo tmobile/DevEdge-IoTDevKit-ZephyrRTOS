@@ -14,7 +14,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/drivers/adc/adc_gecko/adc_gecko.h>
+#include <zephyr/drivers/adc/adc_gecko.h>
 
 #define ADC_DEVICE_NODE		DT_INST(0, silabs_adc_gecko)
 
@@ -54,21 +54,22 @@ void main(void)
 		.resolution = 12
 	};
 
-	k_msleep(5000);
+	k_msleep(2000);
 
 	while (true) {
 		seq.channels = 1;
 		err = adc_read(adc_dev, &seq);
 		if (err >= 0) {
-			millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
-			printk("ADC channel 1 Value = %d\n",millivolts);
+			//millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
+			//printk("ADC channel 1 HWID Value = %d\n",data->mVolts);
 		}
 
+	k_msleep(1000);
 		seq.channels = 0;
 		err = adc_read(adc_dev, &seq);
 		if (err >= 0) {
-			millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
-			printk("ADC channel 0 Value = %d\n",millivolts);
+			//millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
+			//printk("ADC channel 0 Raw %d Value = %d\n",data->mVolts, millivolts);
 		}
 
 		k_sleep(K_MSEC(2000));

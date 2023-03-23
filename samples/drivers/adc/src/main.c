@@ -32,7 +32,7 @@ static const struct adc_dt_spec adc_channels[] = {
 void main(void)
 {
 	int err;
-	uint16_t buf;
+	int16_t buf;
 	struct adc_sequence sequence = {
 		.buffer = &buf,
 		/* buffer size in bytes, not number of samples */
@@ -69,8 +69,7 @@ void main(void)
 				printk("Could not read (%d)\n", err);
 				continue;
 			} else {
-				uint32_t millivolts = (uint32_t)(3.0 * ((data->mVolts * 2500.0) / 4096.0) + 0.5);
-				printk("%"PRIu16, millivolts);
+				printk("%"PRId16, buf);
 			}
 
 			/* conversion to mV may not be supported, skip if not */
