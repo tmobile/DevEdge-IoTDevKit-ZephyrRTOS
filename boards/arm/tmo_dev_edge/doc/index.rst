@@ -1,12 +1,12 @@
 .. _tmo_dev_edge:
 
-EFM32tmo_dev_edge
+EFM32 tmo_dev_edge
 #####################
 
 Overview
 ********
 
-The EFM32tmo_dev_edge is based on the EFM32 Pearl Gecko Starter Kit
+The EFM32 tmo_dev_edge is based on the EFM32 Pearl Gecko Starter Kit
 (EFM32PG-STK3402A) which contains an MCU from the EFM32PG family built
 on an ARM® Cortex®-M4F processor with excellent low power capabilities.
 
@@ -174,22 +174,13 @@ unused GPIO pins that form a fixture for the following tests:
 /tests/drivers/gpio/gpio_basic_api - gpio_loopback
 tests/drivers/regulator/fixed - regulator_loopback
 
-The Twister tests require the map2.yml file to be specified as follows:
+The Twister tests can be run from the boards folder as follows:
 
-./scripts/twister --device-testing --testcase-root tests/drivers/regulator/fixed --hardware-map map2.yml
+.. code-block:: console
 
-My current map2.yml file looks like this::
-
-  - connected: true
-    id: 51005205
-    platform: tmo_dev_edge
-    product: J-Link
-    runner: jlink
-    serial: /dev/ttyUSB1
-    baud: 9600
-    fixtures:
-      - gpio_loopback
-      - regulator_loopback
+   ../../../../zephyr/scripts/twister --device-testing \
+                                      --hardware-map tmo_dev_edge-map.yml \
+                                      --load-tests tmo_dev_edge-testplan.json
 
 2 of 8 regulator tests are still failing (due to 9600 baud issues), but the gpio tests work fine.
 
