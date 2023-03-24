@@ -85,8 +85,8 @@
 #define GECKO_FUN_SPI_CS_LOC  20U
 #define GECKO_FUN_SPI_SCK_LOC  21U
 
-#define GECKO_ADC_CH10 151U
-#define GECKO_ADC_CH22 106U
+#define GECKO_ADC_VBATT 0U
+#define GECKO_ADC_HWID 1U
 
 /** @} */
 

@@ -65,8 +65,8 @@
 
 	adc_default: adc_default {
 		group1 {
-			psels = <GECKO_ADC_CH10>,
-				 <GECKO_ADC_CH22>;
+			psels = <GECKO_ADC_VBATT>,
+				 <GECKO_ADC_HWID>;
 			//input-enabled;
 		};
 	};
