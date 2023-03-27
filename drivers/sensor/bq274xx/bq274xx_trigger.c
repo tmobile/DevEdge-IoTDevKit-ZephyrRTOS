@@ -49,8 +49,9 @@ static void work_handler(struct k_work *work)
 }
 #endif
 
-static void ready_callback_handler(const struct device *port, struct gpio_callback *cb,
-				   gpio_port_pins_t pins)
+static void ready_callback_handler(const struct device *port,
+					   struct gpio_callback *cb,
+					   gpio_port_pins_t pins)
 {
 	struct bq274xx_data *data = CONTAINER_OF(cb, struct bq274xx_data,
 						 ready_callback);
