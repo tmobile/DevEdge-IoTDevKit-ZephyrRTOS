@@ -35,25 +35,10 @@ LOG_MODULE_REGISTER(bq274xx, CONFIG_SENSOR_LOG_LEVEL);
 /* Data memory size */
 #define BQ27XXX_DM_SZ 32
 
-/* Config update mode flag */
-#define BQ27XXX_FLAG_CFGUP BIT(4)
+static int gauge_configure(const struct device *dev);
 
-static const struct bq274xx_regs bq27421_regs = {
-	.dm_design_capacity = 10,
-	.dm_design_energy = 12,
-	.dm_terminate_voltage = 16,
-	.dm_taper_rate = 27,
-};
-
-static const struct bq274xx_regs bq27427_regs = {
-	.dm_design_capacity = 6,
-	.dm_design_energy = 8,
-	.dm_terminate_voltage = 10,
-	.dm_taper_rate = 21,
-};
-
-static int bq274xx_cmd_reg_read(const struct device *dev, uint8_t reg_addr,
-				int16_t *val)
+static int command_reg_read(const struct device *dev, uint8_t reg_addr,
+				    int16_t *val)
 {
 	const struct bq274xx_config *config = dev->config;
 	uint8_t i2c_data[2];
@@ -71,7 +56,8 @@ static int bq274xx_cmd_reg_read(const struct device *dev, uint8_t reg_addr,
 	return 0;
 }
 
-static int bq274xx_ctrl_reg_write(const struct device *dev, uint16_t subcommand)
+static int control_reg_write(const struct device *dev,
+				     uint16_t subcommand)
 {
 	const struct bq274xx_config *config = dev->config;
 	uint8_t i2c_data, reg_addr;
@@ -114,7 +100,8 @@ static int bq274xx_read_data_block(const struct device *dev, uint8_t offset,
 	return 0;
 }
 
-static int bq274xx_get_device_type(const struct device *dev, uint16_t *val)
+static int command_reg_write(const struct device *dev, uint8_t command,
+				     uint8_t data)
 {
 	const struct bq274xx_config *config = dev->config;
 	uint8_t i2c_data, reg_addr;
@@ -136,7 +123,8 @@ static int bq274xx_get_device_type(const struct device *dev, uint16_t *val)
 	return 0;
 }
 
-static int bq274xx_gauge_configure(const struct device *dev)
+static int read_data_block(const struct device *dev, uint8_t offset,
+				   uint8_t *data, uint8_t bytes)
 {
 	const struct bq274xx_config *config = dev->config;
 	uint8_t i2c_data;
@@ -165,18 +153,18 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		return -EIO;
 	}
 
-static int bq274xx_get_device_type(const struct device *dev, uint16_t *val)
+static int get_device_type(const struct device *dev, uint16_t *val)
 {
 	int ret;
 
 	ret =
-		bq274xx_control_reg_write(dev, BQ274XX_CONTROL_DEVICE_TYPE);
+		control_reg_write(dev, BQ274XX_CONTROL_DEVICE_TYPE);
 	if (ret < 0) {
 		LOG_ERR("Unable to write control register");
 		return -EIO;
 	}
 
-	ret = bq274xx_command_reg_read(dev, BQ274XX_COMMAND_CONTROL_LOW,
+	ret = command_reg_read(dev, BQ274XX_COMMAND_CONTROL_LOW,
 					  val);
 
 	if (ret < 0) {
@@ -246,7 +234,13 @@ static int bq274xx_get_device_type(const struct device *dev, uint16_t *val)
 	return 0;
 }
 
-static int bq274xx_channel_get(const struct device *dev, enum sensor_channel chan,
+/**
+ * @brief sensor value get
+ *
+ * @return -ENOTSUP for unsupported channels
+ */
+static int channel_get(const struct device *dev,
+			       enum sensor_channel chan,
 			       struct sensor_value *val)
 {
 	struct bq274xx_data *data = dev->data;
@@ -323,13 +317,14 @@ static int bq274xx_channel_get(const struct device *dev, enum sensor_channel cha
 	return 0;
 }
 
-static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel chan)
+static int sample_fetch(const struct device *dev,
+				enum sensor_channel chan)
 {
 	struct bq274xx_data *data = dev->data;
 	int ret = 0;
 
 	if (!data->configured) {
-		ret = bq274xx_gauge_configure(dev);
+		ret = gauge_configure(dev);
 
 		if (ret < 0) {
 			return ret;
@@ -338,7 +333,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 
 	switch (chan) {
 	case SENSOR_CHAN_GAUGE_VOLTAGE:
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_VOLTAGE, &data->voltage);
 		if (ret < 0) {
 			LOG_ERR("Failed to read voltage");
@@ -347,7 +342,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_AVG_CURRENT:
-		ret = bq274xx_command_reg_read(dev,
+		ret = command_reg_read(dev,
 						  BQ274XX_COMMAND_AVG_CURRENT,
 						  &data->avg_current);
 		if (ret < 0) {
@@ -357,7 +352,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_TEMP:
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_INT_TEMP,
 			&data->internal_temperature);
 		if (ret < 0) {
@@ -367,7 +362,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_STDBY_CURRENT:
-		ret = bq274xx_command_reg_read(dev,
+		ret = command_reg_read(dev,
 						  BQ274XX_COMMAND_STDBY_CURRENT,
 						  &data->stdby_current);
 		if (ret < 0) {
@@ -377,7 +372,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_MAX_LOAD_CURRENT:
-		ret = bq274xx_command_reg_read(dev,
+		ret = command_reg_read(dev,
 						  BQ274XX_COMMAND_MAX_CURRENT,
 						  &data->max_load_current);
 		if (ret < 0) {
@@ -387,7 +382,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_STATE_OF_CHARGE:
-		ret = bq274xx_command_reg_read(dev, BQ274XX_COMMAND_SOC,
+		ret = command_reg_read(dev, BQ274XX_COMMAND_SOC,
 						  &data->state_of_charge);
 		if (ret < 0) {
 			LOG_ERR("Failed to read state of charge");
@@ -396,7 +391,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_FULL_CHARGE_CAPACITY:
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_FULL_CAPACITY,
 			&data->full_charge_capacity);
 		if (ret < 0) {
@@ -406,7 +401,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_REMAINING_CHARGE_CAPACITY:
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_REM_CAPACITY,
 			&data->remaining_charge_capacity);
 		if (ret < 0) {
@@ -416,7 +411,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_NOM_AVAIL_CAPACITY:
-		ret = bq274xx_command_reg_read(dev,
+		ret = command_reg_read(dev,
 						  BQ274XX_COMMAND_NOM_CAPACITY,
 						  &data->nom_avail_capacity);
 		if (ret < 0) {
@@ -427,7 +422,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 
 	case SENSOR_CHAN_GAUGE_FULL_AVAIL_CAPACITY:
 		ret =
-			bq274xx_command_reg_read(dev,
+			command_reg_read(dev,
 						 BQ274XX_COMMAND_AVAIL_CAPACITY,
 						 &data->full_avail_capacity);
 		if (ret < 0) {
@@ -437,7 +432,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_AVG_POWER:
-		ret = bq274xx_command_reg_read(dev,
+		ret = command_reg_read(dev,
 						  BQ274XX_COMMAND_AVG_POWER,
 						  &data->avg_power);
 		if (ret < 0) {
@@ -447,7 +442,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
 	}
 
 	case SENSOR_CHAN_GAUGE_STATE_OF_HEALTH:
-		ret = bq274xx_command_reg_read(dev, BQ274XX_COMMAND_SOH,
+		ret = command_reg_read(dev, BQ274XX_COMMAND_SOH,
 						  &data->state_of_health);
 
 		data->state_of_health = (data->state_of_health) & 0x00FF;
@@ -466,7 +461,7 @@ static int bq274xx_sample_fetch(const struct device *dev, enum sensor_channel ch
  *
  * @return 0 for success
  */
-static int bq274xx_gauge_init(const struct device *dev)
+static int gauge_init(const struct device *dev)
 {
 	const struct bq274xx_config *const config = dev->config;
 	int ret = 0;
@@ -484,7 +479,7 @@ static int bq274xx_gauge_init(const struct device *dev)
 	}
 #endif
 
-	ret = bq274xx_get_device_type(dev, &id);
+	ret = get_device_type(dev, &id);
 	if (ret < 0) {
 		LOG_ERR("Unable to get device ID");
 		return -EIO;
@@ -508,13 +503,13 @@ static int bq274xx_gauge_init(const struct device *dev)
 #endif
 
 	if (!config->lazy_loading) {
-		ret = bq274xx_gauge_configure(dev);
+		ret = gauge_configure(dev);
 	}
 
 	return ret;
 }
 
-static int bq274xx_gauge_configure(const struct device *dev)
+static int gauge_configure(const struct device *dev)
 {
 	const struct bq274xx_config *const config = dev->config;
 	struct bq274xx_data *data = dev->data;
@@ -532,20 +527,20 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		(uint16_t)config->design_capacity / (0.1 * config->taper_current);
 
 	/** Unseal the battery control register **/
-	ret = bq274xx_control_reg_write(dev, BQ274XX_UNSEAL_KEY);
+	ret = control_reg_write(dev, BQ274XX_UNSEAL_KEY);
 	if (ret < 0) {
 		LOG_ERR("Unable to unseal the battery");
 		return -EIO;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_UNSEAL_KEY);
+	ret = control_reg_write(dev, BQ274XX_UNSEAL_KEY);
 	if (ret < 0) {
 		LOG_ERR("Unable to unseal the battery");
 		return -EIO;
 	}
 
 	/* Send CFG_UPDATE */
-	ret = bq274xx_control_reg_write(dev,
+	ret = control_reg_write(dev,
 					   BQ274XX_CONTROL_SET_CFGUPDATE);
 	if (ret < 0) {
 		LOG_ERR("Unable to set CFGUpdate");
@@ -554,7 +549,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 
 	/** Step to place the Gauge into CONFIG UPDATE Mode **/
 	do {
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_FLAGS, &flags);
 		if (ret < 0) {
 			LOG_ERR("Unable to read flags");
@@ -567,7 +562,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 
 	} while (!(flags & 0x0010));
 
-	ret = bq274xx_command_reg_write(dev,
+	ret = command_reg_write(dev,
 					   BQ274XX_EXTENDED_DATA_CONTROL, 0x00);
 	if (ret < 0) {
 		LOG_ERR("Failed to enable block data memory");
@@ -575,7 +570,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	}
 
 	/* Access State subclass */
-	ret = bq274xx_command_reg_write(dev, BQ274XX_EXTENDED_DATA_CLASS,
+	ret = command_reg_write(dev, BQ274XX_EXTENDED_DATA_CLASS,
 					   0x52);
 	if (ret < 0) {
 		LOG_ERR("Failed to update state subclass");
@@ -583,7 +578,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	}
 
 	/* Write the block offset */
-	ret = bq274xx_command_reg_write(dev, BQ274XX_EXTENDED_DATA_BLOCK,
+	ret = command_reg_write(dev, BQ274XX_EXTENDED_DATA_BLOCK,
 					   0x00);
 	if (ret < 0) {
 		LOG_ERR("Failed to update block offset");
@@ -594,7 +589,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		block[i] = 0;
 	}
 
-	ret = bq274xx_read_data_block(dev, 0x00, block, 32);
+	ret = read_data_block(dev, 0x00, block, 32);
 	if (ret < 0) {
 		LOG_ERR("Unable to read block data");
 		return -EIO;
@@ -690,7 +685,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		block[i] = 0;
 	}
 
-	ret = bq274xx_read_data_block(dev, 0x00, block, 32);
+	ret = read_data_block(dev, 0x00, block, 32);
 	if (ret < 0) {
 		LOG_ERR("Unable to read block data");
 		return -EIO;
@@ -702,7 +697,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	}
 	checksum_new = 255 - checksum_new;
 
-	ret = bq274xx_command_reg_write(dev, BQ274XX_EXTENDED_CHECKSUM,
+	ret = command_reg_write(dev, BQ274XX_EXTENDED_CHECKSUM,
 					   checksum_new);
 	if (ret < 0) {
 		LOG_ERR("Failed to update new checksum");
@@ -717,13 +712,13 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		return -EIO;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_CONTROL_BAT_INSERT);
+	ret = control_reg_write(dev, BQ274XX_CONTROL_BAT_INSERT);
 	if (ret < 0) {
 		LOG_ERR("Unable to configure BAT Detect");
 		return -EIO;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_CONTROL_SOFT_RESET);
+	ret = control_reg_write(dev, BQ274XX_CONTROL_SOFT_RESET);
 	if (ret < 0) {
 		LOG_ERR("Failed to soft reset the gauge");
 		return -EIO;
@@ -732,7 +727,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	flags = 0;
 	/* Poll Flags   */
 	do {
-		ret = bq274xx_command_reg_read(
+		ret = command_reg_read(
 			dev, BQ274XX_COMMAND_FLAGS, &flags);
 		if (ret < 0) {
 			LOG_ERR("Unable to read flags");
@@ -745,7 +740,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	} while (flags & 0x0010);
 
 	/* Seal the gauge */
-	ret = bq274xx_control_reg_write(dev, BQ274XX_CONTROL_SEALED);
+	ret = control_reg_write(dev, BQ274XX_CONTROL_SEALED);
 	if (ret < 0) {
 		LOG_ERR("Failed to seal the gauge");
 		return -EIO;
@@ -757,36 +752,36 @@ static int bq274xx_gauge_configure(const struct device *dev)
 }
 
 #ifdef CONFIG_BQ274XX_PM
-static int bq274xx_enter_shutdown_mode(const struct device *dev)
+static int enter_shutdown_mode(const struct device *dev)
 {
 	int ret;
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_UNSEAL_KEY);
+	ret = control_reg_write(dev, BQ274XX_UNSEAL_KEY);
 	if (ret < 0) {
 		LOG_ERR("Unable to unseal the battery");
 		return ret;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_UNSEAL_KEY);
+	ret = control_reg_write(dev, BQ274XX_UNSEAL_KEY);
 	if (ret < 0) {
 		LOG_ERR("Unable to unseal the battery");
 		return ret;
 	}
 
-	ret = bq274xx_control_reg_write(dev,
+	ret = control_reg_write(dev,
 					   BQ274XX_CONTROL_SHUTDOWN_ENABLE);
 	if (ret < 0) {
 		LOG_ERR("Unable to enable shutdown mode");
 		return ret;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_CONTROL_SHUTDOWN);
+	ret = control_reg_write(dev, BQ274XX_CONTROL_SHUTDOWN);
 	if (ret < 0) {
 		LOG_ERR("Unable to enter shutdown mode");
 		return ret;
 	}
 
-	ret = bq274xx_control_reg_write(dev, BQ274XX_CONTROL_SEALED);
+	ret = control_reg_write(dev, BQ274XX_CONTROL_SEALED);
 	if (ret < 0) {
 		LOG_ERR("Failed to seal the gauge");
 		return ret;
@@ -795,7 +790,7 @@ static int bq274xx_enter_shutdown_mode(const struct device *dev)
 	return 0;
 }
 
-static int bq274xx_exit_shutdown_mode(const struct device *dev)
+static int exit_shutdown_mode(const struct device *dev)
 {
 	const struct bq274xx_config *const config = dev->config;
 	int ret = 0;
@@ -824,7 +819,7 @@ static int bq274xx_exit_shutdown_mode(const struct device *dev)
 	if (!config->lazy_loading) {
 		k_sleep(INIT_TIME);
 
-		ret = bq274xx_gauge_configure(dev);
+		ret = gauge_configure(dev);
 		if (ret < 0) {
 			LOG_ERR("Unable to configure bq274xx gauge");
 			return ret;
@@ -834,17 +829,17 @@ static int bq274xx_exit_shutdown_mode(const struct device *dev)
 	return 0;
 }
 
-static int bq274xx_pm_action(const struct device *dev,
+static int pm_action(const struct device *dev,
 			     enum pm_device_action action)
 {
 	int ret;
 
 	switch (action) {
 	case PM_DEVICE_ACTION_TURN_OFF:
-		ret = bq274xx_enter_shutdown_mode(dev);
+		ret = enter_shutdown_mode(dev);
 		break;
 	case PM_DEVICE_ACTION_RESUME:
-		ret = bq274xx_exit_shutdown_mode(dev);
+		ret = exit_shutdown_mode(dev);
 		break;
 	default:
 		ret = -ENOTSUP;
@@ -856,8 +851,8 @@ static int bq274xx_pm_action(const struct device *dev,
 #endif /* CONFIG_BQ274XX_PM */
 
 static const struct sensor_driver_api bq274xx_battery_driver_api = {
-	.sample_fetch = bq274xx_sample_fetch,
-	.channel_get = bq274xx_channel_get,
+	.sample_fetch = sample_fetch,
+	.channel_get = channel_get,
 #ifdef CONFIG_BQ274XX_TRIGGER
 	.trigger_set = bq274xx_trigger_set,
 #endif
@@ -866,12 +861,12 @@ static const struct sensor_driver_api bq274xx_battery_driver_api = {
 #if defined(CONFIG_BQ274XX_PM) || defined(CONFIG_BQ274XX_TRIGGER)
 #define BQ274XX_INT_CFG(index)							\
 	.int_gpios = GPIO_DT_SPEC_INST_GET(index, int_gpios),
-#define PM_BQ274XX_DT_INST_DEFINE(index, bq274xx_pm_action)			\
-	PM_DEVICE_DT_INST_DEFINE(index, bq274xx_pm_action)
+#define PM_BQ274XX_DT_INST_DEFINE(index, pm_action) \
+	PM_DEVICE_DT_INST_DEFINE(index, pm_action)
 #define PM_BQ274XX_DT_INST_GET(index) PM_DEVICE_DT_INST_GET(index)
 #else
 #define BQ274XX_INT_CFG(index)
-#define PM_BQ274XX_DT_INST_DEFINE(index, bq274xx_pm_action)
+#define PM_BQ274XX_DT_INST_DEFINE(index, pm_action)
 #define PM_BQ274XX_DT_INST_GET(index) NULL
 #endif
 
@@ -888,9 +883,9 @@ static const struct sensor_driver_api bq274xx_battery_driver_api = {
 		.lazy_loading = DT_INST_PROP(index, zephyr_lazy_load),		\
 	};									\
 										\
-	PM_BQ274XX_DT_INST_DEFINE(index, bq274xx_pm_action);			\
+	PM_BQ274XX_DT_INST_DEFINE(index, pm_action);			\
 										\
-	SENSOR_DEVICE_DT_INST_DEFINE(index, &bq274xx_gauge_init,		\
+	SENSOR_DEVICE_DT_INST_DEFINE(index, &gauge_init,		\
 			    PM_BQ274XX_DT_INST_GET(index),			\
 			    &bq274xx_driver_##index,				\
 			    &bq274xx_config_##index, POST_KERNEL,		\
