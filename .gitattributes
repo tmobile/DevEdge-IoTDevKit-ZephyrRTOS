@@ -209,6 +209,7 @@ subsys/net/lib/ping/Kconfig merge=ours
 subsys/net/lib/ping/ping.c merge=ours
 subsys/shell/modules/date_service.c merge=ours
 subsys/shell/shell_help.c merge=ours
+subsys/shell/shell_cmds.c merge=ours
 subsys/shell/shell_ops.c merge=ours
 tests/drivers/counter/counter_basic_api/boards/efm32pg_stk3402a.conf merge=ours
 tests/drivers/counter/counter_basic_api/boards/tmo_dev_edge.conf merge=ours
