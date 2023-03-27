@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include <zephyr/kernel.h>
 #include <zephyr/net/net_offload.h>
 #include <zephyr/net/socket_offload.h>
+#include <zephyr/net/offloaded_netdev.h>
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 #include "tls_internal.h"
 
@@ -5178,8 +5179,8 @@ static void murata_1sc_net_iface_init(struct net_if *iface)
 #endif
 }
 
-static struct net_if_api api_funcs = {
-	.init = murata_1sc_net_iface_init,
+static struct offloaded_if_api api_funcs = {
+	.iface_api.init = murata_1sc_net_iface_init,
 };
 
 /**
