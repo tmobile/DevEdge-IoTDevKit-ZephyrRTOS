@@ -19,7 +19,7 @@
 #include <zephyr/sys/util_macro.h>
 
 #include "assert.h"
-#include "ascs_help_utils.h"
+#include "ascs_internal.h"
 #include "bap_unicast_server.h"
 #include "bap_unicast_server_expects.h"
 #include "bap_stream.h"
@@ -72,8 +72,8 @@ static const struct bt_gatt_attr *ascs_get_attr(const struct bt_uuid *uuid, uint
 static void mock_init_rule_before(const struct ztest_unit_test *test, void *fixture)
 {
 	mock_bap_unicast_server_init();
-	ISO_FFF_FAKES_LIST(RESET_FAKE);
-	KERNEL_FFF_FAKES_LIST(RESET_FAKE);
+	mock_bt_iso_init();
+	mock_kernel_init();
 	PACS_FFF_FAKES_LIST(RESET_FAKE);
 	mock_bap_stream_init();
 	mock_bt_gatt_init();
@@ -82,6 +82,8 @@ static void mock_init_rule_before(const struct ztest_unit_test *test, void *fixt
 static void mock_destroy_rule_after(const struct ztest_unit_test *test, void *fixture)
 {
 	mock_bap_unicast_server_cleanup();
+	mock_bt_iso_cleanup();
+	mock_kernel_cleanup();
 	mock_bap_stream_cleanup();
 	mock_bt_gatt_cleanup();
 }
@@ -168,8 +170,6 @@ static void *ascs_ase_control_test_suite_setup(void)
 	fixture->ase_cp = ascs_get_attr(BT_UUID_ASCS_ASE_CP, 1);
 	fixture->ase_snk = ascs_get_attr(BT_UUID_ASCS_ASE_SNK, 1);
 
-	bt_bap_unicast_server_register_cb(&mock_bap_unicast_server_cb);
-
 	return fixture;
 }
 
@@ -180,18 +180,18 @@ static void ascs_ase_control_test_suite_before(void *f)
 	ARG_UNUSED(fixture);
 
 	bt_pacs_cap_foreach_fake.custom_fake = pacs_cap_foreach_custom_fake;
+
+	bt_bap_unicast_server_register_cb(&mock_bap_unicast_server_cb);
 }
 
 static void ascs_ase_control_test_suite_after(void *f)
 {
-	ascs_cleanup();
+	bt_bap_unicast_server_unregister_cb(&mock_bap_unicast_server_cb);
 }
 
 static void ascs_ase_control_test_suite_teardown(void *f)
 {
 	struct ascs_ase_control_test_suite_fixture *fixture = f;
-
-	bt_bap_unicast_server_unregister_cb(&mock_bap_unicast_server_cb);
 
 	free(fixture);
 }
@@ -737,4 +737,106 @@ ZTEST_F(ascs_ase_control_test_suite, test_sink_ase_control_release_from_qos_conf
 	ase_cp_write_release(fixture->ase_cp, &fixture->conn, &fixture->stream);
 	expect_bt_bap_unicast_server_cb_release_called_once(&fixture->stream);
 	expect_bt_bap_stream_ops_released_called_once(&fixture->stream);
+}
+
+ZTEST_F(ascs_ase_control_test_suite, test_sink_ase_control_streaming_from_enabling)
+{
+	struct bt_iso_chan *chan;
+	int err;
+
+	Z_TEST_SKIP_IFNDEF(CONFIG_BT_ASCS_ASE_SNK);
+
+	/* Preamble */
+	ase_cp_write_codec_config(fixture->ase_cp, &fixture->conn, &fixture->stream);
+	ase_cp_write_config_qos(fixture->ase_cp, &fixture->conn, &fixture->stream);
+	ase_cp_write_enable(fixture->ase_cp, &fixture->conn, &fixture->stream);
+
+	err = mock_bt_iso_accept(&fixture->conn, 0x01, 0x01, &chan);
+	zassert_equal(0, err, "Failed to connect iso: err %d", err);
+
+	err = bt_bap_stream_start(&fixture->stream);
+	zassert_equal(0, err, "Failed to start stream: err %d", err);
+
+	/* XXX: unicast_server_cb->start is not called for Sink ASE */
+	expect_bt_bap_stream_ops_started_called_once(&fixture->stream);
+}
+
+static void ascs_test_suite_after(void *f)
+{
+	bt_ascs_cleanup();
+}
+
+ZTEST_SUITE(ascs_test_suite, NULL, NULL, NULL, ascs_test_suite_after, NULL);
+
+ZTEST(ascs_test_suite, test_release_ase_on_callback_unregister)
+{
+	const struct bt_uuid *ase_uuid = COND_CODE_1(CONFIG_BT_ASCS_ASE_SNK,
+						     (BT_UUID_ASCS_ASE_SNK),
+						     (BT_UUID_ASCS_ASE_SRC));
+	const struct bt_gatt_attr *ase_cp;
+	const struct bt_gatt_attr *ase;
+	struct bt_bap_stream stream;
+	struct bt_conn conn;
+	const uint8_t expect_ase_state_idle[] = {
+		0x01,   /* ASE_ID */
+		0x00,   /* ASE_State = Idle */
+	};
+
+	ase_cp = ascs_get_attr(BT_UUID_ASCS_ASE_CP, 1);
+	zassert_not_null(ase_cp);
+
+	ase = ascs_get_attr(ase_uuid, 1);
+	zassert_not_null(ase);
+
+	conn_init(&conn);
+
+	bt_pacs_cap_foreach_fake.custom_fake = pacs_cap_foreach_custom_fake;
+
+	bt_bap_unicast_server_register_cb(&mock_bap_unicast_server_cb);
+
+	/* Set ASE to non-idle state */
+	ase_cp_write_codec_config(ase_cp, &conn, &stream);
+
+	/* Reset mock, as we expect ASE notification to be sent */
+	bt_gatt_notify_cb_reset();
+
+	/* Unregister the callbacks - whis will clean up the ASCS */
+	bt_bap_unicast_server_unregister_cb(&mock_bap_unicast_server_cb);
+
+	/* Expected to notify the upper layers */
+	expect_bt_bap_unicast_server_cb_release_called_once(&stream);
+	expect_bt_bap_stream_ops_released_called_once(&stream);
+
+	/* Expected to notify the client */
+	expect_bt_gatt_notify_cb_called_once(&conn, ase_uuid, ase, expect_ase_state_idle,
+					     sizeof(expect_ase_state_idle));
+}
+
+ZTEST(ascs_test_suite, test_abort_client_operation_if_callback_not_registered)
+{
+	const struct bt_gatt_attr *ase_cp;
+	struct bt_bap_stream stream;
+	struct bt_conn conn;
+	const uint8_t expect_ase_cp_unspecified_error[] = {
+		0x01,           /* Opcode */
+		0x01,           /* Number_of_ASEs */
+		0x01,           /* ASE_ID[0] */
+		0x0E,           /* Response_Code[0] = Unspecified Error */
+		0x00,           /* Reason[0] */
+	};
+
+	ase_cp = ascs_get_attr(BT_UUID_ASCS_ASE_CP, 1);
+	zassert_not_null(ase_cp);
+
+	conn_init(&conn);
+
+	bt_pacs_cap_foreach_fake.custom_fake = pacs_cap_foreach_custom_fake;
+
+	/* Set ASE to non-idle state */
+	ase_cp_write_codec_config(ase_cp, &conn, &stream);
+
+	/* Expected ASE Control Point notification with Unspecified Error was sent */
+	expect_bt_gatt_notify_cb_called_once(&conn, BT_UUID_ASCS_ASE_CP, ase_cp,
+					     expect_ase_cp_unspecified_error,
+					     sizeof(expect_ase_cp_unspecified_error));
 }
