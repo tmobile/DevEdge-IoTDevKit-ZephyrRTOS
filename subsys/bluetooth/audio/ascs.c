@@ -1131,26 +1131,17 @@ static ssize_t ascs_ase_read(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr, void *buf,
 			     uint16_t len, uint16_t offset)
 {
-	struct bt_ascs *ascs;
-	struct bt_ascs_ase *ase;
-	uint8_t ase_id;
+	uint8_t ase_id = POINTER_TO_UINT(BT_AUDIO_CHRC_USER_DATA(attr));
+	struct bt_ascs_ase *ase = NULL;
 
 	LOG_DBG("conn %p attr %p buf %p len %u offset %u", (void *)conn, attr, buf, len, offset);
 
-	if (!conn) {
-		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	/* The callback can be used locally to read the ASE_ID in which case conn won't be set. */
+	if (conn != NULL) {
+		struct bt_ascs *ascs = ascs_get(conn);
+
+		ase = ase_find(ascs, ase_id);
 	}
-
-	ascs = ascs_get(conn);
-
-	ase_id = POINTER_TO_UINT(BT_AUDIO_CHRC_USER_DATA(attr));
-
-	if (ase_id > ASE_COUNT) {
-		LOG_ERR("Unable to get ASE, id out of range");
-		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
-	}
-
-	ase = ase_find(ascs, ase_id);
 
 	/* If NULL, we haven't assigned an ASE, this also means that we are currently in IDLE */
 	if (!ase) {
