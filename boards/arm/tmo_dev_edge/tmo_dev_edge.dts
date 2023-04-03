@@ -104,13 +104,12 @@
 	};
 
 	adc:adc@40002000 {
-		compatible = "silabs,adc-gecko";
+		compatible = "silabs,gecko-adc";
 		status = "disabled";
 		reg = <0x40002000 0x400>;
 		frequency= <16000000>;
-		en-gpios = <&gpiok 0 GPIO_ACTIVE_HIGH>;
 		#io-channel-cells = <1>;
-		vref-mv = <3300>;
+		vref-mv = <2500>;
 	};
 };
 
@@ -406,7 +405,7 @@
 };
 
 &gpiok {
-	status = "okay";
+    status = "okay";
 };
 
 &wdog0 {
