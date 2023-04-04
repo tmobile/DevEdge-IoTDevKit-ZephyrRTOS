@@ -16,10 +16,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(clock_control_rcar);
 
-#define LOG_LEVEL CONFIG_CLOCK_CONTROL_LOG_LEVEL
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(clock_control_rcar);
-
 static void rcar_cpg_reset(uint32_t base_address, uint32_t reg, uint32_t bit)
 {
 	rcar_cpg_write(base_address, srcr[reg], BIT(bit));
@@ -109,6 +105,81 @@ static uint32_t rcar_cpg_get_divider(const struct device *dev, struct cpg_clk_in
 	}
 
 	reg_addr += DEVICE_MMIO_GET(dev);
+	reg_val = sys_read32(reg_addr);
+
+	if (data->get_div_helper) {
+		divider = data->get_div_helper(reg_val, clk_info->module);
+	}
+
+	if (!divider) {
+		return RCAR_CPG_NONE;
+	}
+
+	return divider;
+}
+
+static int rcar_cpg_update_out_freq(const struct device *dev, struct cpg_clk_info_table *clk_info)
+{
+	uint32_t divider = rcar_cpg_get_divider(dev, clk_info);
+
+	if (divider == RCAR_CPG_NONE) {
+		return -EINVAL;
+	}
+
+	clk_info->out_freq = clk_info->in_freq / divider;
+	return 0;
+}
+
+static int cmp_cpg_clk_info_table_items(const void *key, const void *element)
+{
+	const struct cpg_clk_info_table *e = element;
+	uint32_t module = (uintptr_t)key;
+
+	if (e->module == module) {
+		return 0;
+	} else if (e->module < module) {
+		return 1;
+	} else {
+		return -1;
+	}
+}
+
+struct cpg_clk_info_table *
+rcar_cpg_find_clk_info_by_module_id(const struct device *dev, uint32_t domain, uint32_t id)
+{
+	struct rcar_cpg_mssr_data *data = dev->data;
+	struct cpg_clk_info_table *item;
+	struct cpg_clk_info_table *table = data->clk_info_table[domain];
+	uint32_t table_size = data->clk_info_table_size[domain];
+	uintptr_t uintptr_id = id;
+
+	item = bsearch((void *)uintptr_id, table, table_size, sizeof(*item),
+		       cmp_cpg_clk_info_table_items);
+	if (!item) {
+		LOG_ERR("%s: can't find clk info (domain %u module %u)", dev->name, domain, id);
+	}
+
+	return item;
+}
+
+static uint32_t rcar_cpg_get_divider(const struct device *dev, struct cpg_clk_info_table *clk_info)
+{
+	mem_addr_t reg_addr;
+	mm_reg_t reg_val;
+	uint32_t divider = RCAR_CPG_NONE;
+	struct rcar_cpg_mssr_data *data = dev->data;
+
+	if (clk_info->domain == CPG_MOD) {
+		return 1;
+	}
+
+	reg_addr = clk_info->offset;
+	if (reg_addr == RCAR_CPG_NONE) {
+		/* if we don't have valid offset, in is equal to out */
+		return 1;
+	}
+
+	reg_addr += data->base_addr;
 	reg_val = sys_read32(reg_addr);
 
 	if (data->get_div_helper) {
@@ -317,10 +388,10 @@ int rcar_cpg_set_rate(const struct device *dev, clock_control_subsys_t sys,
 	ret = data->set_rate_helper(module, &divider, &div_mask);
 	if (!ret) {
 		int64_t out_rate;
-		uint32_t reg = sys_read32(clk_info->offset + DEVICE_MMIO_GET(dev));
+		uint32_t reg = sys_read32(clk_info->offset + data->base_addr);
 
 		reg &= ~div_mask;
-		rcar_cpg_write(DEVICE_MMIO_GET(dev), clk_info->offset, reg | divider);
+		rcar_cpg_write(data->base_addr, clk_info->offset, reg | divider);
 
 		clk_info->out_freq = RCAR_CPG_NONE;
 
