@@ -13,6 +13,8 @@
  * the iodev is a valid accessible k_object (if given) and
  * the buffer pointers are valid accessible memory by the calling
  * thread.
+ *
+ * Each op code that is acceptable from user mode must also be validated.
  */
 static inline bool rtio_vrfy_sqe(struct rtio_sqe *sqe)
 {
@@ -31,8 +33,16 @@ static inline bool rtio_vrfy_sqe(struct rtio_sqe *sqe)
 	case RTIO_OP_RX:
 		valid_sqe &= Z_SYSCALL_MEMORY(sqe->buf, sqe->buf_len, true);
 		break;
+	case RTIO_OP_TINY_TX:
+		break;
+	case RTIO_OP_TXRX:
+		valid_sqe &= Z_SYSCALL_MEMORY(sqe->tx_buf, sqe->txrx_buf_len, true);
+		valid_sqe &= Z_SYSCALL_MEMORY(sqe->rx_buf, sqe->txrx_buf_len, true);
+		break;
 	default:
-		/* RTIO OP must be known */
+		/* RTIO OP must be known and allowable from user mode
+		 * otherwise it is invalid
+		 */
 		valid_sqe = false;
 	}
 

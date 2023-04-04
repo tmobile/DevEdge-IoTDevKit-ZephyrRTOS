@@ -412,8 +412,8 @@ static void flag_ipi(void)
 
 #ifdef CONFIG_TIMESLICING
 
-static int slice_ticks;
-static int slice_max_prio;
+static int slice_ticks = (CONFIG_TIMESLICE_SIZE * Z_HZ_ticks + Z_HZ_ms - 1) / Z_HZ_ms;
+static int slice_max_prio = CONFIG_TIMESLICE_PRIORITY;
 static struct _timeout slice_timeouts[CONFIG_MP_MAX_NUM_CPUS];
 static bool slice_expired[CONFIG_MP_MAX_NUM_CPUS];
 
@@ -484,12 +484,6 @@ void k_sched_time_slice_set(int32_t slice, int prio)
 {
 	LOCKED(&sched_spinlock) {
 		slice_ticks = k_ms_to_ticks_ceil32(slice);
-		if (IS_ENABLED(CONFIG_TICKLESS_KERNEL) && slice > 0) {
-			/* It's not possible to reliably set a 1-tick
-			 * timeout if ticks aren't regular.
-			 */
-			slice_ticks = MAX(2, slice_ticks);
-		}
 		slice_max_prio = prio;
 		z_reset_time_slice(_current);
 	}
@@ -1306,18 +1300,11 @@ void init_ready_q(struct _ready_q *rq)
 void z_sched_init(void)
 {
 #ifdef CONFIG_SCHED_CPU_MASK_PIN_ONLY
-	unsigned int num_cpus = arch_num_cpus();
-
-	for (int i = 0; i < num_cpus; i++) {
+	for (int i = 0; i < CONFIG_MP_MAX_NUM_CPUS; i++) {
 		init_ready_q(&_kernel.cpus[i].ready_q);
 	}
 #else
 	init_ready_q(&_kernel.ready_q);
-#endif
-
-#ifdef CONFIG_TIMESLICING
-	k_sched_time_slice_set(CONFIG_TIMESLICE_SIZE,
-		CONFIG_TIMESLICE_PRIORITY);
 #endif
 }
 
