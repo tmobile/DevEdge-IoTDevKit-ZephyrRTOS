@@ -414,7 +414,7 @@ class TestPlan:
             for file in glob.glob(os.path.join(board_root, "*", "*", "*.yaml")):
                 try:
                     platform = Platform()
-                    logger.debug(f'parsing platform from: {file}')
+                    logger.debug(f'parsing platform from: {platform}')
                     platform.load(file)
                     if platform.name in [p.name for p in self.platforms]:
                         logger.error(f"Duplicate platform {platform.name} in {file}")
@@ -643,7 +643,7 @@ class TestPlan:
             # the default platforms list. Default platforms should always be
             # runnable.
             for p in _platforms:
-               if p.simulation and p.simulation_exec:
+                if p.simulation and p.simulation_exec:
                     if shutil.which(p.simulation_exec):
                         platforms.append(p)
                 else:
