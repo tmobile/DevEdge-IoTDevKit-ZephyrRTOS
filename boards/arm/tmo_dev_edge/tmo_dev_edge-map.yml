@@ -1,5 +1,5 @@
 - connected: true
-  id: 000900032606
+  id: 000900033954
   platform: tmo_dev_edge
   product: J-Link
   runner: jlink
