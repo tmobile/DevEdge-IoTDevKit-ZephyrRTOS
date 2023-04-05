@@ -533,6 +533,7 @@ class TestPlan:
                 testsuite = ts["name"]
 
                 platform = self.get_platform(ts["platform"])
+                print(f"Platform contents: {platform}")
                 if filter_platform and platform.name not in filter_platform:
                     continue
                 instance = TestInstance(self.testsuites[testsuite], platform, self.env.outdir)
