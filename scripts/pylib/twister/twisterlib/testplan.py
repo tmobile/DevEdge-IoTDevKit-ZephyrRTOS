@@ -642,13 +642,15 @@ class TestPlan:
             # the default platforms list. Default platforms should always be
             # runnable.
             for p in _platforms:
-                if p.simulation and p.simulation_exec:
+               if p.simulation and p.simulation_exec:
                     if shutil.which(p.simulation_exec):
                         platforms.append(p)
                 else:
                     platforms.append(p)
         else:
             platforms = self.platforms
+
+        logger.debug(f'supported platforms: {platforms}')
 
         platform_config = self.test_config.get('platforms', {})
         logger.info("Building initial testsuite list...")
