@@ -204,6 +204,7 @@ class TestPlan:
             self.load_from_file(last_run)
             self.selected_platforms = set(p.platform.name for p in self.instances.values())
         elif self.options.load_tests:
+            print(f'load_tests: {self.options.load_tests}')
             self.load_from_file(self.options.load_tests)
             self.selected_platforms = set(p.platform.name for p in self.instances.values())
         elif self.options.test_only:
