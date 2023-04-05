@@ -527,11 +527,13 @@ class TestPlan:
 
     def load_from_file(self, file, filter_platform=[]):
         with open(file, "r") as json_test_plan:
+            print(f'json load: {json_test_plan}')
             jtp = json.load(json_test_plan)
             instance_list = []
             for ts in jtp.get("testsuites", []):
                 logger.debug(f"loading {ts['name']}...")
                 testsuite = ts["name"]
+                print(f"loading {ts['name']}...")
 
                 platform = self.get_platform(ts["platform"])
                 print(f"Platform contents: {platform}")
