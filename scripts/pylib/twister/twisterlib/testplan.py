@@ -535,10 +535,9 @@ class TestPlan:
             for ts in jtp.get("testsuites", []):
                 logger.debug(f"loading {ts['name']}...")
                 testsuite = ts["name"]
-                print(f"loading {ts['name']}...")
 
                 platform = self.get_platform(ts["platform"])
-                print(f"Platform contents: {platform}")
+                logger.debug(f"Platform contents: {platform}")
                 if filter_platform and platform.name not in filter_platform:
                     continue
                 instance = TestInstance(self.testsuites[testsuite], platform, self.env.outdir)
