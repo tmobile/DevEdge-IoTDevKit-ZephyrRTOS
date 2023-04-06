@@ -203,6 +203,7 @@ class TestPlan:
         if self.options.only_failed:
             self.load_from_file(last_run)
             self.selected_platforms = set(p.platform.name for p in self.instances.values())
+            logger.debug(f'selected platforms: {self.selected_platforms}')
         elif self.options.load_tests:
             print(f'load_tests: {self.options.load_tests}')
             self.load_from_file(self.options.load_tests)
