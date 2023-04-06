@@ -572,6 +572,7 @@ class DeviceHandler(Handler):
                     logger.debug(stdout.decode(errors = "ignore"))
 
                     if proc.returncode != 0:
+                        logger.debug('Flash command failed with exit code: %s', proc.returncode)
                         self.instance.status = "error"
                         self.instance.reason = "Device issue (Flash error?)"
                         flash_error = True
@@ -590,6 +591,7 @@ class DeviceHandler(Handler):
                 dlog_fp.write(stderr.decode())
 
         except subprocess.CalledProcessError:
+            logger.debug('Failed to call process.')
             halt_monitor_evt.set()
             self.instance.status = "error"
             self.instance.reason = "Device issue (Flash error)"
