@@ -73,7 +73,9 @@ class TestInstance:
 
     def add_missing_case_status(self, status, reason=None):
         for case in self.testcases:
-            if not case.status:
+            if case.status == 'started':
+                case.status = "failed"
+            elif not case.status:
                 case.status = status
                 if reason:
                     case.reason = reason
@@ -129,7 +131,7 @@ class TestInstance:
             # command-line, then we need to run the test, not just build it.
             fixture = testsuite.harness_config.get('fixture')
             if fixture:
-                can_run = (fixture in fixtures)
+                can_run = fixture in fixtures
 
         return can_run
 
