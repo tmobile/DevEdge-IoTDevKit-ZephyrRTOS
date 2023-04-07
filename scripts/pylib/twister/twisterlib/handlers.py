@@ -569,7 +569,7 @@ class DeviceHandler(Handler):
                 try:
                     (stdout, stderr) = proc.communicate(timeout=60)
                     # ignore unencodable unicode chars
-                    logger.debug(stdout.decode(errors = "ignore"))
+                    logger.debug(stdout.decode())
 
                     if proc.returncode != 0:
                         logger.debug('Flash command failed with exit code: %s', proc.returncode)
