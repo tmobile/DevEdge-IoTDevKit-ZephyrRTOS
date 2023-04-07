@@ -1,0 +1,48 @@
+# SX9328 SAR proximity sensor configuration options
+
+# Copyright (c) 2023 T-Mobile USA, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig SX9328
+	bool "SX9328/SX9324 I2C SAR Proximity Chip"
+	default y
+	depends on DT_HAS_SEMTECH_SX9328_ENABLED
+	select I2C
+	help
+	  Enable driver for SX9328 or SX9324 I2C-based SAR proximity sensor.
+
+if SX9328
+
+choice
+	prompt "SX9328 trigger mode"
+	default SX9328_TRIGGER_GLOBAL_THREAD
+
+config SX9328_TRIGGER_NONE
+	bool "No trigger"
+
+config SX9328_TRIGGER_GLOBAL_THREAD
+	depends on GPIO
+	select SX9328_TRIGGER
+	bool "Use global thread"
+
+config SX9328_TRIGGER_OWN_THREAD
+	depends on GPIO
+	select SX9328_TRIGGER
+	bool "Use own thread"
+
+endchoice
+
+config SX9328_TRIGGER
+	bool
+
+config SX9328_THREAD_STACK_SIZE
+	int "Sensor delayed work thread stack size"
+	depends on SX9328_TRIGGER_OWN_THREAD
+	default 1024
+
+config SX9328_THREAD_PRIORITY
+	int "Thread priority"
+	depends on SX9328_TRIGGER_OWN_THREAD
+	default 10
+
+endif # SX9328
