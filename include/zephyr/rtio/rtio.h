@@ -38,6 +38,7 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,9 +51,6 @@ extern "C" {
  * @{
  * @}
  */
-
-
-struct rtio_iodev;
 
 /**
  * @brief RTIO API
@@ -120,6 +118,23 @@ struct rtio_iodev;
  * @}
  */
 
+/** @cond ignore */
+struct rtio;
+struct rtio_cqe;
+struct rtio_sqe;
+struct rtio_iodev;
+struct rtio_iodev_sqe;
+/** @endcond */
+
+/**
+ * @typedef rtio_callback_t
+ * @brief Callback signature for RTIO_OP_CALLBACK
+ * @param r RTIO context being used with the callback
+ * @param sqe Submission for the callback op
+ * @param arg0 Argument option as part of the sqe
+ */
+typedef void (*rtio_callback_t)(struct rtio *r, const struct rtio_sqe *sqe, void *arg0);
+
 /**
  * @brief A submission queue event
  */
@@ -133,8 +148,8 @@ struct rtio_sqe {
 	const struct rtio_iodev *iodev; /**< Device to operation on */
 
 	/**
-	 * User provided pointer to data which is returned upon operation
-	 * completion
+	 * User provided data which is returned upon operation
+	 * completion. Could be a pointer or integer.
 	 *
 	 * If unique identification of completions is desired this should be
 	 * unique as well.
@@ -142,13 +157,40 @@ struct rtio_sqe {
 	void *userdata;
 
 	union {
+
+		/** OP_TX, OP_RX */
 		struct {
 			uint32_t buf_len; /**< Length of buffer */
-
 			uint8_t *buf; /**< Buffer to use*/
 		};
+
+		/** OP_TINY_TX */
+		struct {
+			uint8_t tiny_buf_len; /**< Length of tiny buffer */
+			uint8_t tiny_buf[7]; /**< Tiny buffer */
+		};
+
+		/** OP_CALLBACK */
+		struct {
+			rtio_callback_t callback;
+			void *arg0; /**< Last argument given to callback */
+		};
+
+		/** OP_TXRX */
+		struct {
+			uint32_t txrx_buf_len;
+			uint8_t *tx_buf;
+			uint8_t *rx_buf;
+		};
+
 	};
 };
+
+/** @cond ignore */
+/* Ensure the rtio_sqe never grows beyond a common cacheline size of 64 bytes */
+BUILD_ASSERT(sizeof(struct rtio_sqe) <= 64);
+/** @endcond */
+
 
 /**
  * @brief Submission queue
@@ -158,7 +200,7 @@ struct rtio_sqe {
  */
 struct rtio_sq {
 	struct rtio_spsc _spsc;
-	struct rtio_sqe buffer[];
+	struct rtio_sqe *const buffer;
 };
 
 /**
@@ -177,11 +219,9 @@ struct rtio_cqe {
  */
 struct rtio_cq {
 	struct rtio_spsc _spsc;
-	struct rtio_cqe buffer[];
+	struct rtio_cqe *const buffer;
 };
 
-struct rtio;
-struct rtio_iodev_sqe;
 
 struct rtio_executor_api {
 	/**
@@ -321,10 +361,20 @@ struct rtio_iodev {
 #define RTIO_OP_NOP 0
 
 /** An operation that receives (reads) */
-#define RTIO_OP_RX 1
+#define RTIO_OP_RX (RTIO_OP_NOP+1)
 
 /** An operation that transmits (writes) */
-#define RTIO_OP_TX 2
+#define RTIO_OP_TX (RTIO_OP_RX+1)
+
+/** An operation that transmits tiny writes by copying the data to write */
+#define RTIO_OP_TINY_TX (RTIO_OP_TX+1)
+
+/** An operation that calls a given function (callback) */
+#define RTIO_OP_CALLBACK (RTIO_OP_TINY_TX+1)
+
+/** An operation that transceives (reads and writes simultaneously) */
+#define RTIO_OP_TXRX (RTIO_OP_CALLBACK+1)
+
 
 /**
  * @brief Prepare a nop (no op) submission
@@ -378,6 +428,77 @@ static inline void rtio_sqe_prep_write(struct rtio_sqe *sqe,
 }
 
 /**
+ * @brief Prepare a tiny write op submission
+ *
+ * Unlike the normal write operation where the source buffer must outlive the call
+ * the tiny write data in this case is copied to the sqe. It must be tiny to fit
+ * within the specified size of a rtio_sqe.
+ *
+ * This is useful in many scenarios with RTL logic where a write of the register to
+ * subsequently read must be done.
+ */
+static inline void rtio_sqe_prep_tiny_write(struct rtio_sqe *sqe,
+					    const struct rtio_iodev *iodev,
+					    int8_t prio,
+					    const uint8_t *tiny_write_data,
+					    uint8_t tiny_write_len,
+					    void *userdata)
+{
+	__ASSERT_NO_MSG(tiny_write_len <= sizeof(sqe->tiny_buf));
+
+	sqe->op = RTIO_OP_TINY_TX;
+	sqe->prio = prio;
+	sqe->flags = 0;
+	sqe->iodev = iodev;
+	sqe->tiny_buf_len = tiny_write_len;
+	memcpy(sqe->tiny_buf, tiny_write_data, tiny_write_len);
+	sqe->userdata = userdata;
+}
+
+/**
+ * @brief Prepare a callback op submission
+ *
+ * A somewhat special operation in that it may only be done in kernel mode.
+ *
+ * Used where general purpose logic is required in a queue of io operations to do
+ * transforms or logic.
+ */
+static inline void rtio_sqe_prep_callback(struct rtio_sqe *sqe,
+					  rtio_callback_t callback,
+					  void *arg0,
+					  void *userdata)
+{
+	sqe->op = RTIO_OP_CALLBACK;
+	sqe->prio = 0;
+	sqe->flags = 0;
+	sqe->iodev = NULL;
+	sqe->callback = callback;
+	sqe->arg0 = arg0;
+	sqe->userdata = userdata;
+}
+
+/**
+ * @brief Prepare a transceive op submission
+ */
+static inline void rtio_sqe_prep_transceive(struct rtio_sqe *sqe,
+					    const struct rtio_iodev *iodev,
+					    int8_t prio,
+					    uint8_t *tx_buf,
+					    uint8_t *rx_buf,
+					    uint32_t buf_len,
+					    void *userdata)
+{
+	sqe->op = RTIO_OP_TXRX;
+	sqe->prio = prio;
+	sqe->flags = 0;
+	sqe->iodev = iodev;
+	sqe->txrx_buf_len = buf_len;
+	sqe->tx_buf = tx_buf;
+	sqe->rx_buf = rx_buf;
+	sqe->userdata = userdata;
+}
+
+/**
  * @brief Statically define and initialize a fixed length submission queue.
  *
  * @param name Name of the submission queue.
@@ -417,21 +538,21 @@ static inline void rtio_sqe_prep_write(struct rtio_sqe *sqe,
  * @param sq_sz Size of the submission queue, must be power of 2
  * @param cq_sz Size of the completion queue, must be power of 2
  */
-#define RTIO_DEFINE(name, exec, sq_sz, cq_sz)	\
-	IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM,							   \
-		   (static K_SEM_DEFINE(_submit_sem_##name, 0, K_SEM_MAX_LIMIT)))		   \
-	IF_ENABLED(CONFIG_RTIO_CONSUME_SEM,							   \
-		   (static K_SEM_DEFINE(_consume_sem_##name, 0, K_SEM_MAX_LIMIT)))		   \
-	static RTIO_SQ_DEFINE(_sq_##name, sq_sz);						   \
-	static RTIO_CQ_DEFINE(_cq_##name, cq_sz);						   \
-	STRUCT_SECTION_ITERABLE(rtio, name) = {							   \
-		.executor = (exec),                                                                \
-		.xcqcnt = ATOMIC_INIT(0),                                                          \
-		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_sem = &_submit_sem_##name,))	   \
-		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_count = 0,))			   \
-		IF_ENABLED(CONFIG_RTIO_CONSUME_SEM, (.consume_sem = &_consume_sem_##name,))	   \
-		.sq = (struct rtio_sq *const)&_sq_##name,					   \
-		.cq = (struct rtio_cq *const)&_cq_##name,                                          \
+#define RTIO_DEFINE(name, exec, sq_sz, cq_sz)							\
+	IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM,							\
+		   (static K_SEM_DEFINE(_submit_sem_##name, 0, K_SEM_MAX_LIMIT)))		\
+	IF_ENABLED(CONFIG_RTIO_CONSUME_SEM,							\
+		   (static K_SEM_DEFINE(_consume_sem_##name, 0, K_SEM_MAX_LIMIT)))		\
+	RTIO_SQ_DEFINE(_sq_##name, sq_sz);							\
+	RTIO_CQ_DEFINE(_cq_##name, cq_sz);							\
+	STRUCT_SECTION_ITERABLE(rtio, name) = {							\
+		.executor = (exec),								\
+		.xcqcnt = ATOMIC_INIT(0),							\
+		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_sem = &_submit_sem_##name,))	\
+		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_count = 0,))			\
+		IF_ENABLED(CONFIG_RTIO_CONSUME_SEM, (.consume_sem = &_consume_sem_##name,))	\
+		.sq = (struct rtio_sq *const)&_sq_##name,					\
+		.cq = (struct rtio_cq *const)&_cq_##name,					\
 	};
 
 /**
@@ -554,6 +675,16 @@ static inline struct rtio_cqe *rtio_cqe_consume_block(struct rtio *r)
 #endif
 
 	return cqe;
+}
+
+/**
+ * @brief Release consumed completion queue event
+ *
+ * @param r RTIO context
+ */
+static inline void rtio_cqe_release(struct rtio *r)
+{
+	rtio_spsc_release(r->cq);
 }
 
 /**

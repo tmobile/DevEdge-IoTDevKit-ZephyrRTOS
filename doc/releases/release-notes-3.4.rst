@@ -217,6 +217,8 @@ Boards & SoC Support
 
 * Removed support for these RISC-V boards:
 
+  * BeagleV Starlight JH7100
+
 * Removed support for these X86 boards:
 
 * Removed support for these Xtensa boards:
@@ -237,6 +239,10 @@ Build system and infrastructure
 * Fixed an issue whereby if no prj.conf file was present then board
   configuration files would not be included by emitting a fatal error. As a
   result, prj.conf files are now mandatory in projects.
+
+* Introduced support for extending/replacing the signing mechanism in zephyr,
+  see :ref:`West extending signing <west-extending-signing>` for further
+  details.
 
 Drivers and Sensors
 *******************
@@ -375,12 +381,38 @@ Libraries / Subsystems
 * File systems
 
   * Added :kconfig:option:`CONFIG_FS_FATFS_REENTRANT` to enable the FAT FS reentrant option.
+  * With LittleFS as backend, :c:func:`fs_mount` return code was corrected to ``EFAULT`` when
+    called with ``FS_MOUNT_FLAG_NO_FORMAT`` and the designated LittleFS area could not be
+    mounted because it has not yet been mounted or it required reformatting.
+
+* Management
+
+  * Added optional input expiration to shell MCUmgr transport, this allows
+    returning the shell to normal operation if a complete MCUmgr packet is not
+    received in a specific duration. Can be enabled with
+    :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_SHELL_INPUT_TIMEOUT` and timeout
+    set with
+    :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_SHELL_INPUT_TIMEOUT_TIME`.
+
+  * MCUmgr fs_mgmt upload and download now caches the file handle to improve
+    throughput when transferring data, the file is no longer opened and closed
+    for each part of a transfer. In addition, new functionality has been added
+    that will allow closing file handles of uploaded/downloaded files if they
+    are idle for a period of time, the timeout is set with
+    :kconfig:option:`MCUMGR_GRP_FS_FILE_AUTOMATIC_IDLE_CLOSE_TIME`. There is a
+    new command that can be used to close open file handles which can be used
+    after a file upload is complete to ensure that the file handle is closed
+    correctly, allowing other transports or other parts of the application
+    code to use it.
 
 HALs
 ****
 
 MCUboot
 *******
+
+* Added :kconfig:option:`CONFIG_MCUBOOT_CMAKE_WEST_SIGN_PARAMS` that allows to pass arguments to
+  west sign when invoked from cmake.
 
 Storage
 *******

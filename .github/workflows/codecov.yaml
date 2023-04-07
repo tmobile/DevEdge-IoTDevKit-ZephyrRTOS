@@ -1,9 +1,5 @@
 name: Code Coverage with codecov
 
-on:
-  schedule:
-    - cron: '25 */3 * * 1-5'
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true

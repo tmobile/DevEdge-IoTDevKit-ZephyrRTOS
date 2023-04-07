@@ -258,5 +258,42 @@
 			reg = <0x6003507c 0x4>;
 			status = "disabled";
 		};
+
+		ledc0: ledc@60019000 {
+			compatible = "espressif,esp32-ledc";
+			#pwm-cells = <3>;
+			reg = <0x60019000 DT_SIZE_K(4)>;
+			clocks = <&rtc ESP32_LEDC_MODULE>;
+			status = "disabled";
+		};
+
+		mcpwm0: mcpwm@6001e000 {
+			compatible = "espressif,esp32-mcpwm";
+			reg = <0x6001e000 DT_SIZE_K(4)>;
+			interrupts = <PWM0_INTR_SOURCE>;
+			interrupt-parent = <&intc>;
+			clocks = <&rtc ESP32_PWM0_MODULE>;
+			#pwm-cells = <3>;
+			status = "disabled";
+		};
+
+		mcpwm1: mcpwm@6002c000 {
+			compatible = "espressif,esp32-mcpwm";
+			reg = <0x6002c000 DT_SIZE_K(4)>;
+			interrupts = <PWM1_INTR_SOURCE>;
+			interrupt-parent = <&intc>;
+			clocks = <&rtc ESP32_PWM1_MODULE>;
+			#pwm-cells = <3>;
+			status = "disabled";
+		};
+
+		pcnt: pcnt@60017000 {
+			compatible = "espressif,esp32-pcnt";
+			reg = <0x60017000 DT_SIZE_K(4)>;
+			interrupts = <PCNT_INTR_SOURCE>;
+			interrupt-parent = <&intc>;
+			clocks = <&rtc ESP32_PCNT_MODULE>;
+			status = "disabled";
+		};
 	};
 };

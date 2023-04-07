@@ -825,15 +825,6 @@ hardware map::
 
  - connected: true
    id: None
-   platform: intel_adsp_cavs18
-   product: None
-   runner: intel_adsp
-   serial_pty: path/to/script.py
-   runner_params:
-     - --remote-host=remote_host_ip_addr
-     - --key=/path/to/key.pem
- - connected: true
-   id: None
    platform: intel_adsp_cavs25
    product: None
    runner: intel_adsp
@@ -855,7 +846,7 @@ work. It is equivalent to following west and twister commands.
 
          west flash --remote-host remote_host_ip_addr --key /path/to/key.pem
 
-         twister -p intel_adsp_cavs18 --device-testing --device-serial-pty script.py
+         twister -p intel_adsp_cavs25 --device-testing --device-serial-pty script.py
          --west-flash="--remote-host=remote_host_ip_addr,--key=/path/to/key.pem"
 
    .. group-tab:: Windows
@@ -1074,6 +1065,53 @@ And example test level configuration::
 	      - kernel.timer.behavior
 	      - arch.interrupt
 	      - boards.*
+
+
+Combined configuration
+======================
+
+To mix the Platform and level confgiuration, you can take an example as below:
+
+And example platforms plus level configuration::
+
+	platforms:
+	  override_default_platforms: true
+	  default_platforms:
+	    - frdm_k64f
+	levels:
+	  - name: smoke
+	    description: >
+	        A plan to be used verifying basic zephyr features.
+	  - name: unit
+	    description: >
+	        A plan to be used verifying unit test.
+	  - name: integration
+	    description: >
+	        A plan to be used verifying integration.
+	  - name: acceptance
+	    description: >
+	        A plan to be used verifying acceptance.
+	  - name: system
+	    description: >
+	        A plan to be used verifying system.
+	  - name: regression
+	    description: >
+	        A plan to be used verifying regression.
+
+
+To run with above test_config.yaml file, only default_paltforms with given test level
+test cases will run.
+
+.. tabs::
+
+   .. group-tab:: Linux
+
+      .. code-block:: bash
+
+         scripts/twister --test-config=<path to>/test_config.yaml
+          -T tests --level="smoke"
+
+
 
 Running in Tests in Random Order
 ********************************

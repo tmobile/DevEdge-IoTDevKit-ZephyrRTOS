@@ -3,8 +3,9 @@
 
 if INPUT
 
-menu "Input Drivers"
+menu "Input drivers"
 
+source "drivers/input/Kconfig.ft5336"
 source "drivers/input/Kconfig.gpio_keys"
 
 endmenu # Input Drivers

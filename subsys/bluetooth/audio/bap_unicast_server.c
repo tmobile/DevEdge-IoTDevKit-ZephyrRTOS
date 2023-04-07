@@ -19,10 +19,12 @@
 
 LOG_MODULE_REGISTER(bt_bap_unicast_server, CONFIG_BT_BAP_UNICAST_SERVER_LOG_LEVEL);
 
-const struct bt_bap_unicast_server_cb *unicast_server_cb;
+static const struct bt_bap_unicast_server_cb *unicast_server_cb;
 
 int bt_bap_unicast_server_register_cb(const struct bt_bap_unicast_server_cb *cb)
 {
+	int err;
+
 	CHECKIF(cb == NULL) {
 		LOG_DBG("cb is NULL");
 		return -EINVAL;
@@ -31,6 +33,11 @@ int bt_bap_unicast_server_register_cb(const struct bt_bap_unicast_server_cb *cb)
 	if (unicast_server_cb != NULL) {
 		LOG_DBG("callback structure already registered");
 		return -EALREADY;
+	}
+
+	err = bt_ascs_init(cb);
+	if (err != 0) {
+		return err;
 	}
 
 	unicast_server_cb = cb;
@@ -50,6 +57,7 @@ int bt_bap_unicast_server_unregister_cb(const struct bt_bap_unicast_server_cb *c
 		return -EINVAL;
 	}
 
+	bt_ascs_cleanup();
 	unicast_server_cb = NULL;
 
 	return 0;

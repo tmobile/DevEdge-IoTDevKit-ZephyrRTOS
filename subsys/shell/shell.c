@@ -385,8 +385,8 @@ static void autocomplete(const struct shell *shell,
 	}
 
 	/* Next character in the buffer is not 'space'. */
-	if (!isspace((int) shell->ctx->cmd_buff[
-					shell->ctx->cmd_buff_pos])) {
+	if (isspace((int) shell->ctx->cmd_buff[
+					shell->ctx->cmd_buff_pos]) == 0) {
 		if (z_flag_insert_mode_get(shell)) {
 			z_flag_insert_mode_set(shell, false);
 			z_shell_op_char_insert(shell, ' ');
@@ -969,7 +969,9 @@ static void state_collect(const struct shell *shell)
 			(void)shell->iface->api->read(shell->iface, buf,
 							sizeof(buf), &count);
 			if (count) {
+				z_flag_cmd_ctx_set(shell, true);
 				bypass(shell, buf, count);
+				z_flag_cmd_ctx_set(shell, false);
 				/* Check if bypass mode ended. */
 				if (!(volatile shell_bypass_cb_t *)shell->ctx->bypass) {
 					state_set(shell, SHELL_STATE_ACTIVE);
