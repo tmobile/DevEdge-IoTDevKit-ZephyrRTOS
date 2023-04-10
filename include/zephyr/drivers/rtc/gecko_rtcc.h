@@ -151,7 +151,7 @@ extern "C" {
 
 /**
  * @brief Gecko RTCC Driver-Specific API
- * @defgroup rtc_interface Real Time Clock interfaces
+ * @defgroup rtc_interface RTC Interface
  * @ingroup io_interfaces
  * @{
  */
