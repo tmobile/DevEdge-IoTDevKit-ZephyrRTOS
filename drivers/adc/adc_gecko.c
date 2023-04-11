@@ -355,7 +355,7 @@ static int adc_gecko_init(const struct device *dev)
 	ADC_Init(config->base, &init);
 
 	/* Enable interrupt for single conversion */
-    	ADC_IntEnable(ADC0, ADC_IF_SINGLE);
+	ADC_IntEnable(ADC0, ADC_IF_SINGLE);
 
 	adc_context_unlock_unconditionally(&data->ctx);
 	return 0;
