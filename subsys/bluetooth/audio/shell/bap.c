@@ -27,6 +27,7 @@
 #include <zephyr/bluetooth/audio/pacs.h>
 
 #include "shell/bt.h"
+#include "audio.h"
 
 #define LOCATION BT_AUDIO_LOCATION_FRONT_LEFT
 #define CONTEXT BT_AUDIO_CONTEXT_TYPE_CONVERSATIONAL | BT_AUDIO_CONTEXT_TYPE_MEDIA
@@ -1718,7 +1719,7 @@ static struct bt_bap_broadcast_sink_cb sink_cbs = {
 };
 #endif /* CONFIG_BT_BAP_BROADCAST_SINK */
 
-#if defined(CONFIG_BT_BAP_UNICAST) || defined(CONFIG_BT_BAP_BROADCAST_SINK)
+#if defined(CONFIG_BT_AUDIO_RX)
 static void audio_recv(struct bt_bap_stream *stream,
 		       const struct bt_iso_recv_info *info,
 		       struct net_buf *buf)
@@ -1747,7 +1748,7 @@ static void audio_recv(struct bt_bap_stream *stream,
 
 	rx_cnt++;
 }
-#endif /* CONFIG_BT_BAP_UNICAST || CONFIG_BT_BAP_BROADCAST_SINK */
+#endif /* CONFIG_BT_AUDIO_RX */
 
 static void stream_enabled_cb(struct bt_bap_stream *stream)
 {
@@ -1859,9 +1860,9 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 #endif /* CONFIG_BT_BAP_UNICAST */
 
 static struct bt_bap_stream_ops stream_ops = {
-#if defined(CONFIG_BT_BAP_UNICAST) || defined(CONFIG_BT_BAP_BROADCAST_SINK)
+#if defined(CONFIG_BT_AUDIO_RX)
 	.recv = audio_recv,
-#endif /* CONFIG_BT_BAP_UNICAST || CONFIG_BT_BAP_BROADCAST_SINK */
+#endif /* CONFIG_BT_AUDIO_RX */
 #if defined(CONFIG_BT_BAP_UNICAST)
 	.released = stream_released_cb,
 	.enabled = stream_enabled_cb,
@@ -2620,19 +2621,12 @@ static ssize_t connectable_ad_data_add(struct bt_data *data_array,
 	}
 
 	if (IS_ENABLED(CONFIG_BT_CAP_ACCEPTOR)) {
-		static const uint8_t ad_cap_announcement[3] = {
-			BT_UUID_16_ENCODE(BT_UUID_CAS_VAL),
-			BT_AUDIO_UNICAST_ANNOUNCEMENT_TARGETED,
-		};
-
-		__ASSERT(data_array_size > ad_len, "No space for AD_CAP_ANNOUNCEMENT");
-		data_array[ad_len].type = BT_DATA_SVC_DATA16;
-		data_array[ad_len].data_len = ARRAY_SIZE(ad_cap_announcement);
-		data_array[ad_len].data = &ad_cap_announcement[0];
-		ad_len++;
+		ad_len += cap_acceptor_ad_data_add(data_array, data_array_size - ad_len, true);
 	}
 
 	if (ARRAY_SIZE(ad_ext_uuid16) > 0) {
+		size_t uuid16_size;
+
 		if (data_array_size <= ad_len) {
 			shell_warn(ctx_shell, "No space for AD_UUID16");
 			return ad_len;
@@ -2646,10 +2640,13 @@ static ssize_t connectable_ad_data_add(struct bt_data *data_array,
 			 * Service UUID in the Service UUID AD type field of the advertising data
 			 * or scan response.
 			 */
-			data_array[ad_len].data_len = ARRAY_SIZE(ad_ext_uuid16) - BT_UUID_SIZE_16;
+			uuid16_size = ARRAY_SIZE(ad_ext_uuid16) - BT_UUID_SIZE_16;
 		} else {
-			data_array[ad_len].data_len = ARRAY_SIZE(ad_ext_uuid16);
+			uuid16_size = ARRAY_SIZE(ad_ext_uuid16);
 		}
+
+		/* We can maximum advertise 127 16-bit UUIDs = 254 octets */
+		data_array[ad_len].data_len = MIN(uuid16_size, 254);
 
 		data_array[ad_len].data = &ad_ext_uuid16[0];
 		ad_len++;

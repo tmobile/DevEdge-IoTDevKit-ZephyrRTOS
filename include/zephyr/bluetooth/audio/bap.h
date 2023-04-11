@@ -9,9 +9,6 @@
 
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_AUDIO_BAP_
 #define ZEPHYR_INCLUDE_BLUETOOTH_AUDIO_BAP_
-#include <zephyr/types.h>
-#include <zephyr/bluetooth/conn.h>
-#include <zephyr/bluetooth/audio/audio.h>
 
 /**
  * @brief Bluetooth Basic Audio Profile (BAP)
@@ -19,6 +16,9 @@
  * @ingroup bluetooth
  * @{
  */
+
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/audio/audio.h>
 
 #if defined(CONFIG_BT_BAP_SCAN_DELEGATOR)
 #define BT_BAP_SCAN_DELEGATOR_MAX_METADATA_LEN CONFIG_BT_BAP_SCAN_DELEGATOR_MAX_METADATA_LEN
@@ -406,7 +406,7 @@ struct bt_bap_stream_ops {
 	 */
 	void (*stopped)(struct bt_bap_stream *stream, uint8_t reason);
 
-#if defined(CONFIG_BT_BAP_UNICAST) || defined(CONFIG_BT_BAP_BROADCAST_SINK)
+#if defined(CONFIG_BT_AUDIO_RX)
 	/**
 	 * @brief Stream audio HCI receive callback.
 	 *
@@ -420,9 +420,9 @@ struct bt_bap_stream_ops {
 	 */
 	void (*recv)(struct bt_bap_stream *stream, const struct bt_iso_recv_info *info,
 		     struct net_buf *buf);
-#endif /* CONFIG_BT_BAP_UNICAST || CONFIG_BT_BAP_BROADCAST_SINK */
+#endif /* CONFIG_BT_AUDIO_RX */
 
-#if defined(CONFIG_BT_BAP_UNICAST) || defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
+#if defined(CONFIG_BT_AUDIO_TX)
 	/**
 	 * @brief Stream audio HCI sent callback
 	 *
@@ -434,7 +434,7 @@ struct bt_bap_stream_ops {
 	 * @param chan The channel which has sent data.
 	 */
 	void (*sent)(struct bt_bap_stream *stream);
-#endif /* CONFIG_BT_BAP_UNICAST || CONFIG_BT_BAP_BROADCAST_SOURCE */
+#endif /* CONFIG_BT_AUDIO_TX */
 };
 
 /**
@@ -1163,8 +1163,15 @@ struct bt_bap_base_subgroup {
 };
 
 struct bt_bap_base {
+	/** @brief QoS Presentation Delay in microseconds
+	 *
+	 *  Value range 0 to @ref BT_AUDIO_PD_MAX.
+	 */
+	uint32_t pd;
+
 	/* Number of subgroups in the BASE */
 	size_t subgroup_count;
+
 	/* Array of subgroups in the BASE */
 	struct bt_bap_base_subgroup subgroups[BROADCAST_SNK_SUBGROUP_CNT];
 };

@@ -603,6 +603,7 @@ flagged.
                               # visible to compliance.
         "BOOT_UPGRADE_ONLY", # Used in example adjusting MCUboot config, but
                              # symbol is defined in MCUboot itself.
+        "BOOT_SERIAL_IMG_GRP_HASH", # Used in documentation
         "CDC_ACM_PORT_NAME_",
         "CLOCK_STM32_SYSCLK_SRC_",
         "CMU",
@@ -622,8 +623,13 @@ flagged.
         "FOO_SETTING_1",
         "FOO_SETTING_2",
         "LSM6DSO_INT_PIN",
+        "LLVM_USE_LD",   # Both LLVM_USE_* are in cmake/toolchain/llvm/Kconfig
+        "LLVM_USE_LLD",  # which are only included if LLVM is selected but
+                         # not other toolchains. Compliance check would complain,
+                         # for example, if you are using GCC.
         "MCUBOOT_LOG_LEVEL_WRN",        # Used in example adjusting MCUboot
                                         # config,
+        "MCUBOOT_LOG_LEVEL_INF",
         "MCUBOOT_DOWNGRADE_PREVENTION", # but symbols are defined in MCUboot
                                         # itself.
         "MISSING",

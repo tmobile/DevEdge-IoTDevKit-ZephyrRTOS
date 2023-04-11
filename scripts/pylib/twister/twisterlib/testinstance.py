@@ -73,7 +73,9 @@ class TestInstance:
 
     def add_missing_case_status(self, status, reason=None):
         for case in self.testcases:
-            if not case.status:
+            if case.status == 'started':
+                case.status = "failed"
+            elif not case.status:
                 case.status = status
                 if reason:
                     case.reason = reason
@@ -129,7 +131,7 @@ class TestInstance:
             # command-line, then we need to run the test, not just build it.
             fixture = testsuite.harness_config.get('fixture')
             if fixture:
-                can_run = (fixture in fixtures)
+                can_run = fixture in fixtures
 
         return can_run
 
@@ -271,7 +273,7 @@ class TestInstance:
         fns = [x for x in fns if '_pre' not in os.path.split(x)[-1]]
         # EFI elf files
         fns = [x for x in fns if 'zefi' not in os.path.split(x)[-1]]
-        if len(fns) != 1:
+        if len(fns) != 1 and self.platform.type != 'native':
             raise BuildError("Missing/multiple output ELF binary")
         return fns[0]
 

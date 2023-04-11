@@ -112,6 +112,23 @@ Changes in this release
   on the stack. Applications that allocate a sensor trigger on the stack need
   to be updated.
 
+* Converted few drivers to the :ref:`input` subsystem.
+
+  * ``gpio_keys``: moved out of ``gpio``, replaced the custom API to use input
+    events instead, the :dtcompatible:`zephyr,gpio-keys` binding is unchanged
+    but now requires ``zephyr,code`` to be set.
+  * ``ft5336``: moved from :ref:`kscan_api` to :ref:`input`, renamed the Kconfig
+    options from ``CONFIG_KSCAN_FT5336``, ``CONFIG_KSCAN_FT5336_PERIOD`` and
+    ``KSCAN_FT5336_INTERRUPT`` to :kconfig:option:`CONFIG_INPUT_FT5336`,
+    :kconfig:option:`CONFIG_INPUT_FT5336_PERIOD` and
+    :kconfig:option:`CONFIG_INPUT_FT5336_INTERRUPT`.
+  * ``kscan_sdl``: moved from :ref:`kscan_api` to :ref:`input`, renamed the Kconfig
+    option from ``KSCAN_SDL`` to :kconfig:option:`CONFIG_INPUT_SDL_TOUCH` and the
+    compatible from ``zephyr,sdl-kscan`` to
+    :dtcompatible:`zephyr,input-sdl-touch`.
+  * Touchscreen drivers converted to use the input APIs can use the
+    :dtcompatible:`zephyr,kscan-input` driver to maintain Kscan compatilibity.
+
 Removed APIs in this release
 ============================
 
@@ -217,6 +234,8 @@ Boards & SoC Support
 
 * Removed support for these RISC-V boards:
 
+  * BeagleV Starlight JH7100
+
 * Removed support for these X86 boards:
 
 * Removed support for these Xtensa boards:
@@ -237,6 +256,10 @@ Build system and infrastructure
 * Fixed an issue whereby if no prj.conf file was present then board
   configuration files would not be included by emitting a fatal error. As a
   result, prj.conf files are now mandatory in projects.
+
+* Introduced support for extending/replacing the signing mechanism in zephyr,
+  see :ref:`West extending signing <west-extending-signing>` for further
+  details.
 
 Drivers and Sensors
 *******************
@@ -296,6 +319,8 @@ Drivers and Sensors
 
 * GPIO
 
+  * Converted the ``gpio_keys`` driver to the input subsystem.
+
 * hwinfo
 
 * I2C
@@ -306,11 +331,18 @@ Drivers and Sensors
 
 * IEEE 802.15.4
 
+* Input
+
+  * Introduced the :ref:`input` subsystem.
+
 * Interrupt Controller
 
 * IPM
 
 * KSCAN
+
+  * Added a :dtcompatible:`zephyr,kscan-input` input to kscan compatibility driver.
+  * Converted the ``ft5336`` and ``kscan_sdl`` drivers to the input subsystem.
 
 * LED
 
@@ -375,12 +407,43 @@ Libraries / Subsystems
 * File systems
 
   * Added :kconfig:option:`CONFIG_FS_FATFS_REENTRANT` to enable the FAT FS reentrant option.
+  * With LittleFS as backend, :c:func:`fs_mount` return code was corrected to ``EFAULT`` when
+    called with ``FS_MOUNT_FLAG_NO_FORMAT`` and the designated LittleFS area could not be
+    mounted because it has not yet been mounted or it required reformatting.
+
+* Management
+
+  * Added optional input expiration to shell MCUmgr transport, this allows
+    returning the shell to normal operation if a complete MCUmgr packet is not
+    received in a specific duration. Can be enabled with
+    :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_SHELL_INPUT_TIMEOUT` and timeout
+    set with
+    :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_SHELL_INPUT_TIMEOUT_TIME`.
+
+  * MCUmgr fs_mgmt upload and download now caches the file handle to improve
+    throughput when transferring data, the file is no longer opened and closed
+    for each part of a transfer. In addition, new functionality has been added
+    that will allow closing file handles of uploaded/downloaded files if they
+    are idle for a period of time, the timeout is set with
+    :kconfig:option:`MCUMGR_GRP_FS_FILE_AUTOMATIC_IDLE_CLOSE_TIME`. There is a
+    new command that can be used to close open file handles which can be used
+    after a file upload is complete to ensure that the file handle is closed
+    correctly, allowing other transports or other parts of the application
+    code to use it.
+
+* RTIO
+
+  * Added policy that every ``sqe`` will generate a ``cqe`` (previously an RTIO_SQE_TRANSACTION
+    entry would only trigger a ``cqe`` on the last ``sqe`` in the transaction.
 
 HALs
 ****
 
 MCUboot
 *******
+
+* Added :kconfig:option:`CONFIG_MCUBOOT_CMAKE_WEST_SIGN_PARAMS` that allows to pass arguments to
+  west sign when invoked from cmake.
 
 Storage
 *******

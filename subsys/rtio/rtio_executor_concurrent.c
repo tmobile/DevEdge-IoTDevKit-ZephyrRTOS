@@ -12,9 +12,10 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(rtio_executor_concurrent, CONFIG_RTIO_LOG_LEVEL);
 
-#define CONEX_TASK_COMPLETE BIT(0)
-#define CONEX_TASK_SUSPENDED BIT(1)
+#include "rtio_executor_common.h"
 
+#define CONEX_TASK_COMPLETE  BIT(0)
+#define CONEX_TASK_SUSPENDED BIT(1)
 
 /**
  * @file
@@ -53,10 +54,10 @@ static uint16_t conex_task_next(struct rtio_concurrent_executor *exc)
 }
 
 static inline uint16_t conex_task_id(struct rtio_concurrent_executor *exc,
-	const struct rtio_iodev_sqe *iodev_sqe)
+				     const struct rtio_iodev_sqe *iodev_sqe)
 {
 	__ASSERT_NO_MSG(iodev_sqe <= &exc->task_cur[exc->task_mask] &&
-		iodev_sqe >= &exc->task_cur[0]);
+			iodev_sqe >= &exc->task_cur[0]);
 	return iodev_sqe - &exc->task_cur[0];
 }
 
@@ -147,7 +148,6 @@ static void conex_prepare(struct rtio *r, struct rtio_concurrent_executor *exc)
 	exc->last_sqe = last_sqe;
 }
 
-
 /**
  * @brief Resume tasks that are suspended
  *
@@ -161,7 +161,7 @@ static void conex_resume(struct rtio *r, struct rtio_concurrent_executor *exc)
 		if (exc->task_status[task_id & exc->task_mask] & CONEX_TASK_SUSPENDED) {
 			LOG_DBG("resuming suspended task %d", task_id);
 			exc->task_status[task_id & exc->task_mask] &= ~CONEX_TASK_SUSPENDED;
-			rtio_iodev_submit(&exc->task_cur[task_id & exc->task_mask]);
+			rtio_executor_submit(&exc->task_cur[task_id & exc->task_mask]);
 		}
 	}
 }
@@ -176,8 +176,7 @@ static void conex_resume(struct rtio *r, struct rtio_concurrent_executor *exc)
 int rtio_concurrent_submit(struct rtio *r)
 {
 
-	struct rtio_concurrent_executor *exc =
-		(struct rtio_concurrent_executor *)r->executor;
+	struct rtio_concurrent_executor *exc = (struct rtio_concurrent_executor *)r->executor;
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&exc->lock);
@@ -219,20 +218,32 @@ void rtio_concurrent_ok(struct rtio_iodev_sqe *iodev_sqe, int result)
 		next_sqe = rtio_spsc_next(r->sq, sqe);
 
 		exc->task_cur[task_id].sqe = next_sqe;
-		rtio_iodev_submit(&exc->task_cur[task_id]);
+		rtio_executor_submit(&exc->task_cur[task_id]);
 	} else {
-		exc->task_status[task_id]  |= CONEX_TASK_COMPLETE;
+		exc->task_status[task_id] |= CONEX_TASK_COMPLETE;
 	}
 
-	bool transaction = sqe->flags & RTIO_SQE_TRANSACTION;
+	bool transaction;
 
-	while (transaction) {
-		sqe = rtio_spsc_next(r->sq, sqe);
+	do {
+		/* Capture the sqe information */
+		void *userdata = sqe->userdata;
+		uint32_t flags = rtio_cqe_compute_flags(iodev_sqe);
+
 		transaction = sqe->flags & RTIO_SQE_TRANSACTION;
-	}
 
-	conex_sweep(r, exc);
-	rtio_cqe_submit(r, result, sqe->userdata);
+		/* Release the sqe */
+		conex_sweep(r, exc);
+
+		/* Submit the completion event */
+		rtio_cqe_submit(r, result, userdata, flags);
+
+		if (transaction) {
+			/* sqe was a transaction, get the next one */
+			sqe = rtio_spsc_next(r->sq, sqe);
+			__ASSERT_NO_MSG(sqe != NULL);
+		}
+	} while (transaction);
 	conex_prepare(r, exc);
 	conex_resume(r, exc);
 
@@ -249,6 +260,7 @@ void rtio_concurrent_err(struct rtio_iodev_sqe *iodev_sqe, int result)
 	const struct rtio_sqe *sqe = iodev_sqe->sqe;
 	struct rtio_concurrent_executor *exc = (struct rtio_concurrent_executor *)r->executor;
 	void *userdata = sqe->userdata;
+	uint32_t flags = rtio_cqe_compute_flags(iodev_sqe);
 	bool chained = sqe->flags & RTIO_SQE_CHAINED;
 	bool transaction = sqe->flags & RTIO_SQE_TRANSACTION;
 	uint16_t task_id = conex_task_id(exc, iodev_sqe);
@@ -261,7 +273,7 @@ void rtio_concurrent_err(struct rtio_iodev_sqe *iodev_sqe, int result)
 	key = k_spin_lock(&exc->lock);
 
 	if (!transaction) {
-		rtio_cqe_submit(r, result, userdata);
+		rtio_cqe_submit(r, result, userdata, flags);
 	}
 
 	/* While the last sqe was marked as chained or transactional, do more work */
@@ -272,9 +284,9 @@ void rtio_concurrent_err(struct rtio_iodev_sqe *iodev_sqe, int result)
 		userdata = sqe->userdata;
 
 		if (!transaction) {
-			rtio_cqe_submit(r, result, userdata);
+			rtio_cqe_submit(r, result, userdata, flags);
 		} else {
-			rtio_cqe_submit(r, -ECANCELED, userdata);
+			rtio_cqe_submit(r, -ECANCELED, userdata, flags);
 		}
 	}
 

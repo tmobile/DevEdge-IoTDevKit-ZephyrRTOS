@@ -14,13 +14,13 @@
 #include "ascs_internal.h"
 #include "bap_stream.h"
 
-#if defined(CONFIG_BT_BAP_UNICAST_CLIENT) && defined(CONFIG_BT_BAP_UNICAST)
+#if defined(CONFIG_BT_BAP_UNICAST_CLIENT)
 #define UNICAST_GROUP_CNT	 CONFIG_BT_BAP_UNICAST_CLIENT_GROUP_COUNT
 #define UNICAST_GROUP_STREAM_CNT CONFIG_BT_BAP_UNICAST_CLIENT_GROUP_STREAM_COUNT
-#else /* !(CONFIG_BT_BAP_UNICAST_CLIENT && CONFIG_BT_BAP_UNICAST) */
+#else /* !CONFIG_BT_BAP_UNICAST_CLIENT */
 #define UNICAST_GROUP_CNT 0
 #define UNICAST_GROUP_STREAM_CNT 0
-#endif /* CONFIG_BT_BAP_UNICAST_CLIENT && CONFIG_BT_BAP_UNICAST */
+#endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
 #if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
 #define BROADCAST_STREAM_CNT CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT
 #else /* !CONFIG_BT_BAP_BROADCAST_SOURCE */
@@ -101,6 +101,7 @@ struct bt_bap_broadcast_sink {
 	bool big_encrypted;
 	uint32_t broadcast_id; /* 24 bit */
 	struct bt_bap_base base;
+	struct bt_codec_qos codec_qos;
 	struct bt_le_per_adv_sync *pa_sync;
 	struct bt_iso_big *big;
 	struct bt_iso_chan *bis[BROADCAST_SNK_STREAM_CNT];

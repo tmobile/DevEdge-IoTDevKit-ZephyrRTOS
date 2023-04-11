@@ -34,7 +34,12 @@
 #include <kswap.h>
 #include <zephyr/timing/timing.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/pm/device_runtime.h>
 LOG_MODULE_REGISTER(os, CONFIG_KERNEL_LOG_LEVEL);
+
+
+BUILD_ASSERT(CONFIG_MP_NUM_CPUS == CONFIG_MP_MAX_NUM_CPUS,
+	     "CONFIG_MP_NUM_CPUS and CONFIG_MP_MAX_NUM_CPUS need to be set the same");
 
 /* the only struct z_kernel instance */
 struct z_kernel _kernel;
@@ -261,6 +266,10 @@ static void z_sys_init_run_level(enum init_level level)
 				dev->state->init_res = rc;
 			}
 			dev->state->initialized = true;
+			if (rc == 0) {
+				/* Run automatic device runtime enablement */
+				(void)pm_device_runtime_auto_enable(dev);
+			}
 		}
 	}
 }
