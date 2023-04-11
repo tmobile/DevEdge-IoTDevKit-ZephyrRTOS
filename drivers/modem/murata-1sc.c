@@ -14,8 +14,8 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include "modem_context.h"
 #include "modem_iface_uart.h"
 #include "modem_receiver.h"
-#include "modem_sms.h"
 #include "modem_socket.h"
+#include "modem_sms.h"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -27,6 +27,7 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include <zephyr/kernel.h>
 #include <zephyr/net/net_offload.h>
 #include <zephyr/net/socket_offload.h>
+#include <zephyr/drivers/modem/sms.h>
 #include <zephyr/net/offloaded_netdev.h>
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 #include "tls_internal.h"
@@ -70,6 +71,50 @@ const struct mdmdata_cmd_t cmd_pool[] = {{"APN", apn_e},
 					 {"VER", version_e},
 					 {"WAKE", wake_e},
 					 {}};
+
+enum sms_tp_flags {
+	TP_FLAG_MMS = BIT(2),
+	TP_FLAG_RP = BIT(7),
+	TP_FLAG_UDHI = BIT(6),
+	TP_FLAG_SRI = BIT(5)
+};
+
+enum sms_type_of_number {
+	SMS_TON_UNKNOWN = 0,
+	SMS_TON_INTERNATIONAL,
+	SMS_TON_NATIONAL,
+	SMS_TON_NETWORK_SPECIFIC,
+	SMS_TON_SUBSCRIBER,
+	SMS_TON_ALPHANUMERIC,
+	SMS_TON_ABBREVIATED,
+	SMS_TON_RESERVED,
+};
+
+enum sms_alphabet {
+	SMS_ALPHABET_GSM7 = 0,
+	SMS_ALPHABET_GSM8,
+	SMS_ALPHABET_UCS2,
+};
+
+/* Structure for storing information about a SMS-DELIVER PDU */
+struct deliver_pdu_data_s {
+	uint8_t smsc_len; /* Length of SMSC segment */
+	char *smsc_start; /* SMSC segment */
+	uint8_t tp_flags; /* Flags */
+	uint8_t oa_len;	  /* Originator address length */
+	char *oa;	  /* Originator address */
+	uint8_t alphabet; /* Alphabet used */
+	char *scts;	  /* Timestamp */
+	uint8_t udl;	  /* User data length */
+	uint8_t udhl;	  /* User data header length */
+	char *ud;	  /* User data */
+};
+
+struct csms_data_s {
+	uint8_t csms_ref;
+	uint8_t csms_idx;
+	uint8_t csms_tot;
+};
 
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 
@@ -227,7 +272,6 @@ struct murata_1sc_data {
 	uint8_t sms_indices[16];
 	uint8_t sms_csms_indices[16];
 	struct sms_in *sms;
-	recv_sms_func_t recv_sms;
 };
 
 /* Modem pins - Wake Host, Wake Modem, Reset, and Reset Done */
@@ -516,8 +560,472 @@ exit:
 	return ret;
 }
 
+#if defined(CONFIG_MODEM_SMS)
+
 /**
- * @brief Handler for receiving unsolicited SMS messages
+ * @brief Logic to unpack septets
+ *
+ * @param frag Packed septet framents
+ * @param frag_len Length of packed fragments
+ * @param out Output: Septets, unpacked into an octet (byte) array
+ */
+void gsmunpack_frag(uint8_t *frag, int frag_len, uint8_t *out)
+{
+	switch (frag_len) {
+	case 7:
+		out[7] = frag[6] >> 1;
+		out[6] = (frag[5] >> 2) | ((frag[6] & 0x01) << 6);
+	case 6:
+		out[5] = (frag[4] >> 3) | ((frag[5] & 0x03) << 5);
+	case 5:
+		out[4] = (frag[3] >> 4) | ((frag[4] & 0x07) << 4);
+	case 4:
+		out[3] = (frag[2] >> 5) | ((frag[3] & 0x0F) << 3);
+	case 3:
+		out[2] = (frag[1] >> 6) | ((frag[2] & 0x1F) << 2);
+	case 2:
+		out[1] = (frag[0] >> 7) | ((frag[1] & 0x3F) << 1);
+	case 1:
+		out[0] = frag[0] & 0x7F;
+	}
+}
+
+/**
+ * @brief Logic for converting GSM 7-bit characters into ASCII
+ *
+ * @param gsm GSM septet
+ * @param escaped Flag for if the previous character was an escape character
+ * @return char ASCII equivalent character
+ */
+char gsm2ascii(uint8_t gsm, bool escaped)
+{
+	if (escaped) {
+		switch (gsm) {
+		case 0x0A:
+			return '\f';
+		case 0x14:
+			return '^';
+		case 0x28:
+			return '{';
+		case 0x29:
+			return '}';
+		case 0x2F:
+			return '\\';
+		case 0x3c:
+			return '[';
+		case 0x3d:
+			return '~';
+		case 0x3e:
+			return ']';
+		case 0x40:
+			return '|';
+		default:
+			return '\0';
+		}
+	}
+	if ((gsm >= 'a' && gsm <= 'z') || (gsm >= 'A' && gsm <= 'Z') || (gsm >> 4) == 3 ||
+	    (((gsm >> 4) == 2) && gsm != 0x24)) {
+		return gsm;
+	}
+	switch (gsm) {
+	case 0x00:
+		return '@';
+	case 0x02:
+		return '$';
+	case '\n':
+	case '\r':
+		return gsm;
+	case 0x11:
+		return '_';
+	default:
+		return '\0';
+	}
+}
+
+/**
+ * @brief Combined logic for converting a septet payload into an ASCII string
+ *
+ * @param in Binary encoding of the septet payload/SMS User Data
+ * @param udl Length of septet payload/SMS User Data
+ * @param out Buffer for output
+ * @param outlen Length of output buffer
+ * @param skip Number of septets to skip
+ * @return int 0 on success
+ */
+int gsm7_decode(char *in, int udl, char *out, int outlen, int skip)
+{
+	uint8_t packed[7], unpacked[8];
+	uint8_t processed = 0, escaped_cnt = 0;
+	uint8_t udl_octets = ((udl * 7 + 7) / 8);
+	int skip_drp = skip;
+	char *out_orig = out;
+	bool escaped = false;
+
+	for (int i = 0; i < udl_octets; i += 7) {
+		memset(packed, 0, 7);
+		hex_str_to_data(&in[i * 2], packed, MIN(7, udl_octets - processed));
+		gsmunpack_frag(packed, MIN(7, udl_octets - processed), unpacked);
+		processed += 7;
+		for (int j = 0; j < 8; j++) {
+			if (skip) {
+				skip--;
+			} else if (unpacked[j] == 0x1b) {
+				escaped = true;
+				escaped_cnt++;
+			} else {
+				if (out > (out_orig + outlen - 1)) {
+					return 1;
+				}
+				char chr = gsm2ascii(unpacked[j], escaped);
+
+				if (chr) {
+					*out = chr;
+					out++;
+				}
+				escaped = false;
+			}
+		}
+	}
+	out_orig[MIN((udl - escaped_cnt - skip_drp), outlen)] = '\0';
+	return 0;
+}
+
+/**
+ * @brief Function for converting a UTF-16LE encoded character into UTF-8
+ *
+ * @param in Pointer to UTF-16 character
+ * @param out Pointer to UTF-8 output buffer
+ * @param out_len Length of output buffer
+ * @param next_char Pointer to new position in output buffer
+ * @return int 0 on success else negative errno code
+ */
+int utf16le_to_utf8(uint16_t *in, uint8_t *out, size_t out_len, uint16_t **next_char)
+{
+	uint32_t codepoint;
+
+	if (!out || !in || !out_len || !*in) {
+		return -EINVAL;
+	}
+	if (in[1] != 0 && ((sys_le16_to_cpu(in[0]) & 0xFC00) == 0xD800) &&
+	    (sys_le16_to_cpu(in[1]) & 0xFC00) == 0xDC00) {
+		codepoint = (sys_le16_to_cpu(in[0]) - 0xD800) << 10;
+		codepoint += sys_le16_to_cpu(in[1]) - 0xDC00;
+		codepoint += 0x10000;
+	} else {
+		codepoint = in[0];
+	}
+
+	if (codepoint <= 0x7F) {
+		*out = (uint8_t)codepoint;
+		out++;
+	} else if (codepoint <= 0x7FF) {
+		if (out_len < 2) {
+			return -EIO;
+		}
+		*out = 0xC0 | (codepoint >> 6);
+		out++;
+		*out = 0x80 | (codepoint & 0x3F);
+		out++;
+	} else if (codepoint <= 0xFFFF) {
+		if (out_len < 3) {
+			return -EIO;
+		}
+		*out = 0xE0 | (codepoint >> 12);
+		out++;
+		*out = 0x80 | ((codepoint >> 6) & 0x3F);
+		out++;
+		*out = 0x80 | (codepoint & 0x3F);
+		out++;
+	} else {
+		if (out_len < 4) {
+			return -EIO;
+		}
+		*out = 0xF0 | (codepoint >> 18);
+		out++;
+		*out = 0x80 | ((codepoint >> 12) & 0x3F);
+		out++;
+		*out = 0x80 | ((codepoint >> 6) & 0x3F);
+		out++;
+		*out = 0x80 | (codepoint & 0x3F);
+		out++;
+	}
+	if (next_char) {
+		*next_char = codepoint > 65535 ? &in[2] : &in[1];
+	}
+	return 0;
+}
+
+/**
+ * @brief Function for parsing the PDU structure for a SMS Deliver PDU
+ *
+ * @param buf Raw PDU buffer
+ * @param pdu_data Output structure
+ */
+void deliver_pdu_parse(char *buf, struct deliver_pdu_data_s *pdu_data)
+{
+	pdu_data->smsc_len = hex_byte_to_data(buf);
+	pdu_data->smsc_start = pdu_data->smsc_len ? buf + 2 : NULL;
+	buf += 2 + pdu_data->smsc_len * 2;
+	pdu_data->tp_flags = hex_byte_to_data(buf) & ~0x3;
+	buf += 2;
+	pdu_data->oa_len = hex_byte_to_data(buf);
+	buf += 2;
+	pdu_data->oa = buf;
+	if ((hex_byte_to_data(buf) & 0x70) != 0x50) {
+		buf += 2 + pdu_data->oa_len;
+		buf += (pdu_data->oa_len % 2);
+	} else {
+		buf += 2 + (((pdu_data->oa_len + 1) * 7 / 8) * 2);
+	}
+	buf += 2; /* Skip TP-PID */
+	pdu_data->alphabet = (hex_byte_to_data(buf) & 0xC) >> 2;
+	buf += 2;
+	pdu_data->scts = buf;
+	buf += 14;
+	pdu_data->udl = hex_byte_to_data(buf);
+	buf += 2;
+	pdu_data->ud = buf;
+	pdu_data->udhl = (pdu_data->tp_flags & TP_FLAG_UDHI) ? hex_byte_to_data(buf) : 0;
+}
+
+int pdu_msg_extract(char *pdu_buffer, struct csms_data_s *csms_data)
+{
+	int ret;
+	struct sms_in *sms;
+	bool first_msg = false;
+	char *out_buf;
+	size_t out_buf_avail;
+	struct csms_data_s csms_data_dummy;
+
+	if (!csms_data) {
+		csms_data = &csms_data_dummy;
+	}
+
+	csms_data->csms_ref = -1;
+	csms_data->csms_tot = 1;
+	csms_data->csms_idx = 1;
+
+	/* No buffer specified. */
+	if (!mdata.sms) {
+		return 0;
+	}
+
+	sms = mdata.sms;
+	out_buf = sms->msg;
+	out_buf += strlen(sms->msg);
+
+	out_buf_avail = sizeof(sms->msg) - (strlen(sms->msg) + 1);
+	struct deliver_pdu_data_s pdu_data;
+
+	deliver_pdu_parse(pdu_buffer, &pdu_data);
+
+	uint8_t csms_idx = 0;
+
+	if (pdu_data.udhl) {
+		char *udh = pdu_data.ud + 2;
+		uint8_t iei, iedl;
+
+		while (udh < (pdu_data.ud + 2 + (pdu_data.udhl * 2))) {
+			iei = hex_byte_to_data(udh);
+			udh += 2;
+			iedl = hex_byte_to_data(udh);
+			udh += 2;
+			if (iei != 0) {
+				LOG_WRN("Unknown UDH Identifier %d", iei);
+				udh += iedl * 2;
+			} else {
+				csms_data->csms_ref = hex_byte_to_data(udh);
+				udh += 2;
+				csms_data->csms_tot = hex_byte_to_data(udh);
+				udh += 2;
+				/* Todo: give some warning if we don't get all
+				 * parts
+				 */
+				csms_idx = hex_byte_to_data(udh);
+				csms_data->csms_idx = csms_idx;
+				udh += 2;
+			}
+		}
+	}
+
+	if (!strlen(sms->msg)) {
+		first_msg = true;
+	} else if (sms->csms_idx + 1 != csms_idx) {
+		return 0;
+	}
+
+	sms->csms_idx = csms_idx;
+
+	if (!first_msg)
+		goto decode_msg; /* We already have the phone number & timestamp */
+
+	int real_len = (pdu_data.oa_len % 2) ? pdu_data.oa_len + 1 : pdu_data.oa_len;
+
+	for (int i = 0; i < real_len; i += 2) {
+		byteswp(&pdu_data.oa[i + 2], &pdu_data.oa[i + 3], 1);
+	}
+
+	memset(sms->phone, 0, sizeof(sms->phone));
+	uint8_t type_of_number = (hex_byte_to_data(pdu_data.oa) >> 4) & 0x7;
+
+	if (type_of_number == SMS_TON_INTERNATIONAL) {
+		sms->phone[0] = '+';
+		memcpy(&sms->phone[1], pdu_data.oa + 2, pdu_data.oa_len);
+	} else {
+		memcpy(sms->phone, pdu_data.oa + 2, pdu_data.oa_len);
+	}
+
+	for (int i = 0; i < 14; i += 2) {
+		byteswp(&pdu_data.scts[i], &pdu_data.scts[i + 1], 1);
+	}
+
+	uint8_t tz = hex_byte_to_data(&pdu_data.scts[12]);
+
+	snprintk(sms->time, sizeof(sms->time), "%.2s/%.2s/%.2s,%.2s:%.2s:%.2s%c%02x", pdu_data.scts,
+		 &pdu_data.scts[2], &pdu_data.scts[4], &pdu_data.scts[6], &pdu_data.scts[8],
+		 &pdu_data.scts[10], (tz & 0x80) ? '-' : '+', tz & 0x7F);
+
+	memset(sms->msg, 0, sizeof(sms->msg));
+
+decode_msg:
+	if (pdu_data.alphabet == SMS_ALPHABET_GSM8) {
+		if ((pdu_data.udl - pdu_data.udhl) > out_buf_avail) {
+			if (first_msg) {
+				LOG_WRN("Buffer too small: partial message "
+					"copied");
+			} else {
+				LOG_WRN("Buffer too small: unable to "
+					"concatenate part %d",
+					csms_idx);
+				return 0;
+			}
+		}
+		hex_str_to_data(pdu_data.ud, out_buf,
+				MIN((out_buf_avail), pdu_data.udl - pdu_data.udhl));
+	} else if (pdu_data.alphabet == SMS_ALPHABET_UCS2) {
+		uint16_t utf16_chr[3];
+		char *ud = pdu_data.ud + (pdu_data.udhl ? 2 + 2 * pdu_data.udhl : 0);
+		char *out_buf_ptr = out_buf;
+		uint16_t *nchr;
+		int avail = out_buf_avail;
+
+		utf16_chr[2] = 0;
+		while (strlen(ud) && avail) {
+			memset(utf16_chr, 0, sizeof(utf16_chr));
+			hex_str_to_data(ud, (uint8_t *)utf16_chr, 4);
+			utf16_chr[0] = sys_be16_to_cpu(utf16_chr[0]);
+			utf16_chr[1] = sys_be16_to_cpu(utf16_chr[1]);
+			ret = utf16le_to_utf8(utf16_chr, out_buf_ptr, avail, &nchr);
+			if (ret) {
+				if (pdu_data.udhl && first_msg) {
+					LOG_WRN("Buffer too small: partial "
+						"message copied");
+					break;
+				}
+				out_buf = '\0';
+				LOG_WRN("Buffer too small: unable to "
+					"concatenate part %d",
+					csms_idx);
+				return 0;
+			}
+			avail -= strlen(out_buf_ptr);
+			out_buf_ptr += strlen(out_buf_ptr);
+			if (nchr == &utf16_chr[1]) {
+				ud += 4;
+			} else {
+				ud += 8;
+			}
+		}
+	} else if (pdu_data.alphabet == SMS_ALPHABET_GSM7) {
+		if (!pdu_data.udhl) {
+			ret = gsm7_decode(pdu_data.ud, pdu_data.udl, out_buf, out_buf_avail, 0);
+			if (ret) {
+				LOG_WRN("Buffer too small: partial message "
+					"copied");
+			}
+		} else {
+			uint8_t skip = ((pdu_data.udhl + 1) * 8 + 6) / 7;
+
+			ret = gsm7_decode(pdu_data.ud, pdu_data.udl, out_buf, out_buf_avail, skip);
+			if (ret && !first_msg) {
+				LOG_WRN("Buffer too small: unable to "
+					"concatenate part %d",
+					csms_idx);
+				*out_buf = '\0';
+				return 0;
+			} else if (ret) {
+				LOG_WRN("Buffer too small: partial message "
+					"copied");
+			}
+		}
+	}
+	return 0;
+}
+
+
+/**
+ * Check if given char sequence is crlf.
+ *
+ * @param c The char sequence.
+ * @param len Total length of the fragment.
+ * @return @c true if char sequence is crlf.
+ *         Otherwise @c false is returned.
+ */
+static bool is_crlf(uint8_t *c, uint8_t len)
+{
+	/* crlf does not fit. */
+	if (len < 2) {
+		return false;
+	}
+
+	return c[0] == '\r' && c[1] == '\n';
+}
+
+/**
+ * Find terminating crlf in a netbuffer.
+ *
+ * @param buf The netbuffer.
+ * @param skip Bytes to skip before search.
+ * @return Length of the returned fragment or 0 if not found.
+ */
+static size_t net_buf_find_crlf(struct net_buf *buf, size_t skip)
+{
+	size_t len = 0, pos = 0;
+	struct net_buf *frag = buf;
+
+	/* Skip to the start. */
+	while (frag && skip >= frag->len) {
+		skip -= frag->len;
+		frag = frag->frags;
+	}
+
+	/* Need to wait for more data. */
+	if (!frag) {
+		return 0;
+	}
+
+	pos = skip;
+
+	while (frag && !is_crlf(frag->data + pos, frag->len - pos)) {
+		if (pos + 1 >= frag->len) {
+			len += frag->len;
+			frag = frag->frags;
+			pos = 0U;
+		} else {
+			pos++;
+		}
+	}
+
+	if (frag && is_crlf(frag->data + pos, frag->len - pos)) {
+		len += pos;
+		return len - skip;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief Handler for receiving unsolicited SMS message indication (+CMTI)
  */
 MODEM_CMD_DEFINE(on_cmd_unsol_sms)
 {
@@ -526,6 +1034,60 @@ MODEM_CMD_DEFINE(on_cmd_unsol_sms)
 
 	return 0;
 }
+
+#if defined(CONFIG_MODEM_SMS_CALLBACK)
+
+static struct sms_in async_sms_in;
+
+/**
+ * @brief Handler for receiving unsolicited SMS messages (+CMT)
+ */
+MODEM_CMD_DEFINE(on_cmd_unsol_cmt)
+{
+	int ret;
+	char pdu_buffer[360];
+	struct csms_data_s csms_data;
+	size_t out_len, sms_len, param_len;
+
+	/* Get the length of the "length" parameter.
+	 * The last parameter will be stuck in the netbuffer.
+	 * It is not the actual length of the trailing pdu so
+	 * we have to search the next crlf.
+	 */
+	param_len = net_buf_find_crlf(data->rx_buf, 0);
+	if (param_len == 0) {
+		LOG_DBG("No <CR><LF>");
+		return -EAGAIN;
+	}
+
+	/* Get actual trailing pdu len. +2 to skip crlf. */
+	sms_len = net_buf_find_crlf(data->rx_buf, param_len + 2);
+	if (sms_len == 0) {
+		return -EAGAIN;
+	}
+
+	/* Skip to start of pdu. */
+	data->rx_buf = net_buf_skip(data->rx_buf, param_len + 2);
+	out_len = net_buf_linearize(pdu_buffer, sizeof(pdu_buffer), data->rx_buf, 0, sms_len);
+	pdu_buffer[out_len] = '\0';
+
+	LOG_DBG("SMS Received: %s", pdu_buffer);
+
+	data->rx_buf = net_buf_skip(data->rx_buf, sms_len);
+
+	memset(&async_sms_in, 0, sizeof(async_sms_in));
+
+	mdata.sms = &async_sms_in;
+
+	pdu_msg_extract(pdu_buffer, &csms_data);
+
+	notify_sms_recv(mdata.net_iface->if_dev->dev, mdata.sms, csms_data.csms_ref,
+				 csms_data.csms_idx, csms_data.csms_tot);
+
+	return ret;
+}
+#endif /* CONFIG_MODEM_SMS_CALLBACK */
+#endif /* CONFIG_MODEM_SMS */
 
 /**
  * @brief Handler for unsolicited events ( SOCKETEV)
@@ -651,6 +1213,7 @@ MODEM_CMD_DEFINE(on_cmd_get_bands)
 #define MAX_BANDS_STR_SZ 64
 	char bandstr[MAX_BANDS_STR_SZ];
 	size_t out_len = net_buf_linearize(bandstr, sizeof(bandstr) - 1, data->rx_buf, 0, len);
+
 	bandstr[out_len] = '\0';
 
 	LOG_DBG("BANDS - %s", bandstr);
@@ -1718,6 +2281,7 @@ MODEM_CMD_DEFINE(on_cmd_sock_readdata)
 	int more = (int)strtol(argv[2], NULL, 10);
 
 	int ret = on_cmd_sockread_common(mdata.sock_fd, data, ATOI(argv[1], 0, "length"), len);
+
 	LOG_DBG("on_cmd_sockread_common returned %d", ret);
 
 	if (more) {
@@ -1736,7 +2300,12 @@ static const struct modem_cmd response_cmds[] = {
 
 static const struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("%SOCKETEV:", on_cmd_unsol_SEV, 2U, ","),
+#if defined(CONFIG_MODEM_SMS)
 	MODEM_CMD("+CMTI:", on_cmd_unsol_sms, 2U, ","),
+#if defined(CONFIG_MODEM_SMS_CALLBACK)
+	MODEM_CMD("+CMT:", on_cmd_unsol_cmt, 2U, ",\r"),
+#endif /* CONFIG_MODEM_SMS_CALLBACK */
+#endif /* CONFIG_MODEM_SMS */
 };
 
 /**
@@ -1866,6 +2435,7 @@ MODEM_CMD_DEFINE(on_cmd_cops)
 	char buf[32];
 	int sz;
 	size_t out_len = net_buf_linearize(buf, sizeof(buf) - 1, data->rx_buf, 0, len);
+
 	buf[out_len] = '\0';
 
 	LOG_DBG("full cops: %s", buf);
@@ -1988,360 +2558,7 @@ static void socket_close(struct modem_socket *sock)
 	modem_socket_put(&mdata.socket_config, sock->sock_fd);
 }
 
-/**
- * @brief Send an sms message
- */
-static int send_sms_msg(void *obj, const struct sms_out *sms)
-{
-	/* The "+ 20" is to account for AT+CMGS plus a bit extra */
-	char at_cmd[sizeof(struct sms_out) + 21];
-	int ret;
-
-	k_sem_take(&mdata.sem_sms, K_FOREVER);
-
-	snprintk(at_cmd, sizeof(at_cmd), "AT+CMGF=1");
-	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
-			     MDM_CMD_RSP_TIME);
-	if (ret < 0) {
-		LOG_ERR("%s ret:%d", at_cmd, ret);
-	}
-
-	snprintk(at_cmd, sizeof(at_cmd), "AT%%CMGSC=\"%s\"\r%s\x1a", sms->phone, sms->msg);
-	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
-			     MDM_CMD_LONG_RSP_TIME);
-	if (ret < 0) {
-		LOG_ERR("%s ret:%d", at_cmd, ret);
-	}
-
-	k_sem_give(&mdata.sem_sms);
-
-	return ret;
-}
-
-enum sms_tp_flags {
-	TP_FLAG_MMS = BIT(2),
-	TP_FLAG_RP = BIT(7),
-	TP_FLAG_UDHI = BIT(6),
-	TP_FLAG_SRI = BIT(5)
-};
-
-enum sms_type_of_number {
-	SMS_TON_UNKNOWN = 0,
-	SMS_TON_INTERNATIONAL,
-	SMS_TON_NATIONAL,
-	SMS_TON_NETWORK_SPECIFIC,
-	SMS_TON_SUBSCRIBER,
-	SMS_TON_ALPHANUMERIC,
-	SMS_TON_ABBREVIATED,
-	SMS_TON_RESERVED,
-};
-
-enum sms_alphabet {
-	SMS_ALPHABET_GSM7 = 0,
-	SMS_ALPHABET_GSM8,
-	SMS_ALPHABET_UCS2,
-};
-
-/* Structure for storing information about a SMS-DELIVER PDU */
-struct deliver_pdu_data_s {
-	uint8_t smsc_len; /* Length of SMSC segment */
-	char *smsc_start; /* SMSC segment */
-	uint8_t tp_flags; /* Flags */
-	uint8_t oa_len;	  /* Originator address length */
-	char *oa;	  /* Originator address */
-	uint8_t alphabet; /* Alphabet used */
-	char *scts;	  /* Timestamp */
-	uint8_t udl;	  /* User data length */
-	uint8_t udhl;	  /* User data header length */
-	char *ud;	  /* User data */
-};
-
-/**
- * @brief Function for parsing the PDU structure for a SMS Deliver PDU
- *
- * @param buf Raw PDU buffer
- * @param pdu_data Output structure
- */
-void deliver_pdu_parse(char *buf, struct deliver_pdu_data_s *pdu_data)
-{
-	pdu_data->smsc_len = hex_byte_to_data(buf);
-	pdu_data->smsc_start = pdu_data->smsc_len ? buf + 2 : NULL;
-	buf += 2 + pdu_data->smsc_len * 2;
-	pdu_data->tp_flags = hex_byte_to_data(buf) & ~0x3;
-	buf += 2;
-	pdu_data->oa_len = hex_byte_to_data(buf);
-	buf += 2;
-	pdu_data->oa = buf;
-	if ((hex_byte_to_data(buf) & 0x70) != 0x50) {
-		buf += 2 + pdu_data->oa_len;
-		buf += (pdu_data->oa_len % 2);
-	} else {
-		buf += 2 + (((pdu_data->oa_len + 1) * 7 / 8) * 2);
-	}
-	buf += 2; /* Skip TP-PID */
-	pdu_data->alphabet = (hex_byte_to_data(buf) & 0xC) >> 2;
-	buf += 2;
-	pdu_data->scts = buf;
-	buf += 14;
-	pdu_data->udl = hex_byte_to_data(buf);
-	buf += 2;
-	pdu_data->ud = buf;
-	pdu_data->udhl = (pdu_data->tp_flags & TP_FLAG_UDHI) ? hex_byte_to_data(buf) : 0;
-}
-
-/**
- * @brief Logic to unpack septets
- *
- * @param frag Packed septet framents
- * @param frag_len Length of packed fragments
- * @param out Output: Septets, unpacked into an octet (byte) array
- */
-void gsmunpack_frag(uint8_t *frag, int frag_len, uint8_t *out)
-{
-	switch (frag_len) {
-	case 7:
-		out[7] = frag[6] >> 1;
-		out[6] = (frag[5] >> 2) | ((frag[6] & 0x01) << 6);
-	case 6:
-		out[5] = (frag[4] >> 3) | ((frag[5] & 0x03) << 5);
-	case 5:
-		out[4] = (frag[3] >> 4) | ((frag[4] & 0x07) << 4);
-	case 4:
-		out[3] = (frag[2] >> 5) | ((frag[3] & 0x0F) << 3);
-	case 3:
-		out[2] = (frag[1] >> 6) | ((frag[2] & 0x1F) << 2);
-	case 2:
-		out[1] = (frag[0] >> 7) | ((frag[1] & 0x3F) << 1);
-	case 1:
-		out[0] = frag[0] & 0x7F;
-	}
-}
-
-/**
- * @brief Logic for converting GSM 7-bit characters into ASCII
- *
- * @param gsm GSM septet
- * @param escaped Flag for if the previous character was an escape character
- * @return char ASCII equivalent character
- */
-char gsm2ascii(uint8_t gsm, bool escaped)
-{
-	if (escaped) {
-		switch (gsm) {
-		case 0x0A:
-			return '\f';
-		case 0x14:
-			return '^';
-		case 0x28:
-			return '{';
-		case 0x29:
-			return '}';
-		case 0x2F:
-			return '\\';
-		case 0x3c:
-			return '[';
-		case 0x3d:
-			return '~';
-		case 0x3e:
-			return ']';
-		case 0x40:
-			return '|';
-		default:
-			return '\0';
-		}
-	}
-	if ((gsm >= 'a' && gsm <= 'z') || (gsm >= 'A' && gsm <= 'Z') || (gsm >> 4) == 3 ||
-	    (((gsm >> 4) == 2) && gsm != 0x24)) {
-		return gsm;
-	}
-	switch (gsm) {
-	case 0x00:
-		return '@';
-	case 0x02:
-		return '$';
-	case '\n':
-	case '\r':
-		return gsm;
-	case 0x11:
-		return '_';
-	default:
-		return '\0';
-	}
-}
-
-/**
- * @brief Combined logic for converting a septet payload into an ASCII string
- *
- * @param in Binary encoding of the septet payload/SMS User Data
- * @param udl Length of septet payload/SMS User Data
- * @param out Buffer for output
- * @param outlen Length of output buffer
- * @param skip Number of septets to skip
- * @return int 0 on success
- */
-int gsm7_decode(char *in, int udl, char *out, int outlen, int skip)
-{
-	uint8_t packed[7], unpacked[8];
-	uint8_t processed = 0, escaped_cnt = 0;
-	uint8_t udl_octets = ((udl * 7 + 7) / 8);
-	int skip_drp = skip;
-	char *out_orig = out;
-	bool escaped = false;
-
-	for (int i = 0; i < udl_octets; i += 7) {
-		memset(packed, 0, 7);
-		hex_str_to_data(&in[i * 2], packed, MIN(7, udl_octets - processed));
-		gsmunpack_frag(packed, MIN(7, udl_octets - processed), unpacked);
-		processed += 7;
-		for (int j = 0; j < 8; j++) {
-			if (skip) {
-				skip--;
-			} else if (unpacked[j] == 0x1b) {
-				escaped = true;
-				escaped_cnt++;
-			} else {
-				if (out > (out_orig + outlen - 1)) {
-					return 1;
-				}
-				char chr = gsm2ascii(unpacked[j], escaped);
-
-				if (chr) {
-					*out = chr;
-					out++;
-				}
-				escaped = false;
-			}
-		}
-	}
-	out_orig[MIN((udl - escaped_cnt - skip_drp), outlen)] = '\0';
-	return 0;
-}
-
-/**
- * @brief Function for converting a UTF-16LE encoded character into UTF-8
- *
- * @param in Pointer to UTF-16 character
- * @param out Pointer to UTF-8 output buffer
- * @param out_len Length of output buffer
- * @param next_char Pointer to new position in output buffer
- * @return int 0 on success else negative errno code
- */
-int utf16le_to_utf8(uint16_t *in, uint8_t *out, size_t out_len, uint16_t **next_char)
-{
-	uint32_t codepoint;
-
-	if (!out || !in || !out_len || !*in) {
-		return -EINVAL;
-	}
-	if (in[1] != 0 && ((sys_le16_to_cpu(in[0]) & 0xFC00) == 0xD800) &&
-	    (sys_le16_to_cpu(in[1]) & 0xFC00) == 0xDC00) {
-		codepoint = (sys_le16_to_cpu(in[0]) - 0xD800) << 10;
-		codepoint += sys_le16_to_cpu(in[1]) - 0xDC00;
-		codepoint += 0x10000;
-	} else {
-		codepoint = in[0];
-	}
-
-	if (codepoint <= 0x7F) {
-		*out = (uint8_t)codepoint;
-		out++;
-	} else if (codepoint <= 0x7FF) {
-		if (out_len < 2) {
-			return -EIO;
-		}
-		*out = 0xC0 | (codepoint >> 6);
-		out++;
-		*out = 0x80 | (codepoint & 0x3F);
-		out++;
-	} else if (codepoint <= 0xFFFF) {
-		if (out_len < 3) {
-			return -EIO;
-		}
-		*out = 0xE0 | (codepoint >> 12);
-		out++;
-		*out = 0x80 | ((codepoint >> 6) & 0x3F);
-		out++;
-		*out = 0x80 | (codepoint & 0x3F);
-		out++;
-	} else {
-		if (out_len < 4) {
-			return -EIO;
-		}
-		*out = 0xF0 | (codepoint >> 18);
-		out++;
-		*out = 0x80 | ((codepoint >> 12) & 0x3F);
-		out++;
-		*out = 0x80 | ((codepoint >> 6) & 0x3F);
-		out++;
-		*out = 0x80 | (codepoint & 0x3F);
-		out++;
-	}
-	if (next_char) {
-		*next_char = codepoint > 65535 ? &in[2] : &in[1];
-	}
-	return 0;
-}
-
-/**
- * Check if given char sequence is crlf.
- *
- * @param c The char sequence.
- * @param len Total length of the fragment.
- * @return @c true if char sequence is crlf.
- *         Otherwise @c false is returned.
- */
-static bool is_crlf(uint8_t *c, uint8_t len)
-{
-	/* crlf does not fit. */
-	if (len < 2) {
-		return false;
-	}
-
-	return c[0] == '\r' && c[1] == '\n';
-}
-
-/**
- * Find terminating crlf in a netbuffer.
- *
- * @param buf The netbuffer.
- * @param skip Bytes to skip before search.
- * @return Length of the returned fragment or 0 if not found.
- */
-static size_t net_buf_find_crlf(struct net_buf *buf, size_t skip)
-{
-	size_t len = 0, pos = 0;
-	struct net_buf *frag = buf;
-
-	/* Skip to the start. */
-	while (frag && skip >= frag->len) {
-		skip -= frag->len;
-		frag = frag->frags;
-	}
-
-	/* Need to wait for more data. */
-	if (!frag) {
-		return 0;
-	}
-
-	pos = skip;
-
-	while (frag && !is_crlf(frag->data + pos, frag->len - pos)) {
-		if (pos + 1 >= frag->len) {
-			len += frag->len;
-			frag = frag->frags;
-			pos = 0U;
-		} else {
-			pos++;
-		}
-	}
-
-	if (frag && is_crlf(frag->data + pos, frag->len - pos)) {
-		len += pos;
-		return len - skip;
-	}
-
-	return 0;
-}
+#if defined(CONFIG_MODEM_SMS)
 
 /**
  * Parses list sms and add them to buffer.
@@ -2498,13 +2715,8 @@ MODEM_CMD_DEFINE(on_cmd_cmgl)
  */
 MODEM_CMD_DEFINE(on_cmd_cmgr)
 {
-	int ret;
 	char pdu_buffer[360];
 	size_t out_len, sms_len, param_len;
-	struct sms_in *sms;
-	bool first_msg = false;
-	char *out_buf;
-	size_t out_buf_avail;
 
 	/* Get the length of the "length" parameter.
 	 * The last parameter will be stuck in the netbuffer.
@@ -2530,154 +2742,53 @@ MODEM_CMD_DEFINE(on_cmd_cmgr)
 
 	data->rx_buf = net_buf_skip(data->rx_buf, sms_len);
 
-	/* No buffer specified. */
-	if (!mdata.sms) {
-		return 0;
-	}
-	sms = mdata.sms;
-	out_buf = sms->msg;
-	out_buf += strlen(sms->msg);
-
-	out_buf_avail = sizeof(sms->msg) - (strlen(sms->msg) + 1);
-	struct deliver_pdu_data_s pdu_data;
-
-	deliver_pdu_parse(pdu_buffer, &pdu_data);
-
-	uint8_t csms_idx = 0;
-
-	if (pdu_data.udhl) {
-		char *udh = pdu_data.ud + 2;
-		uint8_t iei, iedl;
-
-		while (udh < (pdu_data.ud + 2 + (pdu_data.udhl * 2))) {
-			iei = hex_byte_to_data(udh);
-			udh += 2;
-			iedl = hex_byte_to_data(udh);
-			udh += 2;
-			if (iei != 0) {
-				LOG_WRN("Unknown UDH Identifier %d", iei);
-				udh += iedl * 2;
-			} else {
-				udh += 4;
-				/* Todo: give some warning if we don't get all
-				 * parts
-				 */
-				csms_idx = hex_byte_to_data(udh);
-				udh += 2;
-			}
-		}
-	}
-	if (!strlen(sms->msg)) {
-		first_msg = true;
-	} else if (sms->csms_idx + 1 != csms_idx) {
-		return 0;
-	}
-	sms->csms_idx = csms_idx;
-
-	if (!first_msg)
-		goto decode_msg; /* We already have the phone number & timestamp
-				  */
-	int real_len = (pdu_data.oa_len % 2) ? pdu_data.oa_len + 1 : pdu_data.oa_len;
-	for (int i = 0; i < real_len; i += 2) {
-		byteswp(&pdu_data.oa[i + 2], &pdu_data.oa[i + 3], 1);
-	}
-	memset(sms->phone, 0, sizeof(sms->phone));
-	uint8_t type_of_number = (hex_byte_to_data(pdu_data.oa) >> 4) & 0x7;
-
-	if (type_of_number == SMS_TON_INTERNATIONAL) {
-		sms->phone[0] = '+';
-		memcpy(&sms->phone[1], pdu_data.oa + 2, pdu_data.oa_len);
-	} else {
-		memcpy(sms->phone, pdu_data.oa + 2, pdu_data.oa_len);
-	}
-	for (int i = 0; i < 14; i += 2) {
-		byteswp(&pdu_data.scts[i], &pdu_data.scts[i + 1], 1);
-	}
-	uint8_t tz = hex_byte_to_data(&pdu_data.scts[12]);
-
-	snprintk(sms->time, sizeof(sms->time), "%.2s/%.2s/%.2s,%.2s:%.2s:%.2s%c%02x", pdu_data.scts,
-		 &pdu_data.scts[2], &pdu_data.scts[4], &pdu_data.scts[6], &pdu_data.scts[8],
-		 &pdu_data.scts[10], (tz & 0x80) ? '-' : '+', tz & 0x7F);
-	memset(sms->msg, 0, sizeof(sms->msg));
-
-decode_msg:
-	if (pdu_data.alphabet == SMS_ALPHABET_GSM8) {
-		if ((pdu_data.udl - pdu_data.udhl) > out_buf_avail) {
-			if (first_msg) {
-				LOG_WRN("Buffer too small: partial message "
-					"copied");
-			} else {
-				LOG_WRN("Buffer too small: unable to "
-					"concatenate part %d",
-					csms_idx);
-				return 0;
-			}
-		}
-		hex_str_to_data(pdu_data.ud, out_buf,
-				MIN((out_buf_avail), pdu_data.udl - pdu_data.udhl));
-	} else if (pdu_data.alphabet == SMS_ALPHABET_UCS2) {
-		uint16_t utf16_chr[3];
-		char *ud = pdu_data.ud + (pdu_data.udhl ? 2 + 2 * pdu_data.udhl : 0);
-		char *out_buf_ptr = out_buf;
-		uint16_t *nchr;
-		int avail = out_buf_avail;
-
-		utf16_chr[2] = 0;
-		while (strlen(ud) && avail) {
-			memset(utf16_chr, 0, sizeof(utf16_chr));
-			hex_str_to_data(ud, (uint8_t *)utf16_chr, 4);
-			utf16_chr[0] = sys_be16_to_cpu(utf16_chr[0]);
-			utf16_chr[1] = sys_be16_to_cpu(utf16_chr[1]);
-			ret = utf16le_to_utf8(utf16_chr, out_buf_ptr, avail, &nchr);
-			if (ret) {
-				if (pdu_data.udhl && first_msg) {
-					LOG_WRN("Buffer too small: partial "
-						"message copied");
-					break;
-				}
-				out_buf = '\0';
-				LOG_WRN("Buffer too small: unable to "
-					"concatenate part %d",
-					csms_idx);
-				return 0;
-			}
-			avail -= strlen(out_buf_ptr);
-			out_buf_ptr += strlen(out_buf_ptr);
-			if (nchr == &utf16_chr[1]) {
-				ud += 4;
-			} else {
-				ud += 8;
-			}
-		}
-	} else if (pdu_data.alphabet == SMS_ALPHABET_GSM7) {
-		if (!pdu_data.udhl) {
-			ret = gsm7_decode(pdu_data.ud, pdu_data.udl, out_buf, out_buf_avail, 0);
-			if (ret) {
-				LOG_WRN("Buffer too small: partial message "
-					"copied");
-			}
-		} else {
-			uint8_t skip = ((pdu_data.udhl + 1) * 8 + 6) / 7;
-
-			ret = gsm7_decode(pdu_data.ud, pdu_data.udl, out_buf, out_buf_avail, skip);
-			if (ret && !first_msg) {
-				LOG_WRN("Buffer too small: unable to "
-					"concatenate part %d",
-					csms_idx);
-				*out_buf = '\0';
-				return 0;
-			} else if (ret) {
-				LOG_WRN("Buffer too small: partial message "
-					"copied");
-			}
-		}
-	}
-	return 0;
+	return pdu_msg_extract(pdu_buffer, NULL);
 }
 
-int recv_sms_msg(void *obj, struct sms_in *sms)
+/**
+ * @brief Send an sms message
+ */
+static int send_sms_msg(const struct sms_out *sms)
 {
-	ARG_UNUSED(obj);
+	/* The "+ 20" is to account for AT+CMGS plus a bit extra */
+	char at_cmd[sizeof(struct sms_out) + 21];
+	int ret;
+
+	k_sem_take(&mdata.sem_sms, K_FOREVER);
+
+	snprintk(at_cmd, sizeof(at_cmd), "AT+CMGF=1");
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
+			     MDM_CMD_LONG_RSP_TIME);
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+	}
+
+	snprintk(at_cmd, sizeof(at_cmd), "AT%%CMGSC=\"%s\"\r%s\x1a", sms->phone, sms->msg);
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
+			     MDM_CMD_LONG_RSP_TIME);
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+	}
+
+	k_msleep(100);
+
+	snprintk(at_cmd, sizeof(at_cmd), "AT+CMGF=0");
+	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
+			     MDM_CMD_LONG_RSP_TIME);
+	if (ret < 0) {
+		LOG_ERR("%s ret:%d", at_cmd, ret);
+	}
+
+	k_sem_give(&mdata.sem_sms);
+
+	return ret;
+}
+
+/**
+ * @brief Receive an sms message
+ */
+static int recv_sms_msg(struct sms_in *sms)
+{
 	int ret;
 
 	if (!sms) {
@@ -2698,7 +2809,7 @@ int recv_sms_msg(void *obj, struct sms_in *sms)
 	k_sem_take(&mdata.sem_sms, K_FOREVER);
 
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, "AT+CMGF=0",
-			     &mdata.sem_response, MDM_CMD_RSP_TIME);
+			     &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
 	mdata.sms = sms;
 	k_sem_reset(&mdata.sem_rcv_sms);
 	int count = 0;
@@ -2783,6 +2894,34 @@ int recv_sms_msg(void *obj, struct sms_in *sms)
 	k_sem_give(&mdata.sem_sms);
 	return strlen(sms->msg);
 }
+
+#if defined(CONFIG_MODEM_SMS_CALLBACK)
+static int recv_sms_cb_en(bool enable)
+{
+	int ret = 0;
+	char *at_cmd;
+
+	if (enable) {
+		at_cmd = "AT+CNMI=2,2,0,1,0";
+		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, at_cmd,
+						&mdata.sem_response, MDM_CMD_RSP_TIME);
+
+		if (ret < 0) {
+			LOG_ERR("%s ret:%d", at_cmd, ret);
+		}
+	} else {
+		at_cmd = "AT+CNMI=2,1,0,1,0";
+		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0, at_cmd,
+						&mdata.sem_response, MDM_CMD_RSP_TIME);
+
+		if (ret < 0) {
+			LOG_ERR("%s ret:%d", at_cmd, ret);
+		}
+	}
+	return ret;
+}
+#endif /* CONFIG_MODEM_SMS_CALLBACK */
+#endif /* CONFIG_MODEM_SMS */
 
 /**
  * @brief Receive data on a socket
@@ -4638,7 +4777,8 @@ static int murata_1sc_setup(void)
 	  SETUP_CMD_NOHANDLE("ATE0"),
 	  SETUP_CMD_NOHANDLE("ATV1"),
 	  SETUP_CMD_NOHANDLE("AT%CSDH=1"),
-	  SETUP_CMD_NOHANDLE("AT+CNMI=2,1,2,1,0"),
+	  SETUP_CMD_NOHANDLE("AT+CNMI=2,1,0,1,0"),
+	  SETUP_CMD_NOHANDLE("AT+CMGF=0"),
 	  SETUP_CMD("AT+CGMI", "", on_cmd_get_manufacturer, 0U, ""),
 	  SETUP_CMD("AT+CGMM", "", on_cmd_get_model, 0U, ""),
 	  SETUP_CMD("AT+CGMR", "RK_", on_cmd_get_revision, 0U, ""),
@@ -4810,15 +4950,17 @@ static int offload_ioctl(void *obj, unsigned int request, va_list args)
 		return modem_socket_poll_update(obj, pfd, pev);
 	}
 
+#if defined(CONFIG_MODEM_SMS)
 	case SMS_SEND:
-		ret = send_sms_msg(obj, (struct sms_out *)ptr_from_va(args));
+		ret = send_sms_msg((struct sms_out *)ptr_from_va(args));
 		va_end(args);
 		break;
 
 	case SMS_RECV:
-		ret = recv_sms_msg(obj, (struct sms_in *)ptr_from_va(args));
+		ret = recv_sms_msg((struct sms_in *)ptr_from_va(args));
 		va_end(args);
 		break;
+#endif /* CONFIG_MODEM_SMS */
 
 	case GET_IPV4_CONF:
 		a_ipv4_addr = (struct aggr_ipv4_addr *)ptr_from_va(args);
@@ -4983,8 +5125,6 @@ static int murata_1sc_init(const struct device *dev)
 {
 	int ret = 0;
 
-	ARG_UNUSED(dev);
-
 	k_sem_init(&mdata.sem_response, 0, 1);
 	k_sem_init(&mdata.sem_sock_conn, 0, 1);
 	k_sem_init(&mdata.sem_xlate_buf, 1, 1);
@@ -5020,10 +5160,17 @@ static int murata_1sc_init(const struct device *dev)
 	mctx.data_revision = mdata.mdm_revision;
 	mctx.data_imei = mdata.mdm_imei;
 
+#if defined(CONFIG_MODEM_SMS)
 	/* SMS functions */
 	mctx.send_sms = send_sms_msg;
 	mctx.recv_sms = recv_sms_msg;
+#if defined(CONFIG_MODEM_SMS_CALLBACK)
+	mctx.recv_sms_cb_en = recv_sms_cb_en;
+#endif /* CONFIG_MODEM_SMS_CALLBACK */
+#endif /* CONFIG_MODEM_SMS */
+
 	mctx.driver_data = &mdata;
+	mctx.dev = dev;
 
 	/* pin setup */
 	ret = gpio_pin_configure_dt(&wake_host_gpio, GPIO_INPUT | GPIO_PULL_DOWN);

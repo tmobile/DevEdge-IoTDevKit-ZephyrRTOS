@@ -20,7 +20,8 @@
 #include <zephyr/net/net_ip.h>
 #include <zephyr/sys/ring_buffer.h>
 #include <zephyr/drivers/gpio.h>
-#include "modem_sms.h"
+
+#include <zephyr/drivers/modem/sms.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,9 +75,15 @@ struct modem_context {
 	/* command handler config */
 	struct modem_cmd_handler cmd_handler;
 
+	/* modem device pointer */
+	const struct device *dev;
+
+#if defined(CONFIG_MODEM_SMS)
 	/* SMS functions */
 	send_sms_func_t send_sms;
 	recv_sms_func_t recv_sms;
+	recv_sms_cb_en_func_t recv_sms_cb_en;
+#endif
 
 	/* driver data */
 	void *driver_data;
