@@ -31,9 +31,7 @@ For more information about the EFM32PG SoC and EFM32PG-STK3402A board:
 - `EFM32PG Website`_
 - `EFM32PG12 Datasheet`_
 - `EFM32PG12 Reference Manual`_
-- `EFM32PG-STK3402A Website`_
-- `EFM32PG-STK3402A User Guide`_
-- `EFM32PG-STK3402A Schematics`_
+- `DevEdge IoT Developer Kit Documentation`_
 
 Supported Features
 ==================
@@ -81,39 +79,63 @@ the tmo_dev_edge board.
 In the following table, the column **Name** contains pin names. For example, PE2
 means pin number 2 on PORTE, as used in the board's datasheets and manuals.
 
-+-------+-------------+-------------------------------------+
-| Name  | Function    | Usage                               |
-+=======+=============+=====================================+
-| PC7   | GPIO        | LED_0                               |
-+-------+-------------+-------------------------------------+
-| PB13  | GPIO        | User Push Button 0                  |
-+-------+-------------+-------------------------------------+
-| PA0   | UART_TX     | UART TX ublox,zoem8                 |
-+-------+-------------+-------------------------------------+
-| PA1   | UART_RX     | UART RX ublox,zoem8                 |
-+-------+-------------+-------------------------------------+
-| PD12  | UART_TX     | UART TX ublox,zoem8                 |
-+-------+-------------+-------------------------------------+
-| PD13  | UART_RX     | UART RX ublox,zoem8                 |
-+-------+-------------+-------------------------------------+
-| PD11  | UART_CTS    | UART CTS ublox,zoem8                |
-+-------+-------------+-------------------------------------+
-| PD10  | UART_RTS    | UART RTS ublox,zoem8                |
-+-------+-------------+-------------------------------------+
-| PB11  | UART_TX     | UART_TX console LEU0_TX #6          |
-+-------+-------------+-------------------------------------+
-| PB12  | UART_RX     | UART_RX console LEU0_RX #6          |
-+-------+-------------+-------------------------------------+
-| PJ15  | I2C_SDA     | ENV_I2C_SDA I2C1_SDA #12            |
-+-------+-------------+-------------------------------------+
-| PJ14  | I2C_SCL     | ENV_I2C_SCL I2C1_SCL #10            |
-+-------+-------------+-------------------------------------+
++-------+-----+-------------+-------------------------------------+
+| Name  | LOC | Function    | Usage                               |
++=======+=====+=============+=====================================+
+| PC7   |  12 | GPIO        | LED_0 White                         |
++-------+-----+-------------+-------------------------------------+
+| PC8   |  12 | GPIO        | LED_1 Red                           |
++-------+-----+-------------+-------------------------------------+
+| PC9   |  12 | GPIO        | LED_2 Green                         |
++-------+-----+-------------+-------------------------------------+
+| PC10  |  12 | GPIO        | LED_3 Blue                          |
++-------+-----+-------------+-------------------------------------+
+| PC11  |  16 | GPIO        | PWM Buzzer                          |
++-------+-----+-------------+-------------------------------------+
+| PB13  |   9 | GPIO        | User Push Button 0 - GPIO_EM4WU     |
++-------+-----+-------------+-------------------------------------+
+| PF4   |  28 | UART_TX     | UART TX ublox,zoem8                 |
++-------+-----+-------------+-------------------------------------+
+| PF5   |  28 | UART_RX     | UART RX ublox,zoem8                 |
++-------+-----+-------------+-------------------------------------+
+| PD12  |  20 | UART_TX     | UART TX ublox,zoem8                 |
++-------+-----+-------------+-------------------------------------+
+| PD13  |  20 | UART_RX     | UART RX ublox,zoem8                 |
++-------+-----+-------------+-------------------------------------+
+| PD11  |  15 | UART_CTS    | UART CTS ublox,zoem8                |
++-------+-----+-------------+-------------------------------------+
+| PD10  |  13 | UART_RTS    | UART RTS ublox,zoem8                |
++-------+-----+-------------+-------------------------------------+
+| PI0   |   3 | SPI SCK     | SPI Clock                           |
++-------+-----+-------------+-------------------------------------+
+| PI2   |   6 | SPI MISO    | SPI Master In Slave Out             |
++-------+-----+-------------+-------------------------------------+
+| PI3   |   8 | SPI MOSI    | SPI Master Out Slave In             |
++-------+-----+-------------+-------------------------------------+
+| PC0   |  16 | SPI SCK     | SPI Clock                           |
++-------+-----+-------------+-------------------------------------+
+| PC2   |  19 | SPI MISO    | SPI Master In Slave Out             |
++-------+-----+-------------+-------------------------------------+
+| PC3   |  21 | SPI MOSI    | SPI Master Out Slave In             |
++-------+-----+-------------+-------------------------------------+
+| PB11  |   6 | UART_TX     | UART_TX console LEU0_TX             |
++-------+-----+-------------+-------------------------------------+
+| PB12  |   6 | UART_RX     | UART_RX console LEU0_RX             |
++-------+-----+-------------+-------------------------------------+
+| PA1   |   1 | I2C_SDA     | ENV_I2C_SDA I2C0_SDA                |
++-------+-----+-------------+-------------------------------------+
+| PA0   |  31 | I2C_SCL     | ENV_I2C_SCL I2C0_SCL                |
++-------+-----+-------------+-------------------------------------+
+| PJ15  |  12 | I2C_SDA     | ENV_I2C_SDA I2C1_SDA                |
++-------+-----+-------------+-------------------------------------+
+| PJ14  |  10 | I2C_SCL     | ENV_I2C_SCL I2C1_SCL                |
++-------+-----+-------------+-------------------------------------+
 
 
 System Clock
 ============
 
-The EFM32PG SoC is configured to use the 40 MHz external oscillator on the
+The EFM32PG SoC is configured to use the 38.4 MHz external oscillator on the
 board.
 
 Serial Port
@@ -184,14 +206,8 @@ The Twister tests can be run from the boards folder as follows:
 
 2 of 8 regulator tests are still failing (due to 9600 baud issues), but the gpio tests work fine.
 
-.. _EFM32PG-STK3402A Website:
-   https://www.silabs.com/products/development-tools/mcu/32-bit/efm32-pearl-gecko-pg12-starter-kit
-
-.. _EFM32PG-STK3402A User Guide:
-   https://www.silabs.com/documents/public/user-guides/ug257-stk3402-usersguide.pdf
-
-.. _EFM32PG-STK3402A Schematics:
-   https://www.silabs.com/documents/public/schematic-files/EFM32PG12-BRD2501A-A01-schematic.pdf
+.. _DevEdge IoT Developer Kit Documentation:
+   https://devedge.t-mobile.com/documentation-hub/iot-developer-kit/getting-started
 
 .. _EFM32PG Website:
    https://www.silabs.com/products/mcu/32-bit/efm32-pearl-gecko
