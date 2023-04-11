@@ -50,19 +50,19 @@ struct modem_shell_user_data {
 #error "MODEM_CONTEXT or MODEM_RECEIVER need to be enabled"
 #endif
 
-static int cmd_modem_list(const struct shell *sh, size_t argc,
+static int cmd_modem_list(const struct shell *shell, size_t argc,
 			  char *argv[])
 {
 	struct ms_context *mdm_ctx;
 	int i, count = 0;
 
-	shell_fprintf(sh, SHELL_NORMAL, "Modem receivers:\n");
+	shell_fprintf(shell, SHELL_NORMAL, "Modem receivers:\n");
 
 	for (i = 0; i < ms_max_context; i++) {
 		mdm_ctx = ms_context_from_id(i);
 		if (mdm_ctx) {
 			count++;
-			shell_fprintf(sh, SHELL_NORMAL,
+			shell_fprintf(shell, SHELL_NORMAL,
 			     "%d:\tIface Device: %s\n"
 				"\tManufacturer: %s\n"
 				"\tModel:        %s\n"
@@ -100,13 +100,13 @@ static int cmd_modem_list(const struct shell *sh, size_t argc,
 	}
 
 	if (!count) {
-		shell_fprintf(sh, SHELL_NORMAL, "None found.\n");
+		shell_fprintf(shell, SHELL_NORMAL, "None found.\n");
 	}
 
 	return 0;
 }
 
-static int cmd_modem_send(const struct shell *sh, size_t argc,
+static int cmd_modem_send(const struct shell *shell, size_t argc,
 			  char *argv[])
 {
 	struct ms_context *mdm_ctx;
@@ -115,7 +115,7 @@ static int cmd_modem_send(const struct shell *sh, size_t argc,
 
 	/* list */
 	if (!argv[arg]) {
-		shell_fprintf(sh, SHELL_ERROR,
+		shell_fprintf(shell, SHELL_ERROR,
 			      "Please enter a modem index\n");
 		return -EINVAL;
 	}

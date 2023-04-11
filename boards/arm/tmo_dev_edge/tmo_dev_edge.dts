@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2017 Christian Taedcke
  * Copyright (c) 2019 Lemonbeat GmbH
  * Copyright (c) 2023 T-Mobile USA, Inc.
@@ -102,6 +102,21 @@
 		regulator-name = "bq24250rge";
 		regulator-boot-on;
 	};
+
+	adc:adc@40002000 {
+		compatible = "silabs,gecko-adc";
+		status = "disabled";
+		reg = <0x40002000 0x400>;
+		frequency= <16000000>;
+		#io-channel-cells = <1>;
+		vref-mv = <2500>;
+	};
+};
+
+&adc {
+	status = "okay";
+	pinctrl-0 = <&adc_default>;
+	pinctrl-names = "default";
 };
 
 &cpu0 {
