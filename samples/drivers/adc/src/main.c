@@ -34,7 +34,6 @@ void main(void)
 	int err;
 	uint32_t count = 0;
 	uint16_t buf;
-
 	struct adc_sequence sequence = {
 		.buffer = &buf,
 		/* buffer size in bytes, not number of samples */
