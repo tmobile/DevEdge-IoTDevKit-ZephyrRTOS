@@ -45,6 +45,8 @@ class TestInstance:
         self.run_id = self._get_run_id()
         self.build_dir = os.path.join(outdir, platform.name, testsuite.name)
 
+        self.domains = None
+
         self.run = False
         self.testcases = []
         self.init_cases()
@@ -268,11 +270,19 @@ class TestInstance:
                             generate_warning=generate_warning)
 
     def get_elf_file(self) -> str:
-        fns = glob.glob(os.path.join(self.build_dir, "zephyr", "*.elf"))
-        fns.extend(glob.glob(os.path.join(self.build_dir, "zephyr", "*.exe")))
-        fns = [x for x in fns if '_pre' not in os.path.split(x)[-1]]
-        # EFI elf files
-        fns = [x for x in fns if 'zefi' not in os.path.split(x)[-1]]
+
+        if self.testsuite.sysbuild:
+            build_dir = self.domains.get_default_domain().build_dir
+        else:
+            build_dir = self.build_dir
+
+        fns = glob.glob(os.path.join(build_dir, "zephyr", "*.elf"))
+        fns.extend(glob.glob(os.path.join(build_dir, "zephyr", "*.exe")))
+        blocklist = [
+                'remapped', # used for xtensa plaforms
+                'zefi', # EFI for Zephyr
+                '_pre' ]
+        fns = [x for x in fns if not any(bad in os.path.split(x)[-1] for bad in blocklist)]
         if len(fns) != 1 and self.platform.type != 'native':
             raise BuildError("Missing/multiple output ELF binary")
         return fns[0]
