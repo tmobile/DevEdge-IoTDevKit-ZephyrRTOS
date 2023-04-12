@@ -33,37 +33,37 @@ struct modem_shell_user_data {
 
 #if defined(CONFIG_MODEM_CONTEXT)
 #include "modem_context.h"
-#define ms_context     modem_context
-#define ms_max_context CONFIG_MODEM_CONTEXT_MAX_NUM
-#define ms_send(ctx_, buf_, size_)                                             \
-	(ctx_->iface.write(&ctx_->iface, buf_, size_))
-#define ms_context_from_id modem_context_from_id
-#define UART_DEV_NAME(ctx) (ctx->iface.dev->name)
+#define ms_context		modem_context
+#define ms_max_context		CONFIG_MODEM_CONTEXT_MAX_NUM
+#define ms_send(ctx_, buf_, size_) \
+			(ctx_->iface.write(&ctx_->iface, buf_, size_))
+#define ms_context_from_id	modem_context_from_id
+#define UART_DEV_NAME(ctx)	(ctx->iface.dev->name)
 #elif defined(CONFIG_MODEM_RECEIVER)
 #include "modem_receiver.h"
-#define ms_context	    mdm_receiver_context
-#define ms_max_context	    CONFIG_MODEM_RECEIVER_MAX_CONTEXTS
-#define ms_send		    mdm_receiver_send
-#define ms_context_from_id  mdm_receiver_context_from_id
-#define UART_DEV_NAME(ctx_) (ctx_->uart_dev->name)
+#define ms_context		mdm_receiver_context
+#define ms_max_context		CONFIG_MODEM_RECEIVER_MAX_CONTEXTS
+#define ms_send			mdm_receiver_send
+#define ms_context_from_id	mdm_receiver_context_from_id
+#define UART_DEV_NAME(ctx_)	(ctx_->uart_dev->name)
 #else
 #error "MODEM_CONTEXT or MODEM_RECEIVER need to be enabled"
 #endif
 
-static int cmd_modem_list(const struct shell *shell, size_t argc, char *argv[])
+static int cmd_modem_list(const struct shell *sh, size_t argc,
+			  char *argv[])
 {
 	struct ms_context *mdm_ctx;
 	int i, count = 0;
 
-	shell_fprintf(shell, SHELL_NORMAL, "Modem receivers:\n");
+	shell_fprintf(sh, SHELL_NORMAL, "Modem receivers:\n");
 
 	for (i = 0; i < ms_max_context; i++) {
 		mdm_ctx = ms_context_from_id(i);
 		if (mdm_ctx) {
 			count++;
-			shell_fprintf(
-				shell, SHELL_NORMAL,
-				"%d:\tIface Device: %s\n"
+			shell_fprintf(sh, SHELL_NORMAL,
+			     "%d:\tIface Device: %s\n"
 				"\tManufacturer: %s\n"
 				"\tModel:        %s\n"
 				"\tRevision:     %s\n"
@@ -100,13 +100,14 @@ static int cmd_modem_list(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	if (!count) {
-		shell_fprintf(shell, SHELL_NORMAL, "None found.\n");
+		shell_fprintf(sh, SHELL_NORMAL, "None found.\n");
 	}
 
 	return 0;
 }
 
-static int cmd_modem_send(const struct shell *shell, size_t argc, char *argv[])
+static int cmd_modem_send(const struct shell *sh, size_t argc,
+			  char *argv[])
 {
 	struct ms_context *mdm_ctx;
 	char *endptr;
@@ -114,7 +115,7 @@ static int cmd_modem_send(const struct shell *shell, size_t argc, char *argv[])
 
 	/* list */
 	if (!argv[arg]) {
-		shell_fprintf(shell, SHELL_ERROR,
+		shell_fprintf(sh, SHELL_ERROR,
 			      "Please enter a modem index\n");
 		return -EINVAL;
 	}
@@ -182,8 +183,9 @@ static void uart_mux_cb(const struct device *uart, const struct device *dev,
 		ch = "control";
 	}
 
-	shell_fprintf(shell, SHELL_NORMAL, "%s\t\t%s\t\t%d (%s)\n", uart->name,
-		      dev->name, dlci_address, ch);
+	shell_fprintf(shell, SHELL_NORMAL,
+		      "%s\t\t%s\t\t%d (%s)\n",
+		      uart->name, dev->name, dlci_address, ch);
 }
 #endif
 
@@ -222,12 +224,16 @@ static int cmd_modem_info(const struct shell *shell, size_t argc, char *argv[])
 		      "Revision         : %s\n"
 		      "IMEI             : %s\n"
 		      "RSSI             : %d\n",
-		      i, UART_DEV_NAME(mdm_ctx), mdm_ctx->data_manufacturer,
-		      mdm_ctx->data_model, mdm_ctx->data_revision,
+		      i,
+		      UART_DEV_NAME(mdm_ctx),
+		      mdm_ctx->data_manufacturer,
+		      mdm_ctx->data_model,
+		      mdm_ctx->data_revision,
 		      mdm_ctx->data_imei,
 		      mdm_ctx->data_rssi ? *mdm_ctx->data_rssi : 0);
 
-	shell_fprintf(shell, SHELL_NORMAL, "GSM 07.10 muxing : %s\n",
+	shell_fprintf(shell, SHELL_NORMAL,
+		      "GSM 07.10 muxing : %s\n",
 		      IS_ENABLED(CONFIG_GSM_MUX) ? "enabled" : "disabled");
 
 #if defined(CONFIG_GSM_MUX)
@@ -355,14 +361,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(modem_cmd_sms,
 
 #endif /* CONFIG_MODEM_SMS */
 
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_modem,
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_modem,
 	SHELL_CMD(info, NULL, "Show information for a modem", cmd_modem_info),
 	SHELL_CMD(list, NULL, "List registered modems", cmd_modem_list),
-	SHELL_CMD(send, NULL,
-		  "Send an AT <command> to a registered modem "
-		  "receiver",
-		  cmd_modem_send),
+	SHELL_CMD(send, NULL, "Send an AT <command> to a registered modem "
+						  "receiver", cmd_modem_send),
 #if defined(CONFIG_MODEM_SMS)
 	SHELL_CMD(sms, &modem_cmd_sms, "Send or receive SMS message via modem",
 		  NULL),
