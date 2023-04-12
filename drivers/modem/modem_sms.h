@@ -7,6 +7,8 @@
 #ifndef ZEPHYR_DRIVERS_MODEM_MODEM_SMS_H_
 #define ZEPHYR_DRIVERS_MODEM_MODEM_SMS_H_
 
+#include <zephyr/drivers/modem/sms.h>
+
 /**
  * @brief Notify all registered callbacks of a received SMS message
  *
