@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #include "modem_receiver.h"
 #include "modem_socket.h"
 #include "modem_sms.h"
+#include "murata-1sc.h"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -38,9 +39,6 @@ LOG_MODULE_REGISTER(modem_murata_1sc, CONFIG_MODEM_LOG_LEVEL);
 #if defined(CONFIG_PM_DEVICE)
 #include <zephyr/pm/device.h>
 #endif
-#include <zephyr/drivers/modem/murata-1sc.h>
-
-#define MDM_MAX_SOCKETS CONFIG_MODEM_MURATA_1SC_SOCKET_COUNT
 
 #define MAX_FILENAME_LEN      32
 #define MDM_BOOT_DELAY	      6	   /* seconds */
@@ -207,73 +205,6 @@ static char *byte_to_binary_str(uint8_t byte)
 	return buf;
 }
 
-#define ATOI(s_, value_, desc_) murata_1sc_atoi(s_, value_, desc_, __func__)
-
-/* driver data */
-struct murata_1sc_data {
-	struct net_if *net_iface;
-	uint8_t mac_addr[6];
-
-	/* modem interface */
-	struct modem_iface_uart_data iface_data;
-	uint8_t iface_rb_buf[MDM_MAX_DATA_LENGTH];
-
-	/* modem cmds */
-	struct modem_cmd_handler_data cmd_handler_data;
-	uint8_t cmd_match_buf[MDM_RECV_BUF_SIZE + 1];
-
-	/* socket data */
-	struct modem_socket_config socket_config;
-	struct modem_socket sockets[MDM_MAX_SOCKETS];
-
-	/* RSSI work */
-	struct k_work_delayable rssi_query_work;
-
-	/* modem data */
-	char mdm_manufacturer[MDM_MANUFACTURER_LENGTH];
-	char mdm_model[MDM_MODEL_LENGTH];
-	char mdm_revision[MDM_REVISION_LENGTH];
-	char mdm_sim_info[MDM_SIM_INFO_LENGTH];
-	char mdm_imei[MDM_IMEI_LENGTH];
-#if defined(CONFIG_MODEM_SIM_NUMBERS)
-	char mdm_imsi[MDM_IMSI_LENGTH];
-	char mdm_iccid[MDM_ICCID_LENGTH];
-#endif /* #if defined(CONFIG_MODEM_SIM_NUMBERS) */
-	char mdm_ip[MDM_IP_LENGTH];
-	char mdm_ip6[MDM_IP6_LENGTH];
-	char mdm_gw[MDM_GW_LENGTH];
-	char mdm_nmask[MDM_MASK_LENGTH];
-	char mdm_phn[MDM_PHN_LENGTH];
-	char mdm_carrier[MDM_CARRIER_LENGTH];
-	char mdm_apn[MDM_APN_LENGTH];
-	char mdm_psm[MDM_PSM_LENGTH];
-	char mdm_edrx[MDM_EDRX_LENGTH];
-
-	/* Socket from which we are currently reading data. */
-	int sock_fd;
-
-	/* This buffer is shared by all sockets for rx and tx
-	 * Therefore it must be semaphore protected.
-	 *
-	 * The size is 2x the max data length since binary data
-	 * is being translated into byte-wise hex representation,
-	 * plus extra for the SOCKETDATA command and params
-	 */
-	char xlate_buf[MDM_MAX_DATA_LENGTH * 2 + 64];
-
-	/* Semaphores */
-	struct k_sem sem_response;
-	struct k_sem sem_sock_conn;
-	struct k_sem sem_xlate_buf;
-	struct k_sem sem_sms;
-	struct k_sem sem_rcv_sms;
-
-	/* SMS message support */
-	uint8_t sms_indices[16];
-	uint8_t sms_csms_indices[16];
-	struct sms_in *sms;
-};
-
 /* Modem pins - Wake Host, Wake Modem, Reset, and Reset Done */
 static const struct gpio_dt_spec wake_host_gpio = GPIO_DT_SPEC_INST_GET(0, mdm_wake_host_gpios);
 static const struct gpio_dt_spec wake_mdm_gpio = GPIO_DT_SPEC_INST_GET(0, mdm_wake_mdm_gpios);
@@ -305,9 +236,9 @@ static void murata_1sc_rx(void)
 {
 	while (true) {
 		/* Wait for incoming data */
-		k_sem_take(&mdata.iface_data.rx_sem, K_FOREVER);
+		modem_iface_uart_rx_wait(&mctx.iface, K_FOREVER);
 
-		mctx.cmd_handler.process(&mctx.cmd_handler, &mctx.iface);
+		modem_cmd_handler_process(&mctx.cmd_handler, &mctx.iface);
 	}
 }
 
@@ -446,7 +377,7 @@ static ssize_t send_socket_data(struct modem_socket *sock, const struct sockaddr
 
 	/* Create the command prefix */
 	written = snprintk(mdata.xlate_buf, sizeof(mdata.xlate_buf),
-			   "AT%%SOCKETDATA=\"SEND\",%d,%zu,\"", sock->sock_fd, len);
+			   "AT%%SOCKETDATA=\"SEND\",%d,%zu,\"", sock->id, len);
 
 	/* Add the hex string */
 	data_to_hex_str(buf, len, &mdata.xlate_buf[written], sizeof(mdata.xlate_buf) - written);
@@ -504,7 +435,7 @@ static int on_cmd_sockread_common(int socket_fd, struct modem_cmd_handler_data *
 	struct socket_read_data *sock_data;
 	int ret = 0;
 
-	sock = modem_socket_from_fd(&mdata.socket_config, socket_fd);
+	sock = modem_socket_from_id(&mdata.socket_config, socket_fd);
 	if (!sock) {
 		LOG_ERR("Socket not found! (%d)", socket_fd);
 		ret = -EINVAL;
@@ -1095,14 +1026,14 @@ MODEM_CMD_DEFINE(on_cmd_unsol_cmt)
 MODEM_CMD_DEFINE(on_cmd_unsol_SEV)
 {
 	struct modem_socket *sock;
-	int sock_fd;
+	int sock_id;
 	int evt_id;
 
 	LOG_DBG("got unsolicit socketev, evt: %s, sockfd: %s", argv[0], argv[1]);
 	evt_id = ATOI(argv[0], 0, "event_id");
-	sock_fd = ATOI(argv[1], 0, "sock_fd");
+	sock_id = ATOI(argv[1], 0, "sock_id");
 	/* TODO - handle optional connected fd */
-	sock = modem_socket_from_fd(&mdata.socket_config, sock_fd);
+	sock = modem_socket_from_id(&mdata.socket_config, sock_id);
 	if (!sock) {
 		return 0;
 	}
@@ -1112,7 +1043,7 @@ MODEM_CMD_DEFINE(on_cmd_unsol_SEV)
 	case 0: /* in execution */
 		break;
 	case 1: /* Rx Rdy */
-		LOG_DBG("Data Receive Indication for socket: %d", sock_fd);
+		LOG_DBG("Data Receive Indication for socket: %d", sock_id);
 
 		modem_socket_packet_size_update(&mdata.socket_config, sock, 1);
 		modem_socket_data_ready(&mdata.socket_config, sock);
@@ -1124,7 +1055,7 @@ MODEM_CMD_DEFINE(on_cmd_unsol_SEV)
 		 */
 	case 2: /* socket deactivated */
 	case 3: /* socket terminated */
-		LOG_WRN("Remote peer closed for socket: %d", sock_fd);
+		LOG_WRN("Remote peer closed for socket: %d", sock_id);
 		break;
 	case 4: /* socket accepted */
 		break;
@@ -2286,7 +2217,7 @@ MODEM_CMD_DEFINE(on_cmd_sock_readdata)
 
 	if (more) {
 		struct modem_socket *sock =
-			modem_socket_from_fd(&mdata.socket_config, mdata.sock_fd);
+			modem_socket_from_id(&mdata.socket_config, mdata.sock_fd);
 		modem_socket_packet_size_update(&mdata.socket_config, sock, 1);
 		modem_socket_data_ready(&mdata.socket_config, sock);
 	}
@@ -2340,7 +2271,7 @@ MODEM_CMD_DEFINE(on_cmd_sockinfo)
 	struct modem_socket *sock = NULL;
 
 	for (int i = 0; i < mdata.socket_config.sockets_len; i++) {
-		if (mdata.socket_config.sockets[i].sock_fd == mdata.sock_fd) {
+		if (mdata.socket_config.sockets[i].id == mdata.sock_fd) {
 			sock = &mdata.socket_config.sockets[i];
 			break;
 		}
@@ -2536,10 +2467,10 @@ static void socket_close(struct modem_socket *sock)
 	char at_cmd[40];
 	int ret;
 
-	if (sock->sock_fd != -1) {
+	if (sock->id != -1) {
 
 		/* Tell the modem to close the socket. */
-		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DEACTIVATE\",%d", sock->sock_fd);
+		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DEACTIVATE\",%d", sock->id);
 		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
 				     &mdata.sem_response, MDM_CMD_RSP_TIME);
 
@@ -2548,7 +2479,7 @@ static void socket_close(struct modem_socket *sock)
 		}
 
 		/* Tell the modem to delete the socket. */
-		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DELETE\",%d", sock->sock_fd);
+		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DELETE\",%d", sock->id);
 		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
 				     &mdata.sem_response, MDM_CMD_RSP_TIME);
 		if (ret < 0) {
@@ -2980,7 +2911,7 @@ static ssize_t offload_recvfrom(void *obj, void *buf, size_t len, int flags, str
 	sock_data.recv_buf_len = sizeof(mdata.xlate_buf);
 	sock_data.recv_addr = from;
 	sock->data = &sock_data;
-	mdata.sock_fd = sock->sock_fd;
+	mdata.sock_fd = sock->id;
 
 	/* use dst address as from */
 	if (from && fromlen) {
@@ -2988,7 +2919,7 @@ static ssize_t offload_recvfrom(void *obj, void *buf, size_t len, int flags, str
 		memcpy(from, &sock->dst, *fromlen);
 	}
 
-	snprintk(sendbuf, sizeof(sendbuf), "AT%%SOCKETDATA=\"RECEIVE\",%u,%u", sock->sock_fd, len);
+	snprintk(sendbuf, sizeof(sendbuf), "AT%%SOCKETDATA=\"RECEIVE\",%u,%u", sock->id, len);
 
 	LOG_DBG("%s", sendbuf);
 
@@ -3043,7 +2974,7 @@ static int offload_socket(int family, int type, int proto)
 	if (ret >= 0) {
 		sock = (struct modem_socket *)z_get_fd_obj(ret, NULL, 0);
 
-		sock->sock_fd = -1;
+		sock->id = -1;
 	}
 
 	if (ret == -ENOMEM) {
@@ -3085,7 +3016,8 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 		return -1;
 	}
 
-	if (sock->id < mdata.socket_config.base_socket_num - 1) {
+	/* Verify socket has been allocated */
+	if (!modem_socket_is_allocated(&mdata.socket_config, sock)) {
 		LOG_ERR("Invalid socket_id(%d) from fd:%d", sock->id, sock->sock_fd);
 		errno = EINVAL;
 		return -1;
@@ -3099,7 +3031,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 		return -1;
 	}
 
-	if (sock->sock_fd != -1) {
+	if (sock->id != -1) {
 		socket_close(sock);
 		modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
 				 &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
@@ -3183,7 +3115,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 	}
 
 	LOG_DBG("store %d into sock: %p", mdata.sock_fd, sock);
-	sock->sock_fd = mdata.sock_fd;
+	sock->id = mdata.sock_fd;
 
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
 	if (sock->ip_proto == IPPROTO_TLS_1_2 || sock->ip_proto == IPPROTO_DTLS_1_2) {
@@ -3196,7 +3128,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 		ssl_mode = (~ssl_mode) & 3;
 
 		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"SSLALLOC\",%d,%d,%d",
-			 sock->sock_fd, ssl_mode, profileID);
+			 sock->id, ssl_mode, profileID);
 
 		ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
 				     &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
@@ -3211,7 +3143,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 	}
 #endif
 
-	snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"ACTIVATE\",%d", sock->sock_fd);
+	snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"ACTIVATE\",%d", sock->id);
 	LOG_DBG("%s", at_cmd);
 	/* Send out the command. */
 	ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd, &mdata.sem_response,
@@ -3265,7 +3197,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 
 	if (!sock->is_connected) {
 		if (sock->type == SOCK_DGRAM && tolen != 0 && to != NULL) {
-			if (sock->sock_fd == -1) {
+			if (sock->id == -1) {
 				char at_cmd[128];
 				uint16_t port;
 				void *addr_ptr;
@@ -3284,7 +3216,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 
 				snprintk(at_cmd, sizeof(at_cmd),
 					"AT%%SOCKETCMD=\"INFO\",%d",
-					sock->sock_fd);
+					sock->id);
 
 				ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, cmd_info,
 					ARRAY_SIZE(cmd_info), at_cmd, &mdata.sem_response,
@@ -3354,7 +3286,7 @@ static int offload_close(void *obj)
 	struct modem_socket *sock = (struct modem_socket *)obj;
 
 	/* Make sure we assigned an id */
-	if (sock->id < mdata.socket_config.base_socket_num) {
+	if (!modem_socket_is_allocated(&mdata.socket_config, sock)) {
 		return 0;
 	}
 
@@ -5132,27 +5064,40 @@ static int murata_1sc_init(const struct device *dev)
 	k_sem_init(&mdata.sem_sms, 1, 1);
 
 	/* socket config */
-	mdata.socket_config.sockets = &mdata.sockets[0];
-	mdata.socket_config.sockets_len = ARRAY_SIZE(mdata.sockets);
-	mdata.socket_config.base_socket_num = MDM_BASE_SOCKET_NUM;
-	ret = modem_socket_init(&mdata.socket_config, &offload_socket_fd_op_vtable);
+	ret = modem_socket_init(&mdata.socket_config, &mdata.sockets[0], ARRAY_SIZE(mdata.sockets),
+				MDM_BASE_SOCKET_NUM, true, &offload_socket_fd_op_vtable);
+	if (ret < 0) {
+		goto error;
+	}
 
-	/* cmd handler */
-	mdata.cmd_handler_data.cmds[CMD_RESP] = response_cmds;
-	mdata.cmd_handler_data.cmds_len[CMD_RESP] = ARRAY_SIZE(response_cmds);
-	mdata.cmd_handler_data.cmds[CMD_UNSOL] = unsol_cmds;
-	mdata.cmd_handler_data.cmds_len[CMD_UNSOL] = ARRAY_SIZE(unsol_cmds);
-	mdata.cmd_handler_data.match_buf = &mdata.cmd_match_buf[0];
-	mdata.cmd_handler_data.match_buf_len = sizeof(mdata.cmd_match_buf);
-	mdata.cmd_handler_data.buf_pool = &mdm_recv_pool;
-	mdata.cmd_handler_data.alloc_timeout = K_NO_WAIT;
-	mdata.cmd_handler_data.eol = "\r\n";
-	ret = modem_cmd_handler_init(&mctx.cmd_handler, &mdata.cmd_handler_data);
+	/* cmd handler setup */
+	const struct modem_cmd_handler_config cmd_handler_config = {
+		.match_buf = &mdata.cmd_match_buf[0],
+		.match_buf_len = sizeof(mdata.cmd_match_buf),
+		.buf_pool = &mdm_recv_pool,
+		.alloc_timeout = BUF_ALLOC_TIMEOUT,
+		.eol = "\r\n",
+		.user_data = NULL,
+		.response_cmds = response_cmds,
+		.response_cmds_len = ARRAY_SIZE(response_cmds),
+		.unsol_cmds = unsol_cmds,
+		.unsol_cmds_len = ARRAY_SIZE(unsol_cmds),
+	};
+
+	ret = modem_cmd_handler_init(&mctx.cmd_handler, &mdata.cmd_handler_data,
+				     &cmd_handler_config);
 
 	/* modem interface */
-	mdata.iface_data.rx_rb_buf = &mdata.iface_rb_buf[0];
-	mdata.iface_data.rx_rb_buf_len = sizeof(mdata.iface_rb_buf);
-	ret = modem_iface_uart_init(&mctx.iface, &mdata.iface_data, DEVICE_DT_GET(DT_INST_BUS(0)));
+	const struct modem_iface_uart_config uart_config = {
+		.rx_rb_buf = &mdata.iface_rb_buf[0],
+		.rx_rb_buf_len = sizeof(mdata.iface_rb_buf),
+		.dev = MDM_UART_DEV,
+		.hw_flow_control = DT_PROP(MDM_UART_NODE, hw_flow_control),
+	};
+	ret = modem_iface_uart_init(&mctx.iface, &mdata.iface_data, &uart_config);
+	if (ret < 0) {
+		goto error;
+	}
 
 	/* modem data storage */
 	mctx.data_manufacturer = mdata.mdm_manufacturer;
