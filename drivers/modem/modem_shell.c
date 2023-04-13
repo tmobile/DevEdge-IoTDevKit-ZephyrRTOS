@@ -123,21 +123,21 @@ static int cmd_modem_send(const struct shell *sh, size_t argc,
 	/* <index> of modem receiver */
 	i = (int)strtol(argv[arg], &endptr, 10);
 	if (*endptr != '\0') {
-		shell_fprintf(shell, SHELL_ERROR,
+		shell_fprintf(sh, SHELL_ERROR,
 			      "Please enter a modem index\n");
 		return -EINVAL;
 	}
 
 	mdm_ctx = ms_context_from_id(i);
 	if (!mdm_ctx) {
-		shell_fprintf(shell, SHELL_ERROR, "Modem receiver not found!");
+		shell_fprintf(sh, SHELL_ERROR, "Modem receiver not found!");
 		return 0;
 	}
 
 	for (i = arg + 1; i < argc; i++) {
 		ret = ms_send(mdm_ctx, argv[i], strlen(argv[i]));
 		if (ret < 0) {
-			shell_fprintf(shell, SHELL_ERROR,
+			shell_fprintf(sh, SHELL_ERROR,
 				      "Error sending '%s': %d\n", argv[i], ret);
 			return 0;
 		}
@@ -149,7 +149,7 @@ static int cmd_modem_send(const struct shell *sh, size_t argc,
 		}
 
 		if (ret < 0) {
-			shell_fprintf(shell, SHELL_ERROR,
+			shell_fprintf(sh, SHELL_ERROR,
 				      "Error sending (CRLF or space): %d\n",
 				      ret);
 			return 0;

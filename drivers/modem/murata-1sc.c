@@ -2467,7 +2467,7 @@ static void socket_close(struct modem_socket *sock)
 	char at_cmd[40];
 	int ret;
 
-	if (sock->id != -1) {
+	if (modem_socket_id_is_assigned(&mdata.socket_config, sock)) {
 
 		/* Tell the modem to close the socket. */
 		snprintk(at_cmd, sizeof(at_cmd), "AT%%SOCKETCMD=\"DEACTIVATE\",%d", sock->id);
@@ -2966,16 +2966,9 @@ exit:
 static int offload_socket(int family, int type, int proto)
 {
 	int ret;
-	struct modem_socket *sock;
 
 	/* defer modem's socket create call to bind() */
 	ret = modem_socket_get(&mdata.socket_config, family, type, proto);
-
-	if (ret >= 0) {
-		sock = (struct modem_socket *)z_get_fd_obj(ret, NULL, 0);
-
-		sock->id = -1;
-	}
 
 	if (ret == -ENOMEM) {
 		ret = -ENFILE;
@@ -3031,7 +3024,7 @@ static int offload_connect(void *obj, const struct sockaddr *addr, socklen_t add
 		return -1;
 	}
 
-	if (sock->id != -1) {
+	if (modem_socket_id_is_assigned(&mdata.socket_config, sock)) {
 		socket_close(sock);
 		modem_cmd_send(&mctx.iface, &mctx.cmd_handler, NULL, 0U, at_cmd,
 				 &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
@@ -3197,7 +3190,7 @@ static ssize_t offload_sendto(void *obj, const void *buf, size_t len, int flags,
 
 	if (!sock->is_connected) {
 		if (sock->type == SOCK_DGRAM && tolen != 0 && to != NULL) {
-			if (sock->id == -1) {
+			if (!modem_socket_id_is_assigned(&mdata.socket_config, sock)) {
 				char at_cmd[128];
 				uint16_t port;
 				void *addr_ptr;
@@ -3286,7 +3279,7 @@ static int offload_close(void *obj)
 	struct modem_socket *sock = (struct modem_socket *)obj;
 
 	/* Make sure we assigned an id */
-	if (!modem_socket_is_allocated(&mdata.socket_config, sock)) {
+	if (!modem_socket_id_is_assigned(&mdata.socket_config, sock)) {
 		return 0;
 	}
 
@@ -5065,7 +5058,7 @@ static int murata_1sc_init(const struct device *dev)
 
 	/* socket config */
 	ret = modem_socket_init(&mdata.socket_config, &mdata.sockets[0], ARRAY_SIZE(mdata.sockets),
-				MDM_BASE_SOCKET_NUM, true, &offload_socket_fd_op_vtable);
+				MDM_BASE_SOCKET_NUM, false, &offload_socket_fd_op_vtable);
 	if (ret < 0) {
 		goto error;
 	}
