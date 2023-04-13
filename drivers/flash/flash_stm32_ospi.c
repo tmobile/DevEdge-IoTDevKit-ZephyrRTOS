@@ -31,11 +31,6 @@ LOG_MODULE_REGISTER(flash_stm32_ospi, CONFIG_FLASH_LOG_LEVEL);
 
 #define STM32_OSPI_NODE DT_INST_PARENT(0)
 
-#define DT_OSPI_IO_PORT_PROP_OR(prop, default_value)					\
-	COND_CODE_1(DT_NODE_HAS_PROP(STM32_OSPI_NODE, prop),				\
-		    (_CONCAT(HAL_OSPIM_, DT_STRING_TOKEN(STM32_OSPI_NODE, prop))),	\
-		    ((default_value)))
-
 #define STM32_OSPI_RESET_GPIO DT_INST_NODE_HAS_PROP(0, reset_gpios)
 
 #define STM32_OSPI_DLYB_BYPASSED DT_PROP(STM32_OSPI_NODE, dlyb_bypass)
