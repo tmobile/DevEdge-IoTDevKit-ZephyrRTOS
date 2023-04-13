@@ -61,6 +61,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "lwm2m_engine.h"
 #include "lwm2m_rd_client.h"
 #include "lwm2m_rw_link_format.h"
+#include "lwm2m_util.h"
 
 #define LWM2M_RD_CLIENT_URI "rd"
 
@@ -1556,10 +1557,8 @@ int lwm2m_rd_client_init(void)
 
 }
 
-static int sys_lwm2m_rd_client_init(const struct device *dev)
+static int sys_lwm2m_rd_client_init(void)
 {
-	ARG_UNUSED(dev);
-
 	return lwm2m_rd_client_init();
 }
 
