@@ -62,4 +62,12 @@
 					<GECKO_LOC(LEUART_TX, 6)>;
 		};
 	};
+
+	adc_default: adc_default {
+		group1 {
+			psels = <GECKO_ADC_VBATT>,
+				 <GECKO_ADC_HWID>;
+			//input-enabled;
+		};
+	};
 };
