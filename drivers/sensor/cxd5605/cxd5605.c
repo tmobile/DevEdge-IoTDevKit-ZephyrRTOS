@@ -692,7 +692,6 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 * powered on the device, used when the power
 		 * domain this device belongs is resumed.
 		 */
-		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
 		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
 		k_msleep(3000);	/* wait for GNSS chip to boot */
 		result = init(dev);
@@ -713,7 +712,6 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		 */
 		cxd5605_sleep(dev, 2);
 		gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_DISABLE);
-		result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
 		result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
 		break;
 	default:

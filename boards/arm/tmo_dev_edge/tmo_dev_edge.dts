@@ -102,6 +102,12 @@
 		regulator-name = "bq24250rge";
 		regulator-boot-on;
 	};
+
+	gnss_ldo_domain: gnss_pwr {
+		compatible = "power-domain-gpio";
+		enable-gpios = <&gpiof 10 GPIO_ACTIVE_HIGH>;
+		boot-on;
+	};
 };
 
 &cpu0 {
@@ -255,6 +261,7 @@
 		pwr-gpios = <&gpiof 10 GPIO_ACTIVE_HIGH>;
 		rst-gpios = <&gpiof 8 GPIO_ACTIVE_HIGH>;
 		boot-rec-gpios = <&gpiof 6 GPIO_ACTIVE_HIGH>;
+		power-domain = <&gnss_ldo_domain>;
 	};
 
 	/* AMS Ambient Light Sensor */
