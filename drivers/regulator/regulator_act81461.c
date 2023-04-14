@@ -59,6 +59,9 @@ enum act81461_sources {
 	ACT81461_SOURCE_LDO1,
 	ACT81461_SOURCE_LDO2,
 	ACT81461_SOURCE_LDO3,
+	ACT81461_LSW4,
+	ACT81461_LSW5,
+	ACT81461_LSW6,
 };
 
 struct regulator_act81461_parent_config {
@@ -104,7 +107,6 @@ static int regulator_act81461_enable(const struct device *dev)
 	const struct regulator_act81461_node_config *config = dev->config;
 	const struct regulator_act81461_parent_config *cconfig = config->p->config;
 	int ret = 0;
-	uint8_t val;
 
 	if (!i2c_is_ready_dt(&cconfig->i2c)) {
 		return -ENODEV;
@@ -112,137 +114,83 @@ static int regulator_act81461_enable(const struct device *dev)
 
 	switch (config->source) {
 	case ACT81461_SOURCE_BUCKBOOST:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG,
 					     BUCKBOOST_ENABLE_MSK, BUCKBOOST_ENABLE);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BUCK1:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, BUCK1_ENABLE_MSK,
 					     BUCK1_ENABLE);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BUCK2:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, BUCK2_ENABLE_MSK,
 					     BUCK2_ENABLE);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BOOST:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, BOOST_ENABLE_MSK,
 					     0x80U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO1:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, LDO1_ENABLE_MSK,
 					     LDO1_ENABLE);
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, &val);
 		if (ret < 0) {
 			return ret;
 		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO2:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, LDO2_ENABLE_MSK,
 					     LDO2_ENABLE);
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, &val);
 		if (ret < 0) {
 			return ret;
 		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO3:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, LDO1_ENABLE_MSK,
 					     LDO3_ENABLE);
 		if (ret < 0) {
 			return ret;
 		}
+		break;
 
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, &val);
+	case ACT81461_LSW4:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW4_ENABLE_REG, LSW4_ENABLE_MSK,
+					     LSW4_ENABLE);
 		if (ret < 0) {
 			return ret;
 		}
+		break;
 
+	case ACT81461_LSW5:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW5_ENABLE_REG, LSW5_ENABLE_MSK,
+					     LSW5_ENABLE);
+		if (ret < 0) {
+			return ret;
+		}
+		break;
+
+	case ACT81461_LSW6:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW6_ENABLE_REG, LSW6_ENABLE_MSK,
+					     LSW6_ENABLE);
+		if (ret < 0) {
+			return ret;
+		}
 		break;
 
 	default:
@@ -257,144 +205,78 @@ static int regulator_act81461_disable(const struct device *dev)
 	const struct regulator_act81461_node_config *config = dev->config;
 	const struct regulator_act81461_parent_config *cconfig = config->p->config;
 	int ret = 0;
-	uint8_t val;
 
 	switch (config->source) {
 	case ACT81461_SOURCE_BUCKBOOST:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG,
 					     BUCKBOOST_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCKBOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BUCK1:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, BUCK1_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BUCK2:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, BUCK2_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BUCK2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_BOOST:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, BOOST_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, BOOST_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO1:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, &val);
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, LDO1_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, LDO1_ENABLE_MSK,
-					     0x00U);
-		if (ret < 0) {
-			return ret;
-		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO1_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO2:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, &val);
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, LDO2_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
-
-		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, LDO2_ENABLE_MSK,
-					     0x00U);
-		if (ret < 0) {
-			return ret;
-		}
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO2_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		break;
 
 	case ACT81461_SOURCE_LDO3:
-
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, &val);
-		if (ret < 0) {
-			return ret;
-		}
-
 		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, LDO3_ENABLE_MSK,
 					     0x00U);
 		if (ret < 0) {
 			return ret;
 		}
+		break;
 
-		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LDO3_ENABLE_REG, &val);
+	case ACT81461_LSW4:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW4_ENABLE_REG, LSW4_ENABLE_MSK, 0U);
 		if (ret < 0) {
 			return ret;
 		}
+		break;
 
+	case ACT81461_LSW5:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW5_ENABLE_REG, LSW5_ENABLE_MSK, 0U);
+		if (ret < 0) {
+			return ret;
+		}
+		break;
+
+	case ACT81461_LSW6:
+		ret = i2c_reg_update_byte_dt(&cconfig->i2c, LSW6_ENABLE_REG, LSW6_ENABLE_MSK, 0U);
+		if (ret < 0) {
+			return ret;
+		}
 		break;
 
 	default:
@@ -439,6 +321,11 @@ static unsigned int regulator_act81461_count_voltages(const struct device *dev)
 		vcount = linear_range_values_count(&ldo3_range);
 		break;
 
+	case ACT81461_LSW4:
+	case ACT81461_LSW5:
+	case ACT81461_LSW6:
+		return -ENOTSUP;
+
 	default:
 		LOG_ERR("Unexpected source %d", config->source);
 		break;
@@ -473,6 +360,10 @@ static int regulator_act81461_list_voltage(const struct device *dev, unsigned in
 	case ACT81461_SOURCE_LDO3:
 		/* *volt_uv = 1850000; */
 		return linear_range_get_value(&ldo3_range, idx, volt_uv);
+	case ACT81461_LSW4:
+	case ACT81461_LSW5:
+	case ACT81461_LSW6:
+		return -ENOTSUP;
 	default:
 		LOG_ERR("Unexpected source %d", config->source);
 		break;
@@ -857,6 +748,10 @@ static int regulator_act81461_set_voltage(const struct device *dev, int32_t min_
 		return regulator_act81461_ldo2_set_voltage(dev, min_uv, max_uv);
 	case ACT81461_SOURCE_LDO3:
 		return regulator_act81461_ldo3_set_voltage(dev, min_uv, max_uv);
+	case ACT81461_LSW4:
+	case ACT81461_LSW5:
+	case ACT81461_LSW6:
+		return -ENOTSUP;
 	default:
 		LOG_ERR("Unexpected source %d", config->source);
 		break;
@@ -884,6 +779,10 @@ static int regulator_act81461_get_voltage(const struct device *dev, int32_t *vol
 		return regulator_act81461_ldo2_get_voltage(dev, volt_uv);
 	case ACT81461_SOURCE_LDO3:
 		return regulator_act81461_ldo3_get_voltage(dev, volt_uv);
+	case ACT81461_LSW4:
+	case ACT81461_LSW5:
+	case ACT81461_LSW6:
+		return -ENOTSUP;
 	default:
 		LOG_ERR("Unexpected source %d", config->source);
 		break;
@@ -1072,6 +971,68 @@ static int regulator_act81461_get_error_flags(const struct device *dev,
 			*flags |= REGULATOR_ERROR_OVER_CURRENT;
 		}
 		break;
+
+	case ACT81461_LSW4:
+		/* Check for PWR_GOOD + OV */
+		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LSW4_STAT_REG, &val);
+		if (ret < 0) {
+			return ret;
+		}
+		errors = (val & LSW4_STAT_ERR_MSK);
+		LOG_DBG("LSW4 ERROR FLAGS %x %x\n", val, errors);
+		if (!(val & PWR_OK)) {
+			*flags |= REGULATOR_ERROR_UNDER_VOLTAGE;
+		}
+
+		if (val & OV_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_VOLTAGE;
+		}
+
+		if (val & ILIM_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_CURRENT;
+		}
+		break;
+	case ACT81461_LSW5:
+		/* Check for PWR_GOOD + OV */
+		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LSW5_STAT_REG, &val);
+		if (ret < 0) {
+			return ret;
+		}
+		errors = (val & LSW5_STAT_ERR_MSK);
+		LOG_DBG("LSW4 ERROR FLAGS %x %x\n", val, errors);
+		if (!(val & PWR_OK)) {
+			*flags |= REGULATOR_ERROR_UNDER_VOLTAGE;
+		}
+
+		if (val & OV_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_VOLTAGE;
+		}
+
+		if (val & ILIM_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_CURRENT;
+		}
+		break;
+	case ACT81461_LSW6:
+		/* Check for PWR_GOOD + OV */
+		ret = i2c_reg_read_byte_dt(&cconfig->i2c, LSW6_STAT_REG, &val);
+		if (ret < 0) {
+			return ret;
+		}
+		errors = (val & LSW6_STAT_ERR_MSK);
+		LOG_DBG("LSW4 ERROR FLAGS %x %x\n", val, errors);
+		if (!(val & PWR_OK)) {
+			*flags |= REGULATOR_ERROR_UNDER_VOLTAGE;
+		}
+
+		if (val & OV_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_VOLTAGE;
+		}
+
+		if (val & ILIM_FLT) {
+			*flags |= REGULATOR_ERROR_OVER_CURRENT;
+		}
+		break;
+
 	default:
 		return ret;
 	}
@@ -1234,6 +1195,9 @@ BUILD_ASSERT(ACT81461_CHILD_INIT_PRIORITY < ACT81461_PARENT_INIT_PRIORITY,
 				       DEVICE_DT_INST_GET(inst))                                   \
 	REGULATOR_ACT81461_DEFINE_COND(inst, ldo1, ACT81461_SOURCE_LDO1, DEVICE_DT_INST_GET(inst)) \
 	REGULATOR_ACT81461_DEFINE_COND(inst, ldo2, ACT81461_SOURCE_LDO2, DEVICE_DT_INST_GET(inst)) \
-	REGULATOR_ACT81461_DEFINE_COND(inst, ldo3, ACT81461_SOURCE_LDO3, DEVICE_DT_INST_GET(inst))
+	REGULATOR_ACT81461_DEFINE_COND(inst, ldo3, ACT81461_SOURCE_LDO3, DEVICE_DT_INST_GET(inst)) \
+	REGULATOR_ACT81461_DEFINE_COND(inst, lsw4, ACT81461_LSW4, DEVICE_DT_INST_GET(inst)) \
+	REGULATOR_ACT81461_DEFINE_COND(inst, lsw5, ACT81461_LSW5, DEVICE_DT_INST_GET(inst)) \
+	REGULATOR_ACT81461_DEFINE_COND(inst, lsw6, ACT81461_LSW6, DEVICE_DT_INST_GET(inst))
 
 DT_INST_FOREACH_STATUS_OKAY(REGULATOR_ACT81461_DEFINE_ALL)

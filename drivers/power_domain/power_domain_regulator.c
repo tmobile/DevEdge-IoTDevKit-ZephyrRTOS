@@ -5,25 +5,23 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-#define DT_DRV_COMPAT power_domain_gpio
+#define DT_DRV_COMPAT power_domain_regulator
 
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/regulator.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(power_domain_gpio, CONFIG_POWER_DOMAIN_LOG_LEVEL);
+LOG_MODULE_REGISTER(power_domain_regulator, CONFIG_POWER_DOMAIN_LOG_LEVEL);
 
-struct pd_gpio_config {
-	struct gpio_dt_spec enable;
+struct pd_reg_config {
+	const struct device *regulator;
 	uint32_t startup_delay_us;
 	uint32_t off_on_delay_us;
-	bool boot_on;
 };
 
-struct pd_gpio_data {
+struct pd_reg_data {
 	k_timeout_t next_boot;
 };
 
@@ -45,11 +43,11 @@ static int pd_on_domain_visitor(const struct device *dev, void *context)
 	return 0;
 }
 
-static int pd_gpio_pm_action(const struct device *dev,
+static int pd_reg_pm_action(const struct device *dev,
 			     enum pm_device_action action)
 {
-	const struct pd_gpio_config *cfg = dev->config;
-	struct pd_gpio_data *data = dev->data;
+	const struct pd_reg_config *cfg = dev->config;
+	struct pd_reg_data *data = dev->data;
 	struct pd_visitor_context context = {.domain = dev};
 	int64_t next_boot_ticks;
 	int rc = 0;
@@ -65,7 +63,7 @@ static int pd_gpio_pm_action(const struct device *dev,
 		/* Wait until we can boot again */
 		k_sleep(data->next_boot);
 		/* Switch power on */
-		gpio_pin_set_dt(&cfg->enable, 1);
+		regulator_enable(cfg->regulator);
 		LOG_INF("%s is now ON", dev->name);
 		/* Wait for domain to come up */
 		k_sleep(K_USEC(cfg->startup_delay_us));
@@ -78,21 +76,11 @@ static int pd_gpio_pm_action(const struct device *dev,
 		context.action = PM_DEVICE_ACTION_TURN_OFF;
 		(void)device_supported_foreach(dev, pd_on_domain_visitor, &context);
 		/* Switch power off */
-		gpio_pin_set_dt(&cfg->enable, 0);
+		regulator_disable(cfg->regulator);
 		LOG_INF("%s is now OFF", dev->name);
 		/* Store next time we can boot */
 		next_boot_ticks = k_uptime_ticks() + k_us_to_ticks_ceil32(cfg->off_on_delay_us);
 		data->next_boot = K_TIMEOUT_ABS_TICKS(next_boot_ticks);
-		break;
-	case PM_DEVICE_ACTION_TURN_ON:
-		/* Actively control the enable pin now that the device is powered */
-		gpio_pin_configure_dt(&cfg->enable, GPIO_OUTPUT_INACTIVE);
-		LOG_DBG("%s is OFF and powered", dev->name);
-		break;
-	case PM_DEVICE_ACTION_TURN_OFF:
-		/* Let the enable pin float while device is not powered */
-		gpio_pin_configure_dt(&cfg->enable, GPIO_DISCONNECTED);
-		LOG_DBG("%s is OFF and not powered", dev->name);
 		break;
 	default:
 		rc = -ENOTSUP;
@@ -101,44 +89,32 @@ static int pd_gpio_pm_action(const struct device *dev,
 	return rc;
 }
 
-static int pd_gpio_init(const struct device *dev)
+static int pd_reg_init(const struct device *dev)
 {
-	const struct pd_gpio_config *cfg = dev->config;
-	struct pd_gpio_data *data = dev->data;
-	int rc;
+	const struct pd_reg_config *cfg = dev->config;
+	struct pd_reg_data *data = dev->data;
+	int rc = 0;
 
-	if (!device_is_ready(cfg->enable.port)) {
-		LOG_ERR("GPIO port %s is not ready", cfg->enable.port->name);
+	if (!device_is_ready(cfg->regulator)) {
+		LOG_ERR("Regulator %s is not ready", cfg->regulator->name);
 		return -ENODEV;
 	}
 	/* We can't know how long the domain has been off for before boot */
 	data->next_boot = K_TIMEOUT_ABS_US(cfg->off_on_delay_us);
 
-	if (pm_device_on_power_domain(dev)) {
-		/* Device is unpowered */
-		pm_device_init_off(dev);
-		rc = gpio_pin_configure_dt(&cfg->enable, GPIO_DISCONNECTED);
-	} else if (cfg->boot_on) {
-		rc = gpio_pin_configure_dt(&cfg->enable, GPIO_OUTPUT_ACTIVE);
-	} else {
-		pm_device_init_suspended(dev);
-		rc = gpio_pin_configure_dt(&cfg->enable, GPIO_OUTPUT_INACTIVE);
-	}
-
 	return rc;
 }
 
 #define POWER_DOMAIN_DEVICE(id)						   \
-	static const struct pd_gpio_config pd_gpio_##id##_cfg = {	   \
-		.enable = GPIO_DT_SPEC_INST_GET(id, enable_gpios),	   \
+	static const struct pd_reg_config pd_reg_##id##_cfg = {	   \
+		.regulator = DEVICE_DT_GET(DT_PHANDLE(DT_DRV_INST(id), regulator)),	   \
 		.startup_delay_us = DT_INST_PROP(id, startup_delay_us),	   \
 		.off_on_delay_us = DT_INST_PROP(id, off_on_delay_us),	   \
-		.boot_on = DT_INST_PROP(id, boot_on),	   \
 	};								   \
-	static struct pd_gpio_data pd_gpio_##id##_data;			   \
-	PM_DEVICE_DT_INST_DEFINE(id, pd_gpio_pm_action);		   \
-	DEVICE_DT_INST_DEFINE(id, pd_gpio_init, PM_DEVICE_DT_INST_GET(id), \
-			      &pd_gpio_##id##_data, &pd_gpio_##id##_cfg,   \
+	static struct pd_reg_data pd_reg_##id##_data;			   \
+	PM_DEVICE_DT_INST_DEFINE(id, pd_reg_pm_action);		   \
+	DEVICE_DT_INST_DEFINE(id, pd_reg_init, PM_DEVICE_DT_INST_GET(id), \
+			      &pd_reg_##id##_data, &pd_reg_##id##_cfg,   \
 			      POST_KERNEL, 75,				   \
 			      NULL);
 
