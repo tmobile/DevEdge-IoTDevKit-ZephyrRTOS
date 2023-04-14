@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT semtech_sx9328
-
 #include <errno.h>
 
 #include <zephyr/kernel.h>

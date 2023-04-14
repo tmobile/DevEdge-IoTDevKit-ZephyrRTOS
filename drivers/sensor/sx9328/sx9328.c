@@ -19,7 +19,7 @@
 
 #include "sx9328.h"
 
-LOG_MODULE_REGISTER(SX9398, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(SX9328, CONFIG_SENSOR_LOG_LEVEL);
 
 /**
  * Set attributes for the device.
