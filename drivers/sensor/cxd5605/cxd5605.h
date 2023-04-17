@@ -13,6 +13,6 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/gpio.h>
 
-int setup_interrupts(const struct device *dev);
+int cxd5605_setup_interrupts(const struct device *dev);
 
 #endif /*  ZEPHYR_DRIVERS_SENSOR_CXD5605_CXD5605_H_ */

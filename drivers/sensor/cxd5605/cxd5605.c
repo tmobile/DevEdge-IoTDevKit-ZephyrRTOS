@@ -63,7 +63,7 @@ struct drv_data {
 	int aux;
 };
 
-void driver_cxd5605_nmea_cb(struct gnss_global_data *pvt)
+static void driver_cxd5605_nmea_cb(struct gnss_global_data *pvt)
 {
 #ifdef DEBUG
 	memcpy(&drv_data->pvt, pvt, sizeof(struct gnss_global_data));
@@ -102,7 +102,7 @@ void driver_cxd5605_nmea_cb(struct gnss_global_data *pvt)
  *  @return nothing
  *
  */
-void driver_cxd5605_resp_cb(struct cxd5605_data *drv_data,
+static void driver_cxd5605_resp_cb(struct cxd5605_data *drv_data,
 		struct cxd5605_cmd_data *cxd5605_cmd_data,
 		int cmd, int ret)
 {
@@ -146,7 +146,7 @@ void driver_cxd5605_resp_cb(struct cxd5605_data *drv_data,
  *  @return returns an error (-ENODEV) if the i2c bus is not ready
  *
  */
-int init(const struct device *dev)
+static int init(const struct device *dev)
 {
 	const struct cxd5605_config *cfg = dev->config;
 	struct cxd5605_data *drv_data = dev->data;
@@ -167,6 +167,8 @@ int init(const struct device *dev)
 
 	/* save this driver instance for passing to other functions */
 	drv_data->cxd5605_dev = dev;
+
+	result = gpio_pin_configure_dt(&cfg->rst_gpio, GPIO_OUTPUT_HIGH);
 
 	return result;
 }
@@ -591,7 +593,7 @@ static int cxd5605_attr_set(const struct device *dev,
 	case SENSOR_ATTR_CXD5605_CALLBACK:
 		init(dev);
 		LOG_DBG("Got CXD5605_ALERT_INTERRUPTS\n");
-		setup_interrupts(dev);
+		cxd5605_setup_interrupts(dev);
 		/* setup shim callbacks */
 #ifdef DEBUG
 		printf("[driver] register driver callback\n");
@@ -630,7 +632,7 @@ static const struct sensor_driver_api cxd5605_driver_api = {
  *  @return 0 if successful, negative errno code if failure
  *
  */
-int setup_interrupts(const struct device *dev)
+int cxd5605_setup_interrupts(const struct device *dev)
 {
 	int result;
 	struct cxd5605_data *drv_data = dev->data;
@@ -681,7 +683,6 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		enum pm_device_action action)
 {
 	const struct cxd5605_config *config = dev->config;
-	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
 	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
 
 	int result = 0;
