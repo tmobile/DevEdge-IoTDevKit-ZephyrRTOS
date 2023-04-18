@@ -50,13 +50,11 @@ static void powerup_led_on(struct k_timer *timer_id);
 
 K_TIMER_DEFINE(powerup_led_timer, powerup_led_on, NULL);
 
-static int tmo_dev_edge(const struct device *dev)
+static int tmo_dev_edge(void)
 {
 	const struct device *rs_dev; /* RS9116 Gpio Device */
 	const struct device *bz_dev; /* PAM8904E Gpio Device */
 	const struct device *gpiof;
-
-	ARG_UNUSED(dev);
 
 	rs_dev = device_get_binding(RS9116_GPIO_NAME);
 
