@@ -42,14 +42,14 @@ struct adsp_cpu_clock_info *adsp_cpu_clocks_get(void);
 #define ADSP_CLKCTL		CAVS_SHIM.clkctl
 #endif
 
-#define ADSP_CPU_CLOCK_FREQ_ENC     DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_enc)
-#define ADSP_CPU_CLOCK_FREQ_MASK    DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_mask)
-#define ADSP_CPU_CLOCK_FREQ_LEN     DT_PROP_LEN(DT_NODELABEL(clkctl), adsp_clkctl_freq_enc)
+#define ADSP_CPU_CLOCK_FREQ_ENC		DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_enc)
+#define ADSP_CPU_CLOCK_FREQ_MASK	DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_mask)
+#define ADSP_CPU_CLOCK_FREQ_LEN		DT_PROP_LEN(DT_NODELABEL(clkctl), adsp_clkctl_freq_enc)
 
-#define ADSP_CPU_CLOCK_FREQ_DEFAULT DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_default)
-#define ADSP_CPU_CLOCK_FREQ_LOWEST  DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_lowest)
+#define ADSP_CPU_CLOCK_FREQ_DEFAULT	DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_default)
+#define ADSP_CPU_CLOCK_FREQ_LOWEST	DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_freq_lowest)
 
-#define ADSP_CPU_CLOCK_FREQ(name)   DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_clk_##name)
+#define ADSP_CPU_CLOCK_FREQ(name)	DT_PROP(DT_NODELABEL(clkctl), adsp_clkctl_clk_##name)
 
 #define ADSP_CLOCK_HAS_WOVCRO		DT_PROP(DT_NODELABEL(clkctl), wovcro_supported)
 
@@ -69,10 +69,9 @@ struct adsp_cpu_clock_info *adsp_cpu_clocks_get(void);
 #define ADSP_CLOCK_SOURCE_AUDIO_PLL_FIXED	2
 #endif
 
-#define ADSP_CPU_CLOCK_FREQ_LPRO  ADSP_CPU_CLOCK_FREQ(lpro)
-#define ADSP_CPU_CLOCK_FREQ_HPRO  ADSP_CPU_CLOCK_FREQ(hpro)
-#ifdef ADSP_CLOCK_HAS_WOVCRO
-#define ADSP_CPU_CLOCK_FREQ_WOVCRO  ADSP_CPU_CLOCK_FREQ(wovcro)
+#define ADSP_CLOCK_SOURCE_MLCK_INPUT		3
+#if ADSP_CLOCK_HAS_WOVCRO
+#define ADSP_CLOCK_SOURCE_WOV_RING_OSC		4
 #endif
 #define ADSP_CLOCK_SOURCE_COUNT			5
 
