@@ -18,19 +18,8 @@ zephyr_linker_section_configure(SECTION device_states
 )
 
 if(CONFIG_PM_DEVICE)
-  zephyr_linker_section(NAME pm_device_slots GROUP DATA_REGION TYPE NOLOAD NOINPUT ${XIP_ALIGN_WITH_INPUT})
-  zephyr_linker_section_configure(SECTION pm_device_slots KEEP INPUT ".z_pm_device_slots")
+  zephyr_iterable_section(NAME pm_device_slots GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT} SUBALIGN 4)
 endif()
-
-zephyr_linker_section(NAME initshell GROUP DATA_REGION NOINPUT ${XIP_ALIGN_WITH_INPUT})
-zephyr_linker_section_configure(SECTION initshell
-  KEEP INPUT ".shell_module_*"
-  SYMBOLS __shell_module_start __shell_module_end
-)
-zephyr_linker_section_configure(SECTION initshell
-  KEEP INPUT ".shell_cmd_*"
-  SYMBOLS __shell_cmd_start __shell_end_end
-)
 
 zephyr_linker_section(NAME log_dynamic GROUP DATA_REGION NOINPUT)
 zephyr_linker_section_configure(SECTION log_dynamic KEEP INPUT ".log_dynamic_*")

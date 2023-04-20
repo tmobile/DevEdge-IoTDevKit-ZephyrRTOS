@@ -175,16 +175,34 @@ New APIs in this release
 Kernel
 ******
 
+* Removed absolute symbols :c:macro:`___cpu_t_SIZEOF`,
+  :c:macro:`_STRUCT_KERNEL_SIZE`, :c:macro:`K_THREAD_SIZEOF` and
+  :c:macro:`_DEVICE_STRUCT_SIZEOF`
+
 Architectures
 *************
 
-* ARM
+* ARC
+  * Removed absolute symbols :c:macro:`___callee_saved_t_SIZEOF` and
+  :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`
 
 * ARM
+  * Removed absolute symbols :c:macro:`___basic_sf_t_SIZEOF`,
+  :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`, :c:macro:`___cpu_context_t_SIZEOF`
+  and :c:macro:`___thread_stack_info_t_SIZEOF`
 
 * ARM64
+  * Removed absolute symbol :c:macro:`___callee_saved_t_SIZEOF`
+
+* NIOS2
+  * Removed absolute symbol :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`
 
 * RISC-V
+
+* SPARC
+  * Removed absolute symbol :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`
+
+* X86
 
 * Xtensa
 
@@ -328,6 +346,10 @@ Drivers and Sensors
     selected by the driver to indicate that extra operations are supported.
     To enable extra operations user should select
     :kconfig:option:`CONFIG_FLASH_EX_OP_ENABLED`.
+  * nrf_qspi_nor: Replaced custom API function ``nrf_qspi_nor_base_clock_div_force``
+    with ``nrf_qspi_nor_xip_enable`` which apart from forcing the clock divider
+    prevents the driver from deactivating the QSPI peripheral so that the XIP
+    operation is actually possible.
 
 * FPGA
 
@@ -472,6 +494,14 @@ Trusted Firmware-M
 
 zcbor
 *****
+
+Updated from 0.6.0 to 0.7.0.
+Among other things, this update brings:
+
+* C++ improvements
+* float16 support
+* Improved docs
+* -Wall and -Wconversion compliance
 
 Documentation
 *************

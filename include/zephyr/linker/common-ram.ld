@@ -37,12 +37,7 @@
         } GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
 #if CONFIG_PM_DEVICE
-	SECTION_DATA_PROLOGUE(pm_device_slots, (NOLOAD),)
-	{
-		__pm_device_slots_start = .;
-		KEEP(*(".z_pm_device_slots"));
-		__pm_device_slots_end = .;
-	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
+	ITERABLE_SECTION_RAM(pm_device_slots, 4)
 #endif
 
 #if defined(CONFIG_HAS_DYNAMIC_DEVICE_HANDLES)
@@ -51,20 +46,6 @@
 #include "device-handles.ld"
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 #endif 	/* CONFIG_HAS_DYNAMIC_DEVICE_HANDLES */
-
-	SECTION_DATA_PROLOGUE(initshell,,)
-	{
-		/* link in shell initialization objects for all modules that
-		 * use shell and their shell commands are automatically
-		 * initialized by the kernel.
-		 */
-		__shell_module_start = .;
-		KEEP(*(".shell_module_*"));
-		__shell_module_end = .;
-		__shell_cmd_start = .;
-		KEEP(*(".shell_cmd_*"));
-		__shell_cmd_end = .;
-	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 
 	ITERABLE_SECTION_RAM_GC_ALLOWED(log_mpsc_pbuf, 4)
 	ITERABLE_SECTION_RAM(log_msg_ptr, 4)
@@ -148,14 +129,6 @@
 
 
 #if defined(CONFIG_RTIO)
-	SECTION_DATA_PROLOGUE(rtio,,SUBALIGN(4))
-	{
-		__rtio_start = .;
-		*(".rtio.*")
-		KEEP(*(SORT_BY_NAME(".rtio.*")))
-		__rtio_end = .;
-	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
-
 	ITERABLE_SECTION_RAM(rtio, 4)
 	ITERABLE_SECTION_RAM(rtio_iodev, 4)
 #endif /* CONFIG_RTIO */

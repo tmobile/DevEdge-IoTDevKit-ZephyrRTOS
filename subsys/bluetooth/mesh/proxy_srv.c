@@ -24,7 +24,6 @@
 #include "net.h"
 #include "rpl.h"
 #include "transport.h"
-#include "host/ecc.h"
 #include "prov.h"
 #include "beacon.h"
 #include "foundation.h"
@@ -497,7 +496,7 @@ static int enc_id_adv(struct bt_mesh_subnet *sub, uint8_t type,
 	};
 	int err;
 
-	err = bt_encrypt_be(sub->keys[SUBNET_KEY_TX_IDX(sub)].identity, hash, hash);
+	err = bt_mesh_encrypt(sub->keys[SUBNET_KEY_TX_IDX(sub)].identity, hash, hash);
 	if (err) {
 		return err;
 	}

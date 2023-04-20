@@ -481,9 +481,21 @@ static inline int z_vrfy_zsock_bind(int sock, const struct sockaddr *addr,
 #include <syscalls/zsock_bind_mrsh.c>
 #endif /* CONFIG_USERSPACE */
 
+static void zsock_connected_cb(struct net_context *ctx, int status, void *user_data)
+{
+	if (status < 0) {
+		ctx->user_data = INT_TO_POINTER(-status);
+		sock_set_error(ctx);
+	} else if (status == 0) {
+		(void)net_context_recv(ctx, zsock_received_cb, K_NO_WAIT, ctx->user_data);
+	}
+}
+
 int zsock_connect_ctx(struct net_context *ctx, const struct sockaddr *addr,
 		      socklen_t addrlen)
 {
+	k_timeout_t timeout;
+
 #if defined(CONFIG_SOCKS)
 	if (net_context_is_proxy_enabled(ctx)) {
 		SET_ERRNO(net_socks5_connect(ctx, addr, addrlen));
@@ -492,11 +504,26 @@ int zsock_connect_ctx(struct net_context *ctx, const struct sockaddr *addr,
 		return 0;
 	}
 #endif
-	SET_ERRNO(net_context_connect(ctx, addr, addrlen, NULL,
-			      K_MSEC(CONFIG_NET_SOCKETS_CONNECT_TIMEOUT),
-			      NULL));
-	SET_ERRNO(net_context_recv(ctx, zsock_received_cb, K_NO_WAIT,
-				   ctx->user_data));
+	if (net_context_get_state(ctx) == NET_CONTEXT_CONNECTED) {
+		return 0;
+	} else if (net_context_get_state(ctx) == NET_CONTEXT_CONNECTING) {
+		if (sock_is_error(ctx)) {
+			SET_ERRNO(-POINTER_TO_INT(ctx->user_data));
+		} else {
+			SET_ERRNO(-EALREADY);
+		}
+	} else if (sock_is_nonblock(ctx)) {
+		timeout = K_NO_WAIT;
+		SET_ERRNO(net_context_connect(ctx, addr, addrlen,
+					      zsock_connected_cb, timeout,
+					      ctx->user_data));
+	} else {
+		timeout = K_MSEC(CONFIG_NET_SOCKETS_CONNECT_TIMEOUT);
+		SET_ERRNO(net_context_connect(ctx, addr, addrlen, NULL,
+					      timeout, NULL));
+		SET_ERRNO(net_context_recv(ctx, zsock_received_cb, K_NO_WAIT,
+					   ctx->user_data));
+	}
 
 	return 0;
 }
@@ -588,7 +615,7 @@ int zsock_accept_ctx(struct net_context *parent, struct sockaddr *addr,
 			sock_set_eof(ctx);
 			z_free_fd(fd);
 			zsock_flush_queue(ctx);
-			net_context_unref(ctx);
+			net_context_put(ctx);
 			errno = ECONNABORTED;
 			return -1;
 		}
@@ -598,7 +625,7 @@ int zsock_accept_ctx(struct net_context *parent, struct sockaddr *addr,
 		errno = ECONNABORTED;
 		z_free_fd(fd);
 		zsock_flush_queue(ctx);
-		net_context_unref(ctx);
+		net_context_put(ctx);
 		return -1;
 	}
 
@@ -620,7 +647,7 @@ int zsock_accept_ctx(struct net_context *parent, struct sockaddr *addr,
 			z_free_fd(fd);
 			errno = ENOTSUP;
 			zsock_flush_queue(ctx);
-			net_context_unref(ctx);
+			net_context_put(ctx);
 			return -1;
 		}
 	}
@@ -711,7 +738,8 @@ static int send_check_and_wait(struct net_context *ctx, int status,
 
 	if (status == -EAGAIN) {
 		if (IS_ENABLED(CONFIG_NET_NATIVE_TCP) &&
-		    net_context_get_type(ctx) == SOCK_STREAM) {
+		    net_context_get_type(ctx) == SOCK_STREAM &&
+		    !net_if_is_ip_offloaded(net_context_get_iface(ctx))) {
 			struct k_poll_event event;
 
 			k_poll_event_init(&event,
@@ -1493,12 +1521,18 @@ static int zsock_poll_prepare_ctx(struct net_context *ctx,
 
 	if (pfd->events & ZSOCK_POLLOUT) {
 		if (IS_ENABLED(CONFIG_NET_NATIVE_TCP) &&
-		    net_context_get_type(ctx) == SOCK_STREAM) {
+		    net_context_get_type(ctx) == SOCK_STREAM &&
+		    !net_if_is_ip_offloaded(net_context_get_iface(ctx))) {
 			if (*pev == pev_end) {
 				return -ENOMEM;
 			}
 
-			(*pev)->obj = net_tcp_tx_sem_get(ctx);
+			if (net_context_get_state(ctx) == NET_CONTEXT_CONNECTING) {
+				(*pev)->obj = net_tcp_conn_sem_get(ctx);
+			} else {
+				(*pev)->obj = net_tcp_tx_sem_get(ctx);
+			}
+
 			(*pev)->type = K_POLL_TYPE_SEM_AVAILABLE;
 			(*pev)->mode = K_POLL_MODE_NOTIFY_ONLY;
 			(*pev)->state = K_POLL_STATE_NOT_READY;
@@ -1533,9 +1567,11 @@ static int zsock_poll_update_ctx(struct net_context *ctx,
 	}
 	if (pfd->events & ZSOCK_POLLOUT) {
 		if (IS_ENABLED(CONFIG_NET_NATIVE_TCP) &&
-		    net_context_get_type(ctx) == SOCK_STREAM) {
+		    net_context_get_type(ctx) == SOCK_STREAM &&
+		    !net_if_is_ip_offloaded(net_context_get_iface(ctx))) {
 			if ((*pev)->state != K_POLL_STATE_NOT_READY &&
-			    !sock_is_eof(ctx)) {
+			    !sock_is_eof(ctx) &&
+			    (net_context_get_state(ctx) == NET_CONTEXT_CONNECTED)) {
 				pfd->revents |= ZSOCK_POLLOUT;
 			}
 			(*pev)++;
