@@ -3279,7 +3279,7 @@ static int offload_close(void *obj)
 	struct modem_socket *sock = (struct modem_socket *)obj;
 
 	/* Make sure we assigned an id */
-	if (!modem_socket_id_is_assigned(&mdata.socket_config, sock)) {
+	if (!modem_socket_is_allocated(&mdata.socket_config, sock)) {
 		return 0;
 	}
 
