@@ -17,7 +17,112 @@ if BT_MESH
 # Invisible options
 ###################################################################################################
 
-# Virtual option enabled whenever Proxy Server or Client is needed
+if BT_MESH_USES_MBEDTLS_PSA
+
+config BT_MESH_PSA_KEY_ID_USER_MIN_OFFSET
+	int "Offset of BLE Mesh key id range regarding PSA_KEY_ID_USER_MIN"
+	default 0
+	help
+	  The PSA specification mandates to set key identifiers for keys
+	  with persistent lifetime. The users of the PSA API is responsible
+	  (BLE Mesh is user of PSA API) to provide correct and unique identifiers.
+	  The BLE Mesh identifier range should be between PSA_KEY_ID_USER_MIN and
+	  PSA_KEY_ID_USER_MAX. BLE Mesh requires two ids for each subnetwork, two ids
+	  for each application key, and two ids for the device key and device key candidate.
+	  It should consider the Mesh Configuration Database instances if database enabled.
+
+endif # BT_MESH_USES_MBEDTLS_PSA
+
+# Virtual option enabled whenever Generic Provisioning layer is needed
+config BT_MESH_PROV
+	bool
+
+config BT_MESH_PROV_DEVICE
+	bool "Provisioning device role support"
+	depends on BT_MESH_PROV
+	default y
+	help
+	  Enable this option to allow the device to be provisioned into a mesh network.
+
+config BT_MESH_PROV_OOB_PUBLIC_KEY
+	bool "OOB Public key support"
+	depends on BT_MESH_PROV_DEVICE
+	help
+	  Enable this option if public key is to be exchanged via Out of Band (OOB) technology.
+
+config BT_MESH_PB_ADV
+	bool "Provisioning support using the advertising bearer (PB-ADV)"
+	select BT_MESH_PROV
+	default y
+	help
+	  Enable this option to allow the device to be provisioned over
+	  the advertising bearer.
+
+config BT_MESH_UNPROV_BEACON_INT
+	int
+	prompt "The interval (in seconds) to send the unprovisioned beacon" if BT_MESH_PB_ADV
+	default 5
+	range 1 10
+	help
+	  This option specifies the interval (in seconds) at which the
+	  device sends unprovisioned beacon.
+
+config BT_MESH_PB_ADV_RETRANS_TIMEOUT
+	int "Timeout value of retransmit provisioning PDUs"
+	default 500
+	range 100 800
+	help
+	  Timeout value of retransmit provisioning PDUs.
+
+config BT_MESH_PROVISIONER
+	bool "Provisioner support"
+	depends on BT_MESH_CDB
+	depends on BT_MESH_PROV
+	depends on BT_MESH_PB_ADV || BT_MESH_PB_GATT_CLIENT
+	help
+	  Enable this option to have support for provisioning remote devices.
+
+config BT_MESH_CDB
+	bool "Mesh Configuration Database"
+
+config BT_MESH_ECDH_P256_CMAC_AES128_AES_CCM
+	bool "Support CMAC AES128 for OOB authentication"
+	depends on BT_MESH_PROV
+	default y
+	help
+	  Enable this option to support CMAC AES128 for OOB authentication.
+
+if BT_MESH_CDB
+
+config BT_MESH_CDB_NODE_COUNT
+	int "Maximum number of nodes in the database"
+	default 8
+	range 1 4096
+	help
+	  This option specifies how many nodes each network can at most
+	  save in the configuration database.
+
+config BT_MESH_CDB_SUBNET_COUNT
+	int "Maximum number of subnets in the database"
+	default 1
+	range 1 4096
+	help
+	  This option specifies how many subnets that can at most be
+	  saved in the configuration database.
+
+config BT_MESH_CDB_APP_KEY_COUNT
+	int "Maximum number of application keys in the database"
+	default 1
+	range 1 4096
+	help
+	  This option specifies how many application keys that can at most
+	  be saved in the configuration database.
+
+endif # BT_MESH_CDB
+
+if BT_CONN
+
+# Virtual option enabled whenever any Proxy protocol is needed
 config BT_MESH_PROXY
 	bool
 
