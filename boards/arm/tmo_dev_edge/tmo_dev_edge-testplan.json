@@ -43473,7 +43473,7 @@
             ]
         },
         {
-            "name":"tests/drivers/gpio/gpio_get_direction/peripheral.gpio.get_direction",
+            "name":"tests/drivers/gpio/gpio_get_direction/drivers.gpio.get_direction",
             "arch":"arm",
             "platform":"tmo_dev_edge",
             "run_id":"d3bdc58a990d3811e84efed3ae63f1d7",
@@ -43484,25 +43484,25 @@
             "execution_time":"0.00",
             "testcases":[
                 {
-                    "identifier":"peripheral.gpio.get_direction.disconnect",
+                    "identifier":"drivers.gpio.get_direction.disconnect",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"In test case platform exclude"
                 },
                 {
-                    "identifier":"peripheral.gpio.get_direction.input_output",
+                    "identifier":"drivers.gpio.get_direction.input_output",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"In test case platform exclude"
                 },
                 {
-                    "identifier":"peripheral.gpio.get_direction.input",
+                    "identifier":"drivers.gpio.get_direction.input",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"In test case platform exclude"
                 },
                 {
-                    "identifier":"peripheral.gpio.get_direction.output",
+                    "identifier":"drivers.gpio.get_direction.output",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"In test case platform exclude"
