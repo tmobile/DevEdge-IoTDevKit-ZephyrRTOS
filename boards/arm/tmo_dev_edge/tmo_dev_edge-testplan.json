@@ -35505,25 +35505,6 @@
             ]
         },
         {
-            "name":"tests/bluetooth/mesh_shell/bluetooth.mesh.mesh_shell.reduced_legacy",
-            "arch":"arm",
-            "platform":"tmo_dev_edge",
-            "run_id":"c421ac5a993e0737b031ec5d8096bb55",
-            "runnable":false,
-            "retries":0,
-            "status":"filtered",
-            "reason":"Excluded tags per platform (exclude_tags)",
-            "execution_time":"0.00",
-            "testcases":[
-                {
-                    "identifier":"bluetooth.mesh.mesh_shell.reduced_legacy",
-                    "execution_time":"0.00",
-                    "status":"filtered",
-                    "reason":"Excluded tags per platform (exclude_tags)"
-                }
-            ]
-        },
-        {
             "name":"tests/bluetooth/ll_settings/bluetooth.ll_settings",
             "arch":"arm",
             "platform":"tmo_dev_edge",
@@ -41765,7 +41746,7 @@
             ]
         },
         {
-            "name":"tests/drivers/disk/disk_performance/drivers.disk.disk_performance",
+            "name":"tests/drivers/disk/disk_performance/drivers.disk.disk_performance.sdhc",
             "arch":"arm",
             "platform":"tmo_dev_edge",
             "run_id":"4a3c33c257f27506f193b834f9fc27cc",
@@ -43081,7 +43062,7 @@
             ]
         },
         {
-            "name":"tests/drivers/build_all/sensor/sensors.build.trigger",
+            "name":"tests/drivers/build_all/sensor/sensors.build.trigger.own",
             "arch":"arm",
             "platform":"tmo_dev_edge",
             "run_id":"7cf4fc1a117041e9a1d7e5929d3e26fd",
