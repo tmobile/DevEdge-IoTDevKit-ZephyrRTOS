@@ -19,16 +19,6 @@
 
 LOG_MODULE_DECLARE(clock_control_rcar);
 
-#define R8A7795_CLK_SD_STOP_BIT 8
-#define R8A7795_CLK_SD_DIV_MASK 0x3
-#define R8A7795_CLK_SD_DIV_SHIFT 0
-
-#define R8A7795_CLK_SDH_STOP_BIT 9
-#define R8A7795_CLK_SDH_DIV_MASK 0x7
-#define R8A7795_CLK_SDH_DIV_SHIFT 2
-
-#define R8A7795_CLK_CANFD_STOP_BIT 8
-#define R8A7795_CLK_CANFD_DIV_MASK 0x3f
 
 struct r8a7795_cpg_mssr_config {
 	DEVICE_MMIO_ROM; /* Must be first */
