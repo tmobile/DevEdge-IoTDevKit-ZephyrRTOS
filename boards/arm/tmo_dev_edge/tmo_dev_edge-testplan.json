@@ -43548,7 +43548,7 @@
             ]
         },
         {
-            "name":"tests/drivers/gpio/gpio_hogs/peripheral.gpio.hogs",
+            "name":"tests/drivers/gpio/gpio_hogs/drivers.gpio.hogs",
             "arch":"arm",
             "platform":"tmo_dev_edge",
             "run_id":"913d3288ee271dfa7d12966952d2bd30",
@@ -43559,37 +43559,37 @@
             "execution_time":"0.00",
             "testcases":[
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_output_low_config",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_output_low_config",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
                 },
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_output_low_direction",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_output_low_direction",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
                 },
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_input_direction",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_input_direction",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
                 },
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_output_high_direction",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_output_high_direction",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
                 },
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_input_config",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_input_config",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
                 },
                 {
-                    "identifier":"peripheral.gpio.hogs.gpio_hog_output_high_config",
+                    "identifier":"drivers.gpio.hogs.gpio_hog_output_high_config",
                     "execution_time":"0.00",
                     "status":"filtered",
                     "reason":"Not in testsuite platform allow list"
