@@ -17,10 +17,10 @@ concurrency:
 
 jobs:
   footprint-tracking:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: github.repository == 'zephyrproject-rtos/zephyr'
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.25.0
+      image: ghcr.io/zephyrproject-rtos/ci:v0.26.1
       options: '--entrypoint /bin/bash'
     strategy:
       fail-fast: false
@@ -56,7 +56,7 @@ jobs:
           west update 2>&1 1> west.update.log || west update 2>&1 1> west.update2.log
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.FOOTPRINT_AWS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FOOTPRINT_AWS_ACCESS_KEY }}
