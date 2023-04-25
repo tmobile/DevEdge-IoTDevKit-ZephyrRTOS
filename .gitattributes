@@ -190,6 +190,7 @@ include/zephyr/drivers/sensor/lis2dw12.h merge=ours
 include/zephyr/drivers/sensor/tmp108.h merge=ours
 include/zephyr/drivers/sensor/tsl2540.h merge=ours
 include/zephyr/dt-bindings/pinctrl/gecko-pinctrl.h merge=ours
+include/zephyr/net/http/client.h merge=ours
 include/zephyr/net/net_if.h merge=ours
 include/zephyr/net/ping.h merge=ours
 include/zephyr/net/wifi_mgmt.h merge=ours

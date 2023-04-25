@@ -22,9 +22,16 @@ manifest:
     - name: upstream
       url-base: https://github.com/zephyrproject-rtos
 
+  group-filter: [-babblesim]
+
   #
   # Please add items below based on alphabetical order
   projects:
+    - name: bsim
+      repo-path: babblesim-manifest
+      revision: 908ffde6298a937c6549dbfa843a62caab26bfc5
+      import:
+        path-prefix: tools
     - name: canopennode
       revision: dec12fa3f0d790cafa8414a4c2930ea71ab72ffd
       path: modules/lib/canopennode
@@ -63,7 +70,7 @@ manifest:
       groups:
         - hal
     - name: hal_espressif
-      revision: d7576d0da639acbd9a191a3eb7e4f3f3476c9641
+      revision: 8e5da13712012d2cc480f7abc699235352153e05
       path: modules/hal/espressif
       west-commands: west/west-commands.yml
       groups:
@@ -99,12 +106,12 @@ manifest:
       groups:
         - hal
     - name: hal_nxp
-      revision: d3c964cd854e53d55d21532431ee337d55348d8c
+      revision: f140206004294f55bacc9ce661d140af731c4cfc
       path: modules/hal/nxp
       groups:
         - hal
     - name: hal_openisa
-      revision: 40d049f69c50b58ea20473bee14cf93f518bf262
+      revision: d1e61c0c654d8ca9e73d27fca3a7eb3b7881cb6a
       path: modules/hal/openisa
       groups:
         - hal
@@ -125,7 +132,7 @@ manifest:
       groups:
         - hal
     - name: hal_silabs
-      revision: ed4185ce6f6598892fba6ce1b6dede77b217fb37
+      revision: 249c08f16f5ee9663c8b225b68faf8ec54a21e8e
       path: modules/hal/silabs
       groups:
         - hal
@@ -135,7 +142,7 @@ manifest:
       groups:
         - hal
     - name: hal_stm32
-      revision: 5c79d0c7c4f7094e19959f0bc542ebc35db44002
+      revision: b8f135bac6347924c6719d645fd8082277616114
       path: modules/hal/stm32
       groups:
         - hal
@@ -206,7 +213,7 @@ manifest:
       revision: bad9877e997b2c2a78dd74eec8978181f4655d14
       path: modules/bsim_hw_models/nrf_hw_models
     - name: open-amp
-      revision: aedcc262f93bbb1b0c2f58026911575729b7465c
+      revision: 233fb29c52ffa7733ba132a2b5987a8201ba8ec6
       path: modules/lib/open-amp
     - name: openthread
       revision: 7bdcf8a5d49838ce6e3e227e2780e4f12c461330
@@ -215,7 +222,7 @@ manifest:
       path: modules/lib/picolibc
       revision: 93b5d5f2ad44867b60267417cd6d6250dbf68983
     - name: segger
-      revision: e2ff2200556e8a8f962921444275c04971a2bb3d
+      revision: 4bfaf28a11c3e5ec29badac744fab6d2f342749e
       path: modules/debug/segger
       groups:
         - debug
@@ -266,7 +273,7 @@ manifest:
       groups:
         - hal
     - name: zcbor
-      revision: 0.6.0
+      revision: 67fd8bb88d3136738661fa8bb5f9989103f4599e
       path: modules/lib/zcbor
     - name: zscilib
       path: modules/lib/zscilib

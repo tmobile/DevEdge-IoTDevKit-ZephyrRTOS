@@ -9,7 +9,7 @@ jobs:
     if: github.repository == 'zephyrproject-rtos/zephyr'
     runs-on: zephyr-runner-linux-x64-4xlarge
     container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.25.1
+      image: ghcr.io/zephyrproject-rtos/ci:v0.26.1
       options: '--entrypoint /bin/bash'
       volumes:
         - /repo-cache/zephyrproject:/github/cache/zephyrproject
@@ -63,7 +63,7 @@ jobs:
 
       - name: use cache
         id: cache-ccache
-        uses: zephyrproject-rtos/action-s3-cache@v1
+        uses: zephyrproject-rtos/action-s3-cache@v1.2.0
         with:
           key: ${{ steps.ccache_cache_prop.outputs.repo }}-${{github.event_name}}-${{matrix.platform}}-codecov-ccache
           path: /github/home/.ccache
@@ -107,7 +107,7 @@ jobs:
   codecov-results:
     name: "Publish Coverage Results"
     needs: codecov
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     # the codecov job might be skipped, we don't need to run this job then
     if: success() || failure()
 
@@ -117,7 +117,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: coverage/reports
 
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           directory: ./coverage/reports
           env_vars: OS,PYTHON
