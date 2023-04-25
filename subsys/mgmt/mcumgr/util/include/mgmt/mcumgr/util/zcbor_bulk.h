@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -40,6 +40,7 @@ struct zcbor_map_decode_key_val {
 		},						\
 		.decoder = (zcbor_decoder_t *)dec,		\
 		.value_ptr = vp,				\
+		.found = false,					\
 	}
 
 /** @brief Define single key-value decode mapping
@@ -112,6 +113,19 @@ int zcbor_map_decode_bulk(zcbor_state_t *zsd, struct zcbor_map_decode_key_val *m
  */
 bool zcbor_map_decode_bulk_key_found(struct zcbor_map_decode_key_val *map,
 	size_t map_size, const char *key);
+
+/** @brief Reset decoding state of key-value
+ *
+ * The function takes @p map and resets internal fields that mark decoding state
+ * of the map. Function needs to be used on @p map after the map has been already
+ * used for decoding other buffer, otherwise decoding may fail.
+ *
+ * @param map		key-decoder mapping list;
+ * @param map_size	size of maps, both maps have to have the same size.
+ *
+ * @return Nothing.
+ */
+void zcbor_map_decode_bulk_reset(struct zcbor_map_decode_key_val *map, size_t map_size);
 
 /** @endcond */
 

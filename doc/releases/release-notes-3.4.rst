@@ -151,6 +151,15 @@ Deprecated in this release
   board-specific configuration in board Kconfig fragments in the ``boards``
   folder of the application.
 
+* On nRF51 and nRF52-based boards, the behaviour of the reset reason being
+  provided to :c:func:`sys_reboot` and being set in the GPREGRET register has
+  been dropped. This function will now just reboot the device without changing
+  the register contents. The new method for setting this register uses the boot
+  mode feature of the retention subsystem, see the
+  :ref:`boot mode API <boot_mode_api>` for details. To restore the deprecated
+  functionality, enable
+  :kconfig:option:`CONFIG_NRF_STORE_REBOOT_TYPE_GPREGRET`.
+
 Stable API changes in this release
 ==================================
 
@@ -162,6 +171,12 @@ Stable API changes in this release
   The new callback signature is ``int f(void)``. A utility script to
   automatically migrate existing projects can be found in
   :zephyr_file:`scripts/utils/migrate_sys_init.py`.
+
+* Changed :c:struct:`spi_config` ``cs`` (:c:struct:`spi_cs_control`) from
+  pointer to struct member. This allows using the existing SPI dt-spec macros in
+  C++. SPI controller drivers doing ``NULL`` checks on the ``cs`` field to check
+  if CS is GPIO-based or not, must now use :c:func:`spi_cs_is_gpio` or
+  :c:func:`spi_cs_is_gpio_dt` calls.
 
 New APIs in this release
 ========================
@@ -464,6 +479,13 @@ Libraries / Subsystems
   * With LittleFS as backend, :c:func:`fs_mount` return code was corrected to ``EFAULT`` when
     called with ``FS_MOUNT_FLAG_NO_FORMAT`` and the designated LittleFS area could not be
     mounted because it has not yet been mounted or it required reformatting.
+  * The FAT FS initialization order has been updated to match LittleFS, fixing an issue where
+    attempting to mount the disk in a global function caused FAT FS to fail due to not being registered beforehand.
+    FAT FS is now initialized in POST_KERNEL.
+
+* IPC
+
+  * :c:func:`ipc_service_close_instance` now only acts on bounded endpoints.
 
 * Management
 
@@ -484,6 +506,19 @@ Libraries / Subsystems
     after a file upload is complete to ensure that the file handle is closed
     correctly, allowing other transports or other parts of the application
     code to use it.
+
+* Retention
+
+  * Retention subsystem has been added which adds enhanced features over
+    retained memory drivers allowing for partitioning, magic headers and
+    checksum validation. See :ref:`retention API <retention_api>` for details.
+    Support for the retention subsystem is experimental.
+
+  * Boot mode retention module has been added which allows for setting/checking
+    the boot mode of an application, initial support has also been added to
+    MCUboot to allow for applications to use this as an entrance method for
+    MCUboot serial recovery mode. See :ref:`boot mode API <boot_mode_api>` for
+    details.
 
 * RTIO
 
