@@ -134,7 +134,6 @@ int bt_bap_ep_get_info(const struct bt_bap_ep *ep, struct bt_bap_ep_info *info)
 	return 0;
 }
 
-#if defined(CONFIG_BT_AUDIO_TX)
 enum bt_bap_ascs_reason bt_audio_verify_qos(const struct bt_codec_qos *qos)
 {
 	if (qos->interval < BT_ISO_SDU_INTERVAL_MIN ||
@@ -161,11 +160,13 @@ enum bt_bap_ascs_reason bt_audio_verify_qos(const struct bt_codec_qos *qos)
 		return BT_BAP_ASCS_REASON_SDU;
 	}
 
+#if defined(CONFIG_BT_BAP_BROADCAST_SOURCE) || defined(CONFIG_BT_BAP_UNICAST)
 	if (qos->latency < BT_ISO_LATENCY_MIN ||
 	    qos->latency > BT_ISO_LATENCY_MAX) {
 		LOG_DBG("Invalid Latency %u", qos->latency);
 		return BT_BAP_ASCS_REASON_LATENCY;
 	}
+#endif /* CONFIG_BT_BAP_BROADCAST_SOURCE || CONFIG_BT_BAP_UNICAST */
 
 	if (qos->pd > BT_AUDIO_PD_MAX) {
 		LOG_DBG("Invalid presentation delay %u", qos->pd);
@@ -226,6 +227,7 @@ bool bt_audio_valid_codec(const struct bt_codec *codec)
 	return true;
 }
 
+#if defined(CONFIG_BT_AUDIO_TX)
 int bt_bap_stream_send(struct bt_bap_stream *stream, struct net_buf *buf,
 			 uint16_t seq_num, uint32_t ts)
 {
