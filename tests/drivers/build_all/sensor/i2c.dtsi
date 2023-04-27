@@ -706,3 +706,19 @@ test_i2c_wsen_pdus: wsen_pdus@6C {
 	reg = <0x6C>;
 	sensor-type = <3>;
 };
+
+test_i2c_veml7700: veml7700@6d {
+	compatible = "vishay,veml7700";
+	reg = <0x6d>;
+	psm-mode = <0x03>;
+};
+
+test_i2c_ina3221: ina3221@6e {
+	compatible = "ti,ina3221";
+	reg = <0x6e>;
+	shunt-resistors = <1000 1000 1000>;
+	enable-channel = <1 0 0>;
+	conv-time-bus = <7>;
+	conv-time-shunt = <7>;
+	avg-mode = <2>;
+};
