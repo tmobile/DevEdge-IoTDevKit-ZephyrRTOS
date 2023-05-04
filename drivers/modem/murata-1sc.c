@@ -4510,7 +4510,7 @@ static int send_fw_header(const char *data)
 
 	/* Send the command */
 	int ret = modem_cmd_send(&mctx.iface, &mctx.cmd_handler, data_cmd, ARRAY_SIZE(data_cmd),
-				 mdata.xlate_buf, &mdata.sem_response, MDM_CMD_RSP_TIME);
+				 mdata.xlate_buf, &mdata.sem_response, MDM_CMD_LONG_RSP_TIME);
 
 	k_sem_give(&mdata.sem_xlate_buf);
 
