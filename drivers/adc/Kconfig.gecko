@@ -12,8 +12,8 @@ config IADC_GECKO
 	help
 	  Enable the driver implementation for the Silabs GeckoEXX32 Incremental ADC
 
-config ADC_GECKO
-	bool "GECKO ADC driver"
+config ADC_GECKO_IADC
+	bool "Gecko Incremental ADC driver"
 	default y
 	select SOC_GECKO_ADC
 	help
