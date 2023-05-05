@@ -161,6 +161,7 @@
 		compatible = "jedec,spi-nor";
 		reg = <0>;
 		spi-max-frequency = <6400000>;
+		has-dpd;
 		// note size is in bits
 		size = <0x04000000>;
 		jedec-id = [ef 60 17];
