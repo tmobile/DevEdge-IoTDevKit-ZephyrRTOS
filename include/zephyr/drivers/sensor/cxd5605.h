@@ -56,7 +56,6 @@ enum sensor_attribute_cxd5605 {
 	SENSOR_ATTR_CXD5605_SLEEP,
 	SENSOR_ATTR_CXD5605_VERSION,
 	SENSOR_ATTR_CXD5605_ASSIST_GEN_FUNCTION_CONTROL,
-	SENSOR_ATTR_CXD5605_PWR_CTRL,
 	};
 
 enum gga_nmea_fieldpos_t {
@@ -167,6 +166,11 @@ struct cxd5605_data {
 	bool got_data;
 	bool lib_got_data;
 	int command;
+
+	uint32_t op_mode;
+	uint32_t pos_cycle;
+	uint32_t sleep_time;
+	uint32_t selected_sentences;
 };
 
 /** a mask for the under temp alert bit in the status word*/
