@@ -72,10 +72,18 @@ static int rs9116w_mgmt_scan(const struct device *dev, scan_result_cb_t cb)
 {
 	int ret;
 	struct rs9116w_device *rs9116w_dev = dev->data;
+	bool connected = (rsi_wlan_get_state() >= RSI_WLAN_STATE_CONNECTED);
 
 	rsi_wlan_req_radio(1);
-	ret = rsi_wlan_scan(NULL, 0, &(rs9116w_dev->scan_results),
+
+	if (!connected) {
+		ret = rsi_wlan_scan(NULL, 0, &(rs9116w_dev->scan_results),
 			    sizeof(rsi_rsp_scan_t));
+	} else {
+		ret = rsi_wlan_bgscan_profile(1, &(rs9116w_dev->scan_results),
+			    sizeof(rsi_rsp_scan_t));
+	}
+
 	if (ret) {
 		LOG_ERR("rsi_wlan_scan error: %d", ret);
 		return -EIO;
@@ -151,8 +159,13 @@ static int rs9116w_mgmt_scan(const struct device *dev, scan_result_cb_t cb)
 	 */
 	cb(rs9116w_dev->net_iface, 0, NULL);
 
-	LOG_DBG("Reinitializing WLAN radio");
-	rsi_wlan_req_radio(0);
+	if (!connected) {
+		LOG_DBG("Reinitializing WLAN radio");
+		rsi_wlan_req_radio(0);
+	} else {
+		ret = rsi_wlan_bgscan_profile(0, &(rs9116w_dev->scan_results),
+			    sizeof(rsi_rsp_scan_t));
+	}
 
 	return ret;
 }
