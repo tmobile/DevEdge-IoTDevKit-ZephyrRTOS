@@ -27,18 +27,10 @@
 #endif /* DT_ANY_INST_ON_BUS_STATUS_OKAY(i2c) */
 
 /* Return ODR reg value based on data rate set */
-#define LIS2DW12_ODR_TO_REG(_odr)                                                                  \
-	((_odr <= 1)	? LIS2DW12_XL_ODR_1Hz6_LP_ONLY                                             \
-	 : (_odr <= 12) ? LIS2DW12_XL_ODR_12Hz5                                                    \
-			: ((31 - __builtin_clz(_odr / 25))) + 3)
-
-/* Return data rate in Hz for given register value */
-#define LIS2DW12_REG_TO_ODR(_reg)                                                                  \
-	((_reg == 0)   ? 0                                                                         \
-	 : (_reg == 1) ? 1                                                                         \
-	 : (_reg == 2) ? 12                                                                        \
-	 : (_reg > 9)  ? 1600                                                                      \
-		       : (1 << (_reg - 3)) * 25)
+#define LIS2DW12_ODR_TO_REG(_odr) \
+	((_odr <= 1) ? LIS2DW12_XL_ODR_1Hz6_LP_ONLY : \
+	 (_odr <= 12) ? LIS2DW12_XL_ODR_12Hz5 : \
+	 ((31 - __builtin_clz(_odr / 25))) + 3)
 
 /* Return data rate in Hz for given register value */
 #define LIS2DW12_REG_TO_ODR(_reg) \
@@ -52,18 +44,19 @@
 #define LIS2DW12_FS_TO_REG(_fs)	(30 - __builtin_clz(_fs))
 
 /* Acc Gain value in ug/LSB in High Perf mode */
-#define LIS2DW12_FS_2G_GAIN  244
-#define LIS2DW12_FS_4G_GAIN  488
-#define LIS2DW12_FS_8G_GAIN  976
-#define LIS2DW12_FS_16G_GAIN 1952
+#define LIS2DW12_FS_2G_GAIN		244
+#define LIS2DW12_FS_4G_GAIN		488
+#define LIS2DW12_FS_8G_GAIN		976
+#define LIS2DW12_FS_16G_GAIN		1952
 
 #define LIS2DW12_SHFT_GAIN_NOLP1	2
 #define LIS2DW12_ACCEL_GAIN_DEFAULT_VAL LIS2DW12_FS_2G_GAIN
-#define LIS2DW12_FS_TO_GAIN(_fs, _lp1)	(LIS2DW12_FS_2G_GAIN << ((_fs) + (_lp1)))
+#define LIS2DW12_FS_TO_GAIN(_fs, _lp1) \
+		(LIS2DW12_FS_2G_GAIN << ((_fs) + (_lp1)))
 
 /* shift value for power mode */
-#define LIS2DW12_SHIFT_PM1     4
-#define LIS2DW12_SHIFT_PMOTHER 2
+#define LIS2DW12_SHIFT_PM1		4
+#define LIS2DW12_SHIFT_PMOTHER		2
 
 /* shift value for 12 bit resolution */
 #define LIS2DW12_SHIFT_TEMP 4
@@ -115,28 +108,52 @@ struct lis2dw12_device_config {
 struct lis2dw12_data {
 	int16_t acc[3];
 
-	/* save sensitivity */
+	 /* save sensitivity */
 	uint16_t gain;
-	/* output data rate */
+	 /* output data rate */
 	uint16_t odr;
-
-	/* Temperature output in 12 bit resolution */
-	int16_t temperature;
 
 #ifdef CONFIG_LIS2DW12_TRIGGER
 	const struct device *dev;
 
 	struct gpio_callback gpio_cb;
 	sensor_trigger_handler_t drdy_handler;
+	const struct sensor_trigger *drdy_trig;
 #ifdef CONFIG_LIS2DW12_TAP
 	sensor_trigger_handler_t tap_handler;
+	const struct sensor_trigger *tap_trig;
 	sensor_trigger_handler_t double_tap_handler;
+	const struct sensor_trigger *double_tap_trig;
+#ifdef CONFIG_LIS2DW12_TAP_3D
+	sensor_trigger_handler_t tap_handler_x;
+	const struct sensor_trigger *tap_trig_x;
+	sensor_trigger_handler_t tap_handler_y;
+	const struct sensor_trigger *tap_trig_y;
+	sensor_trigger_handler_t tap_handler_z;
+	const struct sensor_trigger *tap_trig_z;
+	sensor_trigger_handler_t double_tap_handler_x;
+	const struct sensor_trigger *double_tap_trig_x;
+	sensor_trigger_handler_t double_tap_handler_y;
+	const struct sensor_trigger *double_tap_trig_y;
+	sensor_trigger_handler_t double_tap_handler_z;
+	const struct sensor_trigger *double_tap_trig_z;
+#endif
 #endif /* CONFIG_LIS2DW12_TAP */
 #ifdef CONFIG_LIS2DW12_THRESHOLD
 	sensor_trigger_handler_t threshold_handler;
+	const struct sensor_trigger *threshold_trig;
+#ifdef CONFIG_LIS2DW12_THRESHOLD_3D
+	sensor_trigger_handler_t threshold_handler_x;
+	const struct sensor_trigger *threshold_trig_x;
+	sensor_trigger_handler_t threshold_handler_y;
+	const struct sensor_trigger *threshold_trig_y;
+	sensor_trigger_handler_t threshold_handler_z;
+	const struct sensor_trigger *threshold_trig_z;
+#endif /* CONFIG_LIS2DW12_THRESHOLD_3D */
 #endif /* CONFIG_LIS2DW12_THRESHOLD */
 #ifdef CONFIG_LIS2DW12_FREEFALL
 	sensor_trigger_handler_t freefall_handler;
+	const struct sensor_trigger *freefall_trig;
 #endif /* CONFIG_LIS2DW12_FREEFALL */
 #if defined(CONFIG_LIS2DW12_TRIGGER_OWN_THREAD)
 	K_KERNEL_STACK_MEMBER(thread_stack, CONFIG_LIS2DW12_THREAD_STACK_SIZE);
@@ -150,8 +167,9 @@ struct lis2dw12_data {
 
 #ifdef CONFIG_LIS2DW12_TRIGGER
 int lis2dw12_init_interrupt(const struct device *dev);
-int lis2dw12_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
-			 sensor_trigger_handler_t handler);
+int lis2dw12_trigger_set(const struct device *dev,
+			  const struct sensor_trigger *trig,
+			  sensor_trigger_handler_t handler);
 #endif /* CONFIG_LIS2DW12_TRIGGER */
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_LIS2DW12_LIS2DW12_H_ */
