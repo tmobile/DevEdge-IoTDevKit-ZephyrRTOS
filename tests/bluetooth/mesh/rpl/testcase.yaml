@@ -1,5 +1,5 @@
 tests:
-  bluetooth.mesh.blob_io_flash:
+  bluetooth.mesh.rpl:
     platform_allow: native_posix
     tags:
       - bluetooth
