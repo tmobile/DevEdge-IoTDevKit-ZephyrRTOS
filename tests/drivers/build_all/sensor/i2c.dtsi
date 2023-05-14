@@ -843,3 +843,9 @@ test_i2c_bmi08x_gyro: bmi08x@6e {
 	gyro-hz = "1000_116";
 	gyro-fs = <1000>;
 };
+
+test_tcn75a: tcn75a@73 {
+	compatible = "microchip,tcn75a";
+	reg = <0x73>;
+	alert-gpios = <&test_gpio 0 0>;
+};
