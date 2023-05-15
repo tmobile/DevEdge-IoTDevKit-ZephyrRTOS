@@ -1651,7 +1651,7 @@ static int get_edrx_ptw(int *ptw)
 /**
  * @brief Use the PDNSET command to set APN and IP type
  */
-static int set_pdnset(void)
+static int set_pdn_params(void)
 {
 	int ret = 0;
 
@@ -1761,7 +1761,7 @@ MODEM_CMD_DEFINE(on_cmd_get_max_pm_mode)
  */
 static int set_max_pm_mode(const char *pm_mode)
 {
-	char at_cmd[256];
+	char at_cmd[sizeof("AT%SETACFG=pm.conf.max_allowed_pm_mode,XXX")];
 
 	snprintk(at_cmd, sizeof(at_cmd), "AT%%SETACFG=pm.conf.max_allowed_pm_mode,%s", pm_mode);
 	LOG_INF("Setting max allowed PM mode to %s", pm_mode);
@@ -2502,7 +2502,7 @@ static void socket_close(struct modem_socket *sock)
  */
 MODEM_CMD_DEFINE(on_cmd_cmgl)
 {
-	char pdu_buffer[200]; /* We dont actuall need the whole thing */
+	char pdu_buffer[200]; /* We dont actually need the whole thing */
 	char raw_ts[8] = {0};
 	uint64_t ts, min_ts;
 	size_t out_len, sms_len, param_len;
@@ -4690,14 +4690,14 @@ static int get_file_mode(char *response)
 static int murata_1sc_setup(void)
 {
 	gpio_pin_set_dt(&reset_gpio, 1);
-	k_sleep(K_MSEC(20));
+	k_msleep(20);
 	gpio_pin_set_dt(&reset_gpio, 0);
 
 	gpio_pin_set_dt(&wake_mdm_gpio, 1);
 	LOG_INF("Waiting %d secs for modem to boot...", MDM_BOOT_DELAY);
 	k_sleep(K_SECONDS(MDM_BOOT_DELAY));
 
-	const struct setup_cmd setup_cmds[] = {
+	static const struct setup_cmd setup_cmds[] = {
 	  SETUP_CMD_NOHANDLE("ATQ0"),
 	  SETUP_CMD_NOHANDLE("ATE0"),
 	  SETUP_CMD_NOHANDLE("ATV1"),
@@ -4756,7 +4756,7 @@ top:;
 		LOG_ERR("post modem_cmd_init error");
 	}
 #endif
-	set_pdnset();
+	set_pdn_params();
 	set_bands();
 	set_boot_delay();
 
@@ -5185,7 +5185,7 @@ error:
 	return 0;
 }
 
-#if defined(CONFIG_NET_SOCKETS_OFFLOAD)
+#if defined(CONFIG_NET_OFFLOAD)
 static int net_offload_dummy_get(sa_family_t family, enum net_sock_type type,
 				 enum net_ip_protocol ip_proto, struct net_context **context)
 {
@@ -5254,8 +5254,10 @@ static void murata_1sc_net_iface_init(struct net_if *iface)
 	net_if_set_link_addr(iface, murata_1sc_get_mac(dev), sizeof(data->mac_addr),
 			     NET_LINK_ETHERNET);
 	data->net_iface = iface;
-#if defined(CONFIG_NET_SOCKETS_OFFLOAD)
+#if defined(CONFIG_NET_OFFLOAD)
 	iface->if_dev->offload = &modem_net_offload;
+#endif
+#if defined(CONFIG_NET_SOCKETS_OFFLOAD)
 	iface->if_dev->socket_offload = offload_socket;
 #if defined(CONFIG_PING)
 	iface->if_dev->ping_offload = offload_ping;
