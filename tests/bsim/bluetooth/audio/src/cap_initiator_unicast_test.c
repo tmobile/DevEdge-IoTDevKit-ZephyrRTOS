@@ -543,7 +543,7 @@ static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group
 
 	valid_stream_param.member.member = default_conn;
 	valid_stream_param.stream = &unicast_client_streams[0];
-	valid_stream_param.ep = unicast_sink_eps[bt_conn_index(default_conn)][0];
+	valid_stream_param.ep = unicast_sink_eps[0];
 	valid_stream_param.codec_cfg = &unicast_preset_16_2_1.codec_cfg;
 	valid_stream_param.qos = &unicast_preset_16_2_1.qos;
 
@@ -659,7 +659,7 @@ static void unicast_audio_start(struct bt_bap_unicast_group *unicast_group, bool
 	param.stream_params = stream_param;
 	stream_param[0].member.member = default_conn;
 	stream_param[0].stream = &unicast_client_streams[0];
-	stream_param[0].ep = unicast_sink_eps[bt_conn_index(default_conn)][0];
+	stream_param[0].ep = unicast_sink_eps[0];
 	stream_param[0].codec_cfg = &unicast_preset_16_2_1.codec_cfg;
 	stream_param[0].qos = &unicast_preset_16_2_1.qos;
 

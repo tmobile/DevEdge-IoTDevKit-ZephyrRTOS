@@ -249,11 +249,11 @@ static void init_lc3(const struct bt_bap_stream *stream)
 		return;
 	}
 
-	lc3_freq_hz = bt_audio_codec_cfg_get_freq(stream->codec_cfg);
-	lc3_frame_duration_us = bt_audio_codec_cfg_get_frame_duration_us(stream->codec_cfg);
-	lc3_octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
-	lc3_frames_per_sdu = bt_audio_codec_cfg_get_frame_blocks_per_sdu(stream->codec_cfg, true);
-	lc3_octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
+	freq_hz = bt_audio_codec_cfg_get_freq(stream->codec_cfg);
+	frame_duration_us = bt_audio_codec_cfg_get_frame_duration_us(stream->codec_cfg);
+	octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
+	frames_per_sdu = bt_audio_codec_cfg_get_frame_blocks_per_sdu(stream->codec_cfg, true);
+	octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
 
 	if (lc3_freq_hz < 0) {
 		printk("Error: Codec frequency not set, cannot start codec.");
@@ -1146,13 +1146,14 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	}
 
 	if (bap_stream->ep == ep) {
-		err = bt_bap_stream_reconfig(bap_stream, &uni_stream->codec);
+		err = bt_bap_stream_reconfig(bap_stream, &uni_stream->codec_cfg);
 		if (err != 0) {
 			shell_error(sh, "Unable reconfig stream: %d", err);
 			return -ENOEXEC;
 		}
 	} else {
-		err = bt_bap_stream_config(default_conn, bap_stream, ep, &uni_stream->codec);
+		err = bt_bap_stream_config(default_conn, bap_stream, ep,
+					   &uni_stream->codec_cfg);
 		if (err != 0) {
 			shell_error(sh, "Unable to config stream: %d", err);
 			return err;
@@ -1672,7 +1673,7 @@ static void base_recv(struct bt_bap_broadcast_sink *sink, const struct bt_bap_ba
 		subgroup = &base->subgroups[i];
 
 		shell_print(ctx_shell, "%2sSubgroup[%d]:", "", i);
-		print_codec(ctx_shell, &subgroup->codec);
+		print_codec_cfg(ctx_shell, &subgroup->codec_cfg);
 
 		for (int j = 0; j < subgroup->bis_count; j++) {
 			const struct bt_bap_base_bis_data *bis_data;

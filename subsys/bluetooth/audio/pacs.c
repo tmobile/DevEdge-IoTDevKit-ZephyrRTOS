@@ -802,8 +802,7 @@ void bt_pacs_cap_foreach(enum bt_audio_dir dir, bt_pacs_cap_foreach_func_t func,
 int bt_pacs_cap_register(enum bt_audio_dir dir, struct bt_pacs_cap *cap)
 {
 	const struct bt_audio_codec_cap *codec_cap;
-	sys_slist_t *pac;
-	int err;
+	struct pacs *pac;
 
 	if (!cap || !cap->codec_cap) {
 		return -EINVAL;

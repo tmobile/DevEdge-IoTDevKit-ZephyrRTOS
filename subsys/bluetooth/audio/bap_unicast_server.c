@@ -127,6 +127,11 @@ int bt_bap_unicast_server_metadata(struct bt_bap_stream *stream, struct bt_audio
 		err = -ENOTSUP;
 	}
 
+	ep = stream->ep;
+	for (size_t i = 0U; i < meta_count; i++) {
+		(void)memcpy(&ep->codec_cfg.meta[i], &meta[i], sizeof(ep->codec_cfg.meta[i]));
+	}
+
 	if (err) {
 		LOG_ERR("Metadata failed: err %d, code %u, reason %u", err, rsp.code, rsp.reason);
 		return err;
