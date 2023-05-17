@@ -121,9 +121,24 @@ void posix_atomic_halt_cpu(unsigned int imask)
  */
 void posix_boot_cpu(void)
 {
-	nce_st = nce_init();
-	posix_arch_init();
-	nce_boot_cpu(nce_st, z_cstart);
+	PC_SAFE_CALL(pthread_mutex_lock(&mtx_cpu));
+
+	cpu_halted = false;
+
+	pthread_t zephyr_thread;
+
+	/* Create a thread for Zephyr init: */
+	PC_SAFE_CALL(pthread_create(&zephyr_thread, NULL, zephyr_wrapper, NULL));
+
+	/* And we wait until Zephyr has run til completion (has gone to idle) */
+	while (cpu_halted == false) {
+		pthread_cond_wait(&cond_cpu, &mtx_cpu);
+	}
+	PC_SAFE_CALL(pthread_mutex_unlock(&mtx_cpu));
+
+	if (soc_terminate) {
+		posix_exit(0);
+	}
 }
 
 /**
