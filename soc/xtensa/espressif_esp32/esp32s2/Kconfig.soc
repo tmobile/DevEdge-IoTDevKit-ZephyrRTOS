@@ -1,7 +1,22 @@
 # Copyright (c) 2023 Espressif Systems (Shanghai) Co., Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-if SOC_SERIES_ESP32S2
+config SOC_ESP32S2
+	bool "ESP32S2"
+	select XTENSA
+	select ATOMIC_OPERATIONS_C
+	select DYNAMIC_INTERRUPTS
+	select CLOCK_CONTROL
+	select PINCTRL
+	select XIP if !MCUBOOT
+	select HAS_ESPRESSIF_HAL
+	select ARCH_SUPPORTS_COREDUMP
+
+if SOC_ESP32S2
+
+config SOC_FAMILY_ESP32
+	bool
+	default y
 
 config IDF_TARGET_ESP32S2
 	bool "ESP32S2 as target SOC"
