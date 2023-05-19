@@ -538,7 +538,7 @@ static int ieee802154_send(struct net_if *iface, struct net_pkt *pkt)
 
 #ifdef CONFIG_NET_L2_IEEE802154_FRAGMENT
 		if (requires_fragmentation) {
-			pkt_buf = ieee802154_6lo_fragment(&f_ctx, frame_buf, true);
+			pkt_buf = ieee802154_6lo_fragment(&frag_ctx, frame_buf, true);
 		} else {
 			net_buf_add_mem(frame_buf, pkt_buf->data, pkt_buf->len);
 			pkt_buf = pkt_buf->frags;
