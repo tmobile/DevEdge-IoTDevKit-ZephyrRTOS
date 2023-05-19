@@ -43,12 +43,23 @@ static inline int unslotted_csma_ca_channel_access(struct net_if *iface)
 		if (be) {
 			uint8_t bo_n = sys_rand32_get() & ((1 << be) - 1);
 
-			/* TODO: k_busy_wait() is too inaccurate on many platforms, the
-			 * radio API should expose a precise radio clock instead (which may
-			 * fall back to k_busy_wait() if the radio does not have a clock).
-			 */
-			k_busy_wait(bo_n * IEEE802154_A_UNIT_BACKOFF_PERIOD_US(turnaround_time,
-									       symbol_period));
+			k_busy_wait(bo_n * 20U);
+		}
+
+		while (1) {
+			if (!ieee802154_cca(iface)) {
+				break;
+			} else if (ret != -EBUSY) {
+				/* CCA exited with failure code. */
+				return -EIO;
+			}
+
+			be = MIN(be + 1, max_be);
+			nb++;
+
+			if (nb > max_bo) {
+				goto loop;
+			}
 		}
 
 		ret = ieee802154_cca(iface);
