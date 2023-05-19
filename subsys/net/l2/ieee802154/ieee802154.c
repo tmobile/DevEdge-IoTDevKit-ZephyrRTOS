@@ -242,7 +242,7 @@ int ieee802154_radio_send(struct net_if *iface, struct net_pkt *pkt, struct net_
 	return -EIO;
 }
 
-static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool comp,
+static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool has_pan_id,
 					    enum ieee802154_addressing_mode mode,
 					    struct ieee802154_address_field *ll)
 {
@@ -433,10 +433,10 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	 * packet handling as it will mangle the package header to comply with upper
 	 * network layers' (POSIX) requirement to represent network addresses in big endian.
 	 */
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), fs->fc.pan_id_comp, fs->fc.src_addr_mode,
-				 mpdu.mhr.src_addr);
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), !fs->fc.pan_id_comp,
+				 fs->fc.src_addr_mode, mpdu.mhr.src_addr);
 
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), false, fs->fc.dst_addr_mode,
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), true, fs->fc.dst_addr_mode,
 				 mpdu.mhr.dst_addr);
 
 	net_pkt_set_ll_proto_type(pkt, ETH_P_IEEE802154);

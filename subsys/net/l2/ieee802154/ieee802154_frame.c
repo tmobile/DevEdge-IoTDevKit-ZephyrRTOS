@@ -234,12 +234,12 @@ static inline bool validate_beacon(struct ieee802154_mpdu *mpdu, uint8_t *buf, u
 	return true;
 }
 
-static inline bool validate_mac_command_cfi_to_mhr(struct ieee802154_mhr *mhr,
-						   bool ack_requested, bool has_pan_id,
-						   uint8_t src_bf, bool src_pan_brdcst_chk,
-						   uint8_t dst_bf, bool dst_brdcst_chk)
+static inline bool validate_mac_command_cfi_to_mhr(struct ieee802154_mhr *mhr, uint8_t ar,
+						   bool has_pan_id, uint8_t src_bf,
+						   bool src_pan_brdcst_chk, uint8_t dst_bf,
+						   bool dst_brdcst_chk)
 {
-	if (mhr->fs->fc.ar != ack_requested || mhr->fs->fc.pan_id_comp == has_pan_id) {
+	if (mhr->fs->fc.ar != ar || mhr->fs->fc.pan_id_comp == has_pan_id) {
 		return false;
 	}
 
@@ -271,8 +271,9 @@ static inline bool validate_mac_command(struct ieee802154_mpdu *mpdu, uint8_t *b
 	bool src_pan_brdcst_chk = false;
 	uint8_t src_bf = 0, dst_bf = 0;
 	bool dst_brdcst_chk = false;
-	bool ack_requested = false;
 	bool has_pan_id = true;
+	uint8_t ar = 0U;
+	uint8_t src_bf, dst_bf;
 
 	if (length < len) {
 		return false;
@@ -299,7 +300,7 @@ static inline bool validate_mac_command(struct ieee802154_mpdu *mpdu, uint8_t *b
 		}
 		__fallthrough;
 	case IEEE802154_CFI_PAN_ID_CONFLICT_NOTIFICATION:
-		ack_requested = true;
+		ar = 1U;
 		has_pan_id = false;
 		src_bf = BIT(IEEE802154_ADDR_MODE_EXTENDED);
 		dst_bf |= BIT(IEEE802154_ADDR_MODE_EXTENDED);
@@ -357,7 +358,7 @@ static inline bool validate_mac_command(struct ieee802154_mpdu *mpdu, uint8_t *b
 		return false;
 	}
 
-	if (!validate_mac_command_cfi_to_mhr(&mpdu->mhr, ack_requested, has_pan_id, src_bf,
+	if (!validate_mac_command_cfi_to_mhr(&mpdu->mhr, ar, has_pan_id, src_bf,
 					     src_pan_brdcst_chk, dst_bf,
 					     dst_brdcst_chk)) {
 		return false;
