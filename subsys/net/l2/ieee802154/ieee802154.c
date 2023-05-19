@@ -96,7 +96,7 @@ static inline void ieee802154_acknowledge(struct net_if *iface, struct ieee80215
 #define ieee802154_acknowledge(...)
 #endif /* CONFIG_NET_L2_IEEE802154_ACK_REPLY */
 
-static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool comp,
+static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool has_pan_id,
 					    enum ieee802154_addressing_mode mode,
 					    struct ieee802154_address_field *ll)
 {
@@ -105,22 +105,13 @@ static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool comp
 	switch (mode) {
 	case IEEE802154_ADDR_MODE_EXTENDED:
 		addr->len = IEEE802154_EXT_ADDR_LENGTH;
-
-		if (comp) {
-			addr->addr = ll->comp.addr.ext_addr;
-		} else {
-			addr->addr = ll->plain.addr.ext_addr;
-		}
+		addr->addr = has_pan_id ? ll->plain.addr.ext_addr : ll->comp.addr.ext_addr;
 		break;
 
 	case IEEE802154_ADDR_MODE_SHORT:
 		addr->len = IEEE802154_SHORT_ADDR_LENGTH;
-
-		if (comp) {
-			addr->addr = (uint8_t *)&ll->comp.addr.short_addr;
-		} else {
-			addr->addr = (uint8_t *)&ll->plain.addr.short_addr;
-		}
+		addr->addr = (uint8_t *)(has_pan_id ? &ll->plain.addr.short_addr
+						    : &ll->comp.addr.short_addr);
 		break;
 
 	case IEEE802154_ADDR_MODE_NONE:
@@ -271,10 +262,10 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	 * packet handling as it will mangle the package header to comply with upper
 	 * network layers' (POSIX) requirement to represent network addresses in big endian.
 	 */
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), mpdu.mhr.fs->fc.pan_id_comp,
-				 mpdu.mhr.fs->fc.src_addr_mode, mpdu.mhr.src_addr);
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), !fs->fc.pan_id_comp,
+				 fs->fc.src_addr_mode, mpdu.mhr.src_addr);
 
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), false, mpdu.mhr.fs->fc.dst_addr_mode,
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), true, fs->fc.dst_addr_mode,
 				 mpdu.mhr.dst_addr);
 
 	net_pkt_set_ll_proto_type(pkt, ETH_P_IEEE802154);
