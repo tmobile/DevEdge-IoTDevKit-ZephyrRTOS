@@ -60,14 +60,6 @@ extern "C" {
 #define IEEE802154_A_UNIT_BACKOFF_PERIOD_US(turnaround_time, symbol_period)                        \
 	(IEEE802154_A_UNIT_BACKOFF_PERIOD(turnaround_time) * symbol_period)
 
-/* MAC PIB attribute aUnitBackoffPeriod, see section 8.4.2, table 8-93, in symbol periods, valid for
- * all PHYs except SUN PHY in the 920 MHz band.
- */
-#define IEEE802154_A_UNIT_BACKOFF_PERIOD(turnaround_time)                                          \
-	(turnaround_time + IEEE802154_PHY_A_CCA_TIME)
-#define IEEE802154_A_UNIT_BACKOFF_PERIOD_US(turnaround_time, symbol_period)                        \
-	(IEEE802154_A_UNIT_BACKOFF_PERIOD(turnaround_time) * symbol_period)
-
 struct ieee802154_security_ctx {
 	uint32_t frame_counter;
 	struct cipher_ctx enc;

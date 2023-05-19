@@ -273,7 +273,6 @@ static inline bool validate_mac_command(struct ieee802154_mpdu *mpdu, uint8_t *b
 	bool dst_brdcst_chk = false;
 	bool ack_requested = false;
 	bool has_pan_id = true;
-	uint8_t src_bf, dst_bf;
 
 	if (length < len) {
 		return false;

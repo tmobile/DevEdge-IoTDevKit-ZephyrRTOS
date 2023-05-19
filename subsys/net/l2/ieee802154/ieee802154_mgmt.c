@@ -140,6 +140,9 @@ static int ieee802154_scan(uint32_t mgmt_request, struct net_if *iface,
 
 	ret = 0;
 
+	k_sem_take(&ctx->ctx_lock, K_FOREVER);
+	ieee802154_radio_remove_pan_id(iface, ctx->pan_id);
+	k_sem_give(&ctx->ctx_lock);
 	ieee802154_radio_filter_pan_id(iface, IEEE802154_BROADCAST_PAN_ID);
 
 	if (ieee802154_radio_start(iface)) {
@@ -190,8 +193,11 @@ static int ieee802154_scan(uint32_t mgmt_request, struct net_if *iface,
 
 out:
 	/* Let's come back to context's settings. */
+	ieee802154_radio_remove_pan_id(iface, IEEE802154_BROADCAST_PAN_ID);
+	k_sem_take(&ctx->ctx_lock, K_FOREVER);
 	ieee802154_radio_filter_pan_id(iface, ctx->pan_id);
 	ieee802154_radio_set_channel(iface, ctx->channel);
+	k_sem_give(&ctx->ctx_lock);
 
 	k_sem_take(&ctx->scan_ctx_lock, K_FOREVER);
 	if (ctx->scan_ctx) {
@@ -246,8 +252,15 @@ static inline void set_association(struct net_if *iface, struct ieee802154_conte
 
 	ctx->short_addr = short_addr;
 
-	update_net_if_link_addr(iface, ctx);
-	ieee802154_radio_filter_short_addr(iface, ctx->short_addr);
+	if (short_addr == IEEE802154_NO_SHORT_ADDRESS_ASSIGNED) {
+		set_linkaddr_to_ext_addr(iface, ctx);
+	} else {
+		ctx->linkaddr.len = IEEE802154_SHORT_ADDR_LENGTH;
+		short_addr_be = htons(short_addr);
+		memcpy(ctx->linkaddr.addr, &short_addr_be, IEEE802154_SHORT_ADDR_LENGTH);
+		update_net_if_link_addr(iface, ctx);
+		ieee802154_radio_filter_short_addr(iface, ctx->short_addr);
+	}
 }
 
 /* Requires the context lock to be held. */
@@ -269,7 +282,9 @@ static inline void remove_association(struct net_if *iface, struct ieee802154_co
 	ctx->coord_short_addr = IEEE802154_SHORT_ADDRESS_NOT_ASSOCIATED;
 
 	set_linkaddr_to_ext_addr(iface, ctx);
-	ieee802154_radio_filter_short_addr(iface, IEEE802154_SHORT_ADDRESS_NOT_ASSOCIATED);
+
+	ieee802154_radio_filter_pan_id(iface, IEEE802154_BROADCAST_PAN_ID);
+	ieee802154_radio_filter_short_addr(iface, IEEE802154_BROADCAST_ADDRESS);
 }
 
 /* Requires the context lock to be held. */
@@ -412,7 +427,7 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 				void *data, size_t len)
 {
 	struct ieee802154_context *ctx = net_if_l2_data(iface);
-	struct ieee802154_frame_params params;
+	struct ieee802154_frame_params params = {0};
 	struct ieee802154_req_params *req;
 	struct ieee802154_command *cmd;
 	struct net_pkt *pkt;
@@ -424,8 +439,26 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 
 	req = (struct ieee802154_req_params *)data;
 
-	params.dst.len = req->len;
-	if (params.dst.len == IEEE802154_SHORT_ADDR_LENGTH) {
+	/* Validate the coordinator's PAN ID. */
+	if (req->pan_id == IEEE802154_PAN_ID_NOT_ASSOCIATED) {
+		return -EINVAL;
+	}
+
+	params.dst.pan_id = req->pan_id;
+
+	/* If the Version field is set to 0b10, the Source PAN ID field is
+	 * omitted. Otherwise, the Source PAN ID field shall contain the
+	 * broadcast PAN ID.
+	 */
+	params.pan_id = IEEE802154_BROADCAST_PAN_ID;
+
+	/* Validate the coordinator's short address - if any. */
+	if (req->len == IEEE802154_SHORT_ADDR_LENGTH) {
+		if (req->short_addr == IEEE802154_SHORT_ADDRESS_NOT_ASSOCIATED ||
+		    req->short_addr == IEEE802154_NO_SHORT_ADDRESS_ASSIGNED) {
+			return -EINVAL;
+		}
+
 		params.dst.short_addr = req->short_addr;
 	} else if (req->len == IEEE802154_EXT_ADDR_LENGTH) {
 		memcpy(params.dst.ext_addr, req->addr, sizeof(params.dst.ext_addr));
@@ -458,7 +491,7 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 	cmd->assoc_req.ci.reserved_1 = 0U; /* Reserved */
 	cmd->assoc_req.ci.dev_type = 0U; /* RFD */
 	cmd->assoc_req.ci.power_src = 0U; /* TODO: set right power source */
-	cmd->assoc_req.ci.rx_on = 1U; /* TODO: that will depends on PM */
+	cmd->assoc_req.ci.rx_on = 1U; /* TODO: derive from PM settings */
 	cmd->assoc_req.ci.association_type = 0U; /* normal association */
 	cmd->assoc_req.ci.reserved_2 = 0U; /* Reserved */
 #ifdef CONFIG_NET_L2_IEEE802154_SECURITY
@@ -473,7 +506,33 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 
 	ieee802154_mac_cmd_finalize(pkt, IEEE802154_CFI_ASSOCIATION_REQUEST);
 
+	/* section 6.4.1, Association: Set phyCurrentPage [TODO: implement] and
+	 * phyCurrentChannel to the requested channel and channel page
+	 * parameters.
+	 */
+	if (ieee802154_radio_set_channel(iface, req->channel)) {
+		ret = -EIO;
+		goto release;
+	}
+
+	/* section 6.4.1, Association: Set macPanId to the coordinator's PAN ID. */
+	ieee802154_radio_remove_pan_id(iface, ctx->pan_id);
+	ctx->pan_id = req->pan_id;
 	ieee802154_radio_filter_pan_id(iface, req->pan_id);
+
+	/* section 6.4.1, Association: Set macCoordExtendedAddress or
+	 * macCoordShortAddress, depending on which is known from the Beacon
+	 * frame from the coordinator through which the device wishes to
+	 * associate.
+	 */
+	if (req->len == IEEE802154_SHORT_ADDR_LENGTH) {
+		ctx->coord_short_addr = req->short_addr;
+	} else  {
+		ctx->coord_short_addr = IEEE802154_NO_SHORT_ADDRESS_ASSIGNED;
+		sys_memcpy_swap(ctx->coord_ext_addr, req->addr, IEEE802154_EXT_ADDR_LENGTH);
+	}
+
+	k_sem_give(&ctx->ctx_lock);
 
 	/* Acquire the scan lock so that the next k_sem_take() blocks. */
 	k_sem_take(&ctx->scan_ctx_lock, K_FOREVER);
@@ -489,11 +548,11 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 		goto out;
 	}
 
-	/* Acquire the lock so that the next k_sem_take() blocks. */
-	k_sem_take(&ctx->scan_ctx_lock, K_FOREVER);
-
 	/* Wait macResponseWaitTime PHY symbols for the association response, see
 	 * ieee802154_handle_mac_command() and section 6.4.1.
+	 *
+	 * TODO: The Association Response command shall be sent to the device
+	 *       requesting association using indirect transmission.
 	 */
 	k_sem_take(&ctx->scan_ctx_lock, K_USEC(ieee802154_get_response_wait_time_us(iface)));
 
@@ -534,8 +593,11 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 release:
 	k_sem_give(&ctx->ctx_lock);
 out:
-	if (ret < 0) {
-		ieee802154_radio_filter_pan_id(iface, 0);
+	if (ret) {
+		k_sem_take(&ctx->ctx_lock, K_FOREVER);
+		remove_association(iface, ctx);
+		ieee802154_radio_set_channel(iface, ctx->channel);
+		k_sem_give(&ctx->ctx_lock);
 	}
 
 	return ret;
@@ -551,9 +613,6 @@ static int ieee802154_disassociate(uint32_t mgmt_request, struct net_if *iface,
 	struct ieee802154_frame_params params = {0};
 	struct ieee802154_command *cmd;
 	struct net_pkt *pkt;
-
-	ARG_UNUSED(data);
-	ARG_UNUSED(len);
 
 	ARG_UNUSED(data);
 	ARG_UNUSED(len);
