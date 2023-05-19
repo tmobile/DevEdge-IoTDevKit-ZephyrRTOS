@@ -210,8 +210,8 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 {
 	const struct ieee802154_radio_api *radio = net_if_get_device(iface)->api;
 	struct ieee802154_mpdu mpdu;
-	enum net_verdict verdict;
-	size_t hdr_len;
+	bool is_broadcast;
+	size_t ll_hdr_len;
 
 	/* The IEEE 802.15.4 stack assumes that drivers provide a single-fragment package. */
 	__ASSERT_NO_MSG(pkt->buffer && pkt->buffer->frags == NULL);
@@ -272,8 +272,8 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 
 	pkt_hexdump(RX_PKT_TITLE " (with ll)", pkt, true);
 
-	hdr_len = (uint8_t *)mpdu.payload - net_pkt_data(pkt);
-	net_buf_pull(pkt->buffer, hdr_len);
+	ll_hdr_len = (uint8_t *)mpdu.payload - net_pkt_data(pkt);
+	net_buf_pull(pkt->buffer, ll_hdr_len);
 
 #ifdef CONFIG_NET_6LO
 	verdict = ieee802154_6lo_decode_pkt(iface, pkt);
