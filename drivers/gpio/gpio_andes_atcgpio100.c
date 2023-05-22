@@ -328,7 +328,7 @@ static const struct gpio_driver_api gpio_atcgpio100_api = {
 	.port_clear_bits_raw     = gpio_atcgpio100_clear_bits_raw,
 	.port_toggle_bits        = gpio_atcgpio100_toggle_bits,
 	.pin_interrupt_configure = gpio_atcgpio100_pin_interrupt_configure,
-	.manage_callback         = gpio_atcgpio100_manage_callback,
+	.manage_callback         = gpio_atcgpio100_manage_callback
 #ifdef CONFIG_GPIO_GET_DIRECTION
 	.port_get_direction      = gpio_atcgpio100_port_get_dir,
 #endif /* CONFIG_GPIO_GET_DIRECTION */
