@@ -15,6 +15,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/random/rand32.h>
+#include <zephyr/drivers/bluetooth/rs9116w.h>
 
 #if !IS_ENABLED(CONFIG_WIFI_RS9116W)
 /* Buffer for WiSeConnect */
@@ -576,6 +577,15 @@ void bt_data_parse(struct net_buf_simple *ad,
 
 		net_buf_simple_pull(ad, len - 1);
 	}
+}
+
+int bt_get_mac(char *mac)
+{
+	if (rsi_bt_get_local_device_address(mac)) {
+		return -EIO;
+	}
+
+	return 0;
 }
 
 #if defined(CONFIG_PM_DEVICE) && !defined(CONFIG_WIFI_RS9116W)
