@@ -64,7 +64,7 @@ static int pd_reg_pm_action(const struct device *dev,
 		k_sleep(data->next_boot);
 		/* Switch power on */
 		regulator_enable(cfg->regulator);
-		LOG_INF("%s is now ON", dev->name);
+		LOG_INF("%s is now ACTIVE, devices on the rail are now powered", dev->name);
 		/* Wait for domain to come up */
 		k_sleep(K_USEC(cfg->startup_delay_us));
 		/* Notify devices on the domain they are now powered */
@@ -77,7 +77,7 @@ static int pd_reg_pm_action(const struct device *dev,
 		(void)device_supported_foreach(dev, pd_on_domain_visitor, &context);
 		/* Switch power off */
 		regulator_disable(cfg->regulator);
-		LOG_INF("%s is now OFF", dev->name);
+		LOG_INF("%s is now SUSPENDED, devices on the rail are now OFF", dev->name);
 		/* Store next time we can boot */
 		next_boot_ticks = k_uptime_ticks() + k_us_to_ticks_ceil32(cfg->off_on_delay_us);
 		data->next_boot = K_TIMEOUT_ABS_TICKS(next_boot_ticks);
