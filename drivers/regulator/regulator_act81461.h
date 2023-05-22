@@ -147,6 +147,128 @@
 #define VBUCKBOOST_VSET_REG 0x92
 #define VBUCKBOOST_VSET_MSK 0x3f
 
+/*
+ * MSTR18
+ * Interrupt source
+ */
+#define INT_SRC_REG 0x18
+#define INT_SRC_MSTR 0x01
+#define INT_SRC_GPIO 0x02
+#define INT_SRC_LDO1 0x31
+#define INT_SRC_LDO2 0x32
+#define INT_SRC_LDO3 0x41
+#define INT_SRC_LSW4 0x42
+#define INT_SRC_LSW5 0x51
+#define INT_SRC_LSW6 0x52
+#define INT_SRC_BUCK1 0x61
+#define INT_SRC_BUCK2 0x62
+#define INT_SRC_BOOST 0x80
+#define INT_SRC_BB 0x91
+#define INT_SRC_ALPC 0xC0
+#define INT_SRC_UNKN 0xFF
+
+/*
+ * MSTR00
+ * System interrupts
+ */
+#define INT_SRC_MSTR_REG 0x00
+#define INT_SRC_MSTR_REG_MSK 0x7F
+#define INT_SRC_MSTR_MSK_REG 0x01
+
+/*
+ * MSTR22
+ * GPIO interrupts
+ */
+#define INT_SRC_GPIO_REG 0x22
+#define INT_SRC_GPIO_REG_MSK 0x03
+#define INT_SRC_GPIO_MSK_REG 0x23
+
+/*
+ * APLC_REG02
+ * ALPC interrupts
+ */
+#define INT_SRC_ALPC_REG 0xC2
+
+/*
+ * LDO12_REG00
+ * LDO1 interrupt mask register
+ */
+#define INT_MSK_REG_LDO1 0x30
+
+/*
+ * LDO12_REG05
+ * LDO2 interrupt mask register
+ */
+#define INT_MSK_REG_LDO2 0x35
+
+/*
+ * LDO34_REG00
+ * LDO3 interrupt mask register
+ */
+#define INT_MSK_REG_LDO3 0x40
+
+/*
+ * LDO34_REG05
+ * LSW4 interrupt mask register
+ */
+#define INT_MSK_REG_LSW4 0x45
+
+/*
+ * LSW56_REG00
+ * LSW5 interrupt mask register
+ */
+#define INT_MSK_REG_LSW5 0x50
+
+/*
+ * LSW56_REG05
+ * LSW6 interrupt mask register
+ */
+#define INT_MSK_REG_LSW6 0x55
+
+/*
+ * B1_REG00
+ * BUCK1 interrupt mask register
+ */
+#define INT_MSK_REG_BUCK1 0x60
+
+/*
+ * B2_REG00
+ * BUCK2 interrupt mask register
+ */
+#define INT_MSK_REG_BUCK2 0x70
+
+/*
+ * BB_REG00
+ * BUCKBOOST interrupt mask register
+ */
+#define INT_MSK_REG_BUCKBOOST 0x90
+
+/*
+ * BOOST_REG00
+ * BOOST interrupt mask register
+ */
+#define INT_MSK_REG_BOOST 0x80
+
+/*
+ * MSTR01
+ * Master interrupt mask register
+ */
+#define INT_MSK_REG_MSTR 0x01
+
+/*
+ * MSTR03
+ * VSYSMON configuration register
+ */
+#define INT_MSK_REG_ALPC_0 0xC3
+#define INT_MSK_REG_ALPC_1 0xC4
+
+/*
+ * APLC_REG04
+ * ALPC interrupt mask register
+ */
+#define VSYSMON_REG 0x03
+#define VSYSMON_MSK 0x0F
+
 #define BUCKBOOST_SWFREQ_MSK 0x40
 #define BUCK1_SWFREQ_MSK 0x80
 #define BUCK2_SWFREQ_MSK 0x80
@@ -155,8 +277,7 @@
 #define LDO2_SWFREQ_MSK 0x00
 #define LDO3_SWFREQ_MSK 0x80
 
-#define REGULATOR_ERROR_UNDER_VOLTAGE BIT(3)
-#define REGULATOR_ERROR_VSYS_UNDER_VOLTAGE BIT(4)
+#define VBAT_LOW_MSK 0x10
 
 #define TWARN 0x20
 #define VSYS  0x10
@@ -165,6 +286,16 @@
 #define OV_FLT 0x40
 #define ILIM_FLT 0x20
 
-#define BST_UV BIT(4)
-#define BST_OV BIT(5)
-#define BST_ILIM_WRN BIT(6)
+#define PWR_GOOD_INT_MSK 0x08
+#define OV_INT_MSK 0x04
+#define ILIM_INT_MSK 0x02
+
+#define BST_UV_INT_MSK 0x01
+#define BST_OV_INT_MSK 0x02
+#define BST_ILIM_INT_MSK 0x04
+
+#define BST_UV 0x10
+#define BST_OV 0x20
+#define BST_ILIM_WRN 0x40
+
+#define VBAT_LOW_STAT 0x10

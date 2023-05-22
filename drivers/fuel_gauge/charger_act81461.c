@@ -14,6 +14,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/slist.h>
 
 #include <zephyr/drivers/fuel_gauge.h>
 #include <zephyr/drivers/fuel_gauge/act81461.h>
@@ -30,7 +31,7 @@ struct act81461_gauge_data {
 	const struct device *dev;
 	struct gpio_callback gpio_int_cb;
 	struct k_work interrupt_work;
-	act81461_int_cb_t cb;
+	sys_slist_t cbs;
 };
 
 LOG_MODULE_REGISTER(act81461_charger, CONFIG_REGULATOR_LOG_LEVEL);
@@ -40,19 +41,42 @@ static void interrupt_work_fn(struct k_work *item)
 	struct act81461_gauge_data *data =
 		CONTAINER_OF(item, struct act81461_gauge_data, interrupt_work);
 
-	if (data->cb) {
-		data->cb(data->dev);
+	struct act81461_int_cb *cb, *next;
+
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&data->cbs, cb, next, node) {
+		if (cb->cb) {
+			cb->cb(data->dev);
+		}
 	}
 }
 
-static void pmic_battery_charge_intr_callback(const struct device *port, struct gpio_callback *cb,
-					      uint32_t pins)
+static void act81461_battery_charge_intr_callback(const struct device *port,
+						  struct gpio_callback *cb, uint32_t pins)
 {
 	struct act81461_gauge_data *data =
 		CONTAINER_OF(cb, struct act81461_gauge_data, gpio_int_cb);
 	k_work_submit(&data->interrupt_work);
 	LOG_DBG("pmic battery charger status change Interrupt");
 }
+
+#ifdef CONFIG_REGULATOR_ACT81461
+/**
+ * @brief External callback for when the regulator driver is also enabled
+ *        so that general interrupts can be propogated.
+ *
+ * @param dev ALPC device pointer
+ */
+void act81461_battery_charge_intr_ext_callback(const struct device *dev)
+{
+	struct act81461_gauge_data *data = dev->data;
+
+	if (data->interrupt_work.handler) {
+		k_work_submit(&data->interrupt_work);
+	}
+	LOG_DBG("pmic battery charger status change Interrupt");
+}
+#endif
+
 
 static int act81461_charger_get_prop(const struct device *dev, struct fuel_gauge_get_property *prop)
 {
@@ -208,11 +232,31 @@ static int act81461_charger_get_props(const struct device *dev,
 	return err_count;
 }
 
-int act81461_charger_int_cb_set(const struct device *dev, act81461_int_cb_t cb)
+int act81461_charger_int_cb_register(const struct device *dev, struct act81461_int_cb *cb)
 {
 	struct act81461_gauge_data *data = dev->data;
 
-	data->cb = cb;
+	if (cb == NULL) {
+		return -EINVAL;
+	}
+
+	sys_slist_append(&data->cbs, &cb->node);
+
+	return 0;
+}
+
+int act81461_charger_int_cb_unregister(const struct device *dev, struct act81461_int_cb *cb)
+{
+	struct act81461_gauge_data *data = dev->data;
+
+	if (cb == NULL) {
+		return -EINVAL;
+	}
+
+	if (!sys_slist_find_and_remove(&data->cbs, &cb->node)) {
+		return -EALREADY;
+	}
+
 	return 0;
 }
 
@@ -233,7 +277,7 @@ static int act81461_charger_init(const struct device *dev)
 	struct act81461_gauge_data *data = dev->data;
 
 	data->dev = dev;
-	data->cb = NULL;
+	sys_slist_init(&data->cbs);
 
 	if (!i2c_is_ready_dt(&config->i2c)) {
 		LOG_ERR("Bus device is not ready");
@@ -248,7 +292,7 @@ static int act81461_charger_init(const struct device *dev)
 
 	gpio_pin_configure_dt(&config->alert_gpio, GPIO_INPUT);
 	gpio_pin_interrupt_configure_dt(&config->alert_gpio, GPIO_INT_EDGE_BOTH);
-	gpio_init_callback(&data->gpio_int_cb, pmic_battery_charge_intr_callback,
+	gpio_init_callback(&data->gpio_int_cb, act81461_battery_charge_intr_callback,
 			   config->alert_gpio.pin);
 	ret = gpio_add_callback(config->alert_gpio.port, &data->gpio_int_cb);
 
@@ -264,14 +308,14 @@ static int act81461_charger_init(const struct device *dev)
 /* FIXME: fix init priority */
 #define ACT81461_CHARGER_INIT(index)                                                               \
                                                                                                    \
-	static struct act81461_gauge_data data_##index;		\
+	static struct act81461_gauge_data data_##index;                                            \
 	static const struct act81461_gauge_config act81461_charger_config_##index = {              \
 		.i2c = I2C_DT_SPEC_GET(DT_PARENT(DT_DRV_INST(index))),                             \
 		.alert_gpio =                                                                      \
 			GPIO_DT_SPEC_GET_OR(DT_PARENT(DT_DRV_INST(index)), alert_gpios, {0}),      \
 	};                                                                                         \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(index, &act81461_charger_init, NULL, &data_##index,            \
+	DEVICE_DT_INST_DEFINE(index, &act81461_charger_init, NULL, &data_##index,                  \
 			      &act81461_charger_config_##index, POST_KERNEL, 90,                   \
 			      &act81461_charger_driver_api);
 
