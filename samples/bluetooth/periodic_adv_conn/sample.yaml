@@ -1,9 +1,12 @@
 sample:
-  name: Bluetooth Periodic Advertising with Responses Advertiser
+  name: Bluetooth Periodic Advertising Connection Procedure
 tests:
-  sample.bluetooth.periodic_adv:
+  sample.bluetooth.periodic_adv_conn:
     harness: bluetooth
-    platform_allow: qemu_cortex_m3 qemu_x86 nrf52840dk_nrf52840
+    platform_allow:
+      - qemu_cortex_m3
+      - qemu_x86
+      - nrf52840dk_nrf52840
     tags: bluetooth
     integration_platforms:
       - nrf52840dk_nrf52840

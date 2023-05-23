@@ -116,6 +116,8 @@ class Handler:
         (and not in reverse).
         """
         expected_suite_names = self.instance.testsuite.ztest_suite_names
+        logger.debug(f"Expected suite names:{expected_suite_names}")
+        logger.debug(f"Detected suite names:{detected_suite_names}")
         if not expected_suite_names or \
                 not harness_state == "passed":
             return
@@ -146,7 +148,8 @@ class Handler:
         harness_class_name = type(harness).__name__
         if self.suite_name_check and harness_class_name == "Test":
             self._verify_ztest_suite_name(harness.state, harness.detected_suite_names, handler_time)
-
+            if self.instance.status == 'failed':
+                return
             if not harness.matched_run_id and harness.run_id_exists:
                 self.instance.status = "failed"
                 self.instance.execution_time = handler_time
@@ -660,8 +663,7 @@ class DeviceHandler(Handler):
         if self.instance.status in ["error", "failed"]:
             self.instance.add_missing_case_status("blocked", self.instance.reason)
 
-        if not flash_error:
-            self._final_handle_actions(harness, handler_time)
+        self._final_handle_actions(harness, handler_time)
 
         if post_script:
             self.run_custom_script(post_script, 30)

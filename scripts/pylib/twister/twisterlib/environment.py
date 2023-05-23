@@ -113,10 +113,6 @@ Artificially long but functional example:
         and net.socket.fd_set belong to different directories.
         """)
 
-    case_select.add_argument("--list-test-duplicates", action="store_true",
-                             help="""List tests with duplicate identifiers.
-        """)
-
     case_select.add_argument("--test-tree", action="store_true",
                              help="""Output the test plan in a tree form""")
 
@@ -664,6 +660,13 @@ structure in the main Zephyr tree: boards/<arch>/<board_name>/""")
     parser.add_argument("extra_test_args", nargs=argparse.REMAINDER,
         help="Additional args following a '--' are passed to the test binary")
 
+    parser.add_argument("--alt-config-root", action="append", default=[],
+        help="Alternative test configuration root/s. When a test is found, "
+             "Twister will check if a test configuration file exist in any of "
+             "the alternative test configuration root folders. For example, "
+             "given $test_root/tests/foo/testcase.yaml, Twister will use "
+             "$alt_config_root/tests/foo/testcase.yaml if it exists")
+
     return parser
 
 
@@ -798,6 +801,8 @@ class TwisterEnv:
         self.hwm = None
 
         self.test_config = options.test_config
+
+        self.alt_config_root = options.alt_config_root
 
     def discover(self):
         self.check_zephyr_version()

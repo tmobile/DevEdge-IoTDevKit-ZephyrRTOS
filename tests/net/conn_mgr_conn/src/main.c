@@ -15,25 +15,9 @@
 #include <zephyr/ztest.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/conn_mgr_connectivity.h>
+#include "conn_mgr_private.h"
 #include "test_conn_impl.h"
 #include "test_ifaces.h"
-
-
-/* This is a duplicate of conn_mgr_if_get_binding in net_if.c,
- * which is currently not exposed.
- */
-static inline struct conn_mgr_conn_binding *conn_mgr_if_get_binding(struct net_if *iface)
-{
-	STRUCT_SECTION_FOREACH(conn_mgr_conn_binding, binding) {
-		if (iface == binding->iface) {
-			if (binding->impl->api) {
-				return binding;
-			}
-			return NULL;
-		}
-	}
-	return NULL;
-}
 
 static inline struct test_conn_data *conn_mgr_if_get_data(struct net_if *iface)
 {
@@ -408,24 +392,60 @@ ZTEST(conn_mgr_conn, test_connect_disconnect_double_instant)
 	zassert_equal(ifa1_data->call_cnt_a, 4, "ifa1->disconnect should have been called once.");
 }
 
+/* Verify that calling connect on a down iface automatically takes the iface up. */
+ZTEST(conn_mgr_conn, test_connect_autoup)
+{
+	struct test_conn_data *ifa1_data = conn_mgr_if_get_data(ifa1);
+
+	/* Connect iface */
+	zassert_equal(conn_mgr_if_connect(ifa1), 0, "conn_mgr_if_connect should not fail");
+	k_sleep(K_MSEC(1));
+
+	/* Verify net_if_up was called */
+	zassert_true(net_if_is_admin_up(ifa1), "ifa1 should be admin-up after conn_mgr_if_connect");
+
+	/* Verify that connection succeeds */
+	zassert_true(net_if_is_up(ifa1),	"ifa1 should be oper-up after conn_mgr_if_connect");
+	zassert_equal(ifa1_data->conn_bal, 1,	"ifa1->connect should have been called once.");
+	zassert_equal(ifa1_data->call_cnt_a, 1,	"ifa1->connect should have been called once.");
+}
+
+/* Verify that calling disconnect on a down iface has no effect and raises no error. */
+ZTEST(conn_mgr_conn, test_disconnect_down)
+{
+	struct test_conn_data *ifa1_data = conn_mgr_if_get_data(ifa1);
+
+	/* Disconnect iface */
+	zassert_equal(conn_mgr_if_disconnect(ifa1), 0, "conn_mgr_if_disconnect should not fail.");
+	k_sleep(K_MSEC(1));
+
+	/* Verify iface is still down */
+	zassert_false(net_if_is_admin_up(ifa1), "ifa1 should be still be admin-down.");
+
+	/* Verify that no callbacks were fired */
+	zassert_equal(ifa1_data->conn_bal, 0,	"No callbacks should have been fired.");
+	zassert_equal(ifa1_data->call_cnt_a, 0,	"No callbacks should have been fired.");
+}
+
+/**
+ * Verify that invalid bound ifaces are treated as though they are not bound at all.
+ */
+ZTEST(conn_mgr_conn, test_invalid_ignored)
+{
+	zassert_is_null(conn_mgr_if_get_binding(ifnull));
+	zassert_is_null(conn_mgr_if_get_binding(ifnone));
+	zassert_false(conn_mgr_if_is_bound(ifnull));
+	zassert_false(conn_mgr_if_is_bound(ifnone));
+}
+
 /* Verify that connecting an iface that isn't up, missing an API,
  * or isn't connectivity-bound raises an error.
  */
 ZTEST(conn_mgr_conn, test_connect_invalid)
 {
-	struct test_conn_data *ifa1_data = conn_mgr_if_get_data(ifa1);
-
 	/* Bring ifnull and ifnone up */
 	zassert_equal(net_if_up(ifnull), 0, "net_if_up should succeed for ifnull");
 	zassert_equal(net_if_up(ifnone), 0, "net_if_up should succeed for ifnone");
-
-	/* Attempts to connect ifa1 without bringing it up should fail */
-	zassert_equal(conn_mgr_if_connect(ifa1), -ESHUTDOWN,
-					"conn_mgr_if_connect should give -ENOTSUP for down iface");
-	zassert_equal(ifa1_data->conn_bal, 0,
-					"conn_mgr_if_connect should not affect down iface");
-	zassert_equal(ifa1_data->call_cnt_a, 0,
-					"conn_mgr_if_connect should not affect down iface");
 
 	/* Attempts to connect ifnull should fail, even if it is up */
 	zassert_equal(conn_mgr_if_connect(ifnull), -ENOTSUP,
@@ -441,19 +461,9 @@ ZTEST(conn_mgr_conn, test_connect_invalid)
  */
 ZTEST(conn_mgr_conn, test_disconnect_invalid)
 {
-	struct test_conn_data *ifa1_data = conn_mgr_if_get_data(ifa1);
-
 	/* Bring ifnull and ifnone up */
 	zassert_equal(net_if_up(ifnull), 0, "net_if_up should succeed for ifnull");
 	zassert_equal(net_if_up(ifnone), 0, "net_if_up should succeed for ifnone");
-
-	/* Attempts to disconnect ifa1 without bringing it up should fail */
-	zassert_equal(conn_mgr_if_disconnect(ifa1), -EALREADY,
-				"conn_mgr_if_disconnect should give -ENOTSUP for down iface");
-	zassert_equal(ifa1_data->conn_bal, 0,
-				"conn_mgr_if_disconnect should not affect down iface");
-	zassert_equal(ifa1_data->call_cnt_a, 0,
-				"conn_mgr_if_disconnect should not affect down iface");
 
 	/* Attempts to disconnect ifnull should fail, even if it is up */
 	zassert_equal(conn_mgr_if_disconnect(ifnull), -ENOTSUP,

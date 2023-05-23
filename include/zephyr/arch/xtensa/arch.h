@@ -81,10 +81,18 @@ static ALWAYS_INLINE void arch_nop(void)
 	__asm__ volatile("nop");
 }
 
-#ifdef __cplusplus
-}
-#endif
+static ALWAYS_INLINE void xtensa_vecbase_lock(void)
+{
+	int vecbase;
 
+	__asm__ volatile("rsr.vecbase %0" : "=r" (vecbase));
+
+	/* In some targets the bit 0 of VECBASE works as lock bit.
+	 * When this bit set, VECBASE can't be changed until it is cleared by
+	 * reset. When the target does not have it, it is hardwired to 0.
+	 **/
+	__asm__ volatile("wsr.vecbase %0; rsync" : : "r" (vecbase | 1));
+}
 
 #if defined(CONFIG_XTENSA_RPO_CACHE)
 #if defined(CONFIG_ARCH_HAS_COHERENCE)
@@ -219,6 +227,10 @@ static inline void *arch_xtensa_uncached_ptr(void __sparse_cache *ptr)
 	FOR_EACH(_SET_ONE_TLB, (;), 0, 1, 2, 3, 4, 5, 6, 7);	\
 } while (0)
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* !defined(_ASMLANGUAGE) && !defined(__ASSEMBLER__)  */

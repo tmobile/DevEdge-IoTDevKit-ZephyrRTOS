@@ -154,6 +154,12 @@ static bool ieeee802154_check_dst_addr(struct net_if *iface, struct ieee802154_m
 	 */
 
 	if (mhr->fs->fc.dst_addr_mode == IEEE802154_ADDR_MODE_NONE) {
+		if (mhr->fs->fc.frame_version < IEEE802154_VERSION_802154 &&
+		    mhr->fs->fc.frame_type == IEEE802154_FRAME_TYPE_BEACON) {
+			/* See IEEE 802.15.4-2015, section 7.3.1.1. */
+			return true;
+		}
+
 		/* TODO: apply d.4 and d.5 when PAN coordinator is implemented */
 		/* also, macImplicitBroadcast is not implemented */
 		return false;
@@ -207,7 +213,11 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 {
 	const struct ieee802154_radio_api *radio = net_if_get_device(iface)->api;
 	struct ieee802154_mpdu mpdu;
+	enum net_verdict verdict;
 	size_t hdr_len;
+
+	/* The IEEE 802.15.4 stack assumes that drivers provide a single-fragment package. */
+	__ASSERT_NO_MSG(pkt->buffer && pkt->buffer->frags == NULL);
 
 	if (!ieee802154_validate_frame(net_pkt_data(pkt), net_pkt_get_len(pkt), &mpdu)) {
 		return NET_DROP;
@@ -224,7 +234,11 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	}
 
 	if (mpdu.mhr.fs->fc.frame_type == IEEE802154_FRAME_TYPE_BEACON) {
-		return ieee802154_handle_beacon(iface, &mpdu, net_pkt_ieee802154_lqi(pkt));
+		verdict = ieee802154_handle_beacon(iface, &mpdu, net_pkt_ieee802154_lqi(pkt));
+		if (verdict == NET_OK) {
+			net_pkt_unref(pkt);
+		}
+		return verdict;
 	}
 
 	if (ieee802154_is_scanning(iface)) {
@@ -232,7 +246,11 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	}
 
 	if (mpdu.mhr.fs->fc.frame_type == IEEE802154_FRAME_TYPE_MAC_COMMAND) {
-		return ieee802154_handle_mac_command(iface, &mpdu);
+		verdict = ieee802154_handle_mac_command(iface, &mpdu);
+		if (verdict == NET_OK) {
+			net_pkt_unref(pkt);
+		}
+		return verdict;
 	}
 
 	/* At this point the frame has to be a DATA one */
@@ -261,7 +279,7 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	net_buf_pull(pkt->buffer, hdr_len);
 
 #ifdef CONFIG_NET_6LO
-	enum net_verdict verdict = ieee802154_6lo_decode_pkt(iface, pkt);
+	verdict = ieee802154_6lo_decode_pkt(iface, pkt);
 
 	pkt_hexdump(RX_PKT_TITLE, pkt, true);
 	return verdict;
@@ -284,23 +302,20 @@ static int ieee802154_send(struct net_if *iface, struct net_pkt *pkt)
 		frame_buf = net_buf_alloc(&tx_frame_buf_pool, K_FOREVER);
 	}
 
-#if defined(CONFIG_NET_SOCKETS_PACKET)
-	uint8_t pkt_family = net_pkt_family(pkt);
+	if (IS_ENABLED(CONFIG_NET_SOCKETS_PACKET) && net_pkt_family(pkt) == AF_PACKET) {
+		enum net_sock_type socket_type;
+		struct net_context *context;
 
-	if (pkt_family == AF_PACKET) {
-		struct net_context *context = net_pkt_context(pkt);
-
+		context = net_pkt_context(pkt);
 		if (!context) {
 			return -EINVAL;
 		}
 
-		switch (net_context_get_type(context)) {
-		case SOCK_RAW:
+		socket_type = net_context_get_type(context);
+		if (socket_type == SOCK_RAW) {
 			send_raw = true;
-			break;
-
-#if defined(CONFIG_NET_SOCKETS_PACKET_DGRAM)
-		case SOCK_DGRAM: {
+		} else if (IS_ENABLED(CONFIG_NET_SOCKETS_PACKET_DGRAM) &&
+			   socket_type == SOCK_DGRAM) {
 			struct sockaddr_ll *dst_addr = (struct sockaddr_ll *)&context->remote;
 			struct sockaddr_ll_ptr *src_addr =
 				(struct sockaddr_ll_ptr *)&context->local;
@@ -309,14 +324,10 @@ static int ieee802154_send(struct net_if *iface, struct net_pkt *pkt)
 			net_pkt_lladdr_dst(pkt)->len = dst_addr->sll_halen;
 			net_pkt_lladdr_src(pkt)->addr = src_addr->sll_addr;
 			net_pkt_lladdr_src(pkt)->len = src_addr->sll_halen;
-			break;
-		}
-#endif
-		default:
+		} else {
 			return -EINVAL;
 		}
 	}
-#endif /* CONFIG_NET_SOCKETS_PACKET */
 
 	if (!send_raw) {
 		ll_hdr_len = ieee802154_compute_header_and_authtag_size(

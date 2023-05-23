@@ -31,8 +31,10 @@ LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
 # if Z_MALLOC_PARTITION_EXISTS
 K_APPMEM_PARTITION_DEFINE(z_malloc_partition);
 #  define POOL_SECTION Z_GENERIC_SECTION(K_APP_DMEM_SECTION(z_malloc_partition))
+#  define MALLOC_SECTION Z_GENERIC_SECTION(K_APP_DMEM_SECTION(z_malloc_partition))
 # else
 #  define POOL_SECTION __noinit
+#  define MALLOC_SECTION
 # endif /* CONFIG_USERSPACE */
 
 # if defined(CONFIG_MMU) && CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE < 0
@@ -58,7 +60,7 @@ K_APPMEM_PARTITION_DEFINE(z_malloc_partition);
 #    elif defined(CONFIG_ARC)
 #     define HEAP_ALIGN	Z_ARC_MPU_ALIGN
 #    elif defined(CONFIG_RISCV)
-#     define HEAP_ALIGN	Z_RISCV_STACK_GUARD_SIZE
+#     define HEAP_ALIGN	Z_POW2_CEIL(Z_RISCV_STACK_GUARD_SIZE)
 #    else
 /* Default to 64-bytes; we'll get a run-time error if this doesn't work. */
 #     define HEAP_ALIGN	64
@@ -97,7 +99,8 @@ static POOL_SECTION unsigned char __aligned(HEAP_ALIGN) malloc_arena[HEAP_SIZE];
 
 #   define HEAP_BASE	ROUND_UP(USED_RAM_END_ADDR, HEAP_ALIGN)
 
-#   ifdef CONFIG_XTENSA
+#   if defined(CONFIG_XTENSA) && (defined(CONFIG_SOC_FAMILY_INTEL_ADSP) \
+	|| defined(CONFIG_HAS_ESPRESSIF_HAL))
 extern char _heap_sentry[];
 #    define HEAP_SIZE  ROUND_DOWN((POINTER_TO_UINT(_heap_sentry) - HEAP_BASE), HEAP_ALIGN)
 #   else
@@ -110,7 +113,7 @@ extern char _heap_sentry[];
 # endif /* else ALLOCATE_HEAP_AT_STARTUP */
 
 POOL_SECTION static struct sys_heap z_malloc_heap;
-POOL_SECTION struct sys_mutex z_malloc_heap_mutex;
+MALLOC_SECTION SYS_MUTEX_DEFINE(z_malloc_heap_mutex);
 
 void *malloc(size_t size)
 {
@@ -131,8 +134,6 @@ void *malloc(size_t size)
 	return ret;
 }
 
-/* Compile in when C11 */
-#if __STDC_VERSION__ >= 201112L
 void *aligned_alloc(size_t alignment, size_t size)
 {
 	int lock_ret;
@@ -151,7 +152,6 @@ void *aligned_alloc(size_t alignment, size_t size)
 
 	return ret;
 }
-#endif /* __STDC_VERSION__ >= 201112L */
 
 static int malloc_prepare(void)
 {
@@ -195,7 +195,6 @@ static int malloc_prepare(void)
 #endif
 
 	sys_heap_init(&z_malloc_heap, heap_base, heap_size);
-	sys_mutex_init(&z_malloc_heap_mutex);
 
 	return 0;
 }

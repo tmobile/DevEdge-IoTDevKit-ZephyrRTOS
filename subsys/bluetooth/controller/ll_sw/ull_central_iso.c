@@ -443,6 +443,26 @@ uint8_t ll_cig_parameters_commit(uint8_t cig_id)
 	cig->c_latency = c_max_latency;
 	cig->p_latency = p_max_latency;
 
+#if !defined(CONFIG_BT_CTLR_JIT_SCHEDULING)
+	uint32_t slot_us;
+
+	/* CIG sync_delay has been calculated considering the configured
+	 * packing.
+	 */
+	slot_us = cig->sync_delay;
+
+	slot_us += EVENT_OVERHEAD_START_US + EVENT_OVERHEAD_END_US;
+
+	/* Populate the ULL hdr with event timings overheads */
+	cig->ull.ticks_active_to_start = 0U;
+	cig->ull.ticks_prepare_to_start =
+		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
+	cig->ull.ticks_preempt_to_start =
+		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
+	cig->ull.ticks_slot = HAL_TICKER_US_TO_TICKS(slot_us);
+#endif /* !CONFIG_BT_CTLR_JIT_SCHEDULING */
+
+	/* Reset params cache */
 	ll_iso_setup.cis_idx = 0U;
 
 	return BT_HCI_ERR_SUCCESS;
@@ -510,6 +530,11 @@ uint8_t ll_cis_create_check(uint16_t cis_handle, uint16_t acl_handle)
 	if (conn) {
 		struct ll_conn_iso_stream *cis;
 
+		/* Verify conn refers to a device acting as central */
+		if (conn->lll.role != BT_HCI_ROLE_CENTRAL) {
+			return BT_HCI_ERR_CMD_DISALLOWED;
+		}
+
 		/* Verify handle validity and association */
 		cis = ll_conn_iso_stream_get(cis_handle);
 		if (cis->lll.handle == cis_handle) {
@@ -517,7 +542,7 @@ uint8_t ll_cis_create_check(uint16_t cis_handle, uint16_t acl_handle)
 		}
 	}
 
-	return BT_HCI_ERR_CMD_DISALLOWED;
+	return BT_HCI_ERR_UNKNOWN_CONN_ID;
 }
 
 void ll_cis_create(uint16_t cis_handle, uint16_t acl_handle)
@@ -538,7 +563,7 @@ void ll_cis_create(uint16_t cis_handle, uint16_t acl_handle)
 	/* Initialize stream states */
 	cis->established = 0;
 	cis->teardown = 0;
-	cis->lll.event_count = 0;
+	cis->lll.event_count = LLL_CONN_ISO_EVENT_COUNT_MAX;
 	cis->lll.sn = 0;
 	cis->lll.nesn = 0;
 	cis->lll.cie = 0;
@@ -707,7 +732,6 @@ uint8_t ull_central_iso_setup(uint16_t cis_handle,
 #endif /* !CONFIG_BT_CTLR_JIT_SCHEDULING */
 
 	cis->central.instant = instant;
-	cis->lll.event_count = -1;
 	cis->lll.next_subevent = 0U;
 	cis->lll.sn = 0U;
 	cis->lll.nesn = 0U;
@@ -796,8 +820,9 @@ static void mfy_cig_offset_get(void *param)
 	struct ll_conn_iso_group *cig;
 	uint32_t conn_interval_us;
 	uint32_t ticks_to_expire;
+	uint32_t offset_max_us;
+	uint32_t offset_min_us;
 	struct ll_conn *conn;
-	uint32_t offset_us;
 	int err;
 
 	cis = param;
@@ -807,18 +832,20 @@ static void mfy_cig_offset_get(void *param)
 						 &ticks_to_expire);
 	LL_ASSERT(!err);
 
-	offset_us = HAL_TICKER_TICKS_TO_US(ticks_to_expire) +
-		    (EVENT_TICKER_RES_MARGIN_US << 1U) +
-		    cig->sync_delay - cis->sync_delay;
+	offset_min_us = HAL_TICKER_TICKS_TO_US(ticks_to_expire) +
+			(EVENT_TICKER_RES_MARGIN_US << 1U);
+	offset_min_us += cig->sync_delay - cis->sync_delay;
 
 	conn = ll_conn_get(cis->lll.acl_handle);
 
 	conn_interval_us = (uint32_t)conn->lll.interval * CONN_INT_UNIT_US;
-	while (offset_us > conn_interval_us) {
-		offset_us -= conn_interval_us;
+	while (offset_min_us > conn_interval_us) {
+		offset_min_us -= conn_interval_us;
 	}
 
-	ull_cp_cc_offset_calc_reply(conn, offset_us);
+	offset_max_us = conn_interval_us - cig->sync_delay;
+
+	ull_cp_cc_offset_calc_reply(conn, offset_min_us, offset_max_us);
 }
 
 static void cis_offset_get(struct ll_conn_iso_stream *cis)
@@ -835,13 +862,18 @@ static void cis_offset_get(struct ll_conn_iso_stream *cis)
 
 static void mfy_cis_offset_get(void *param)
 {
+	uint32_t elapsed_acl_us, elapsed_cig_us;
+	uint16_t latency_acl, latency_cig;
 	struct ll_conn_iso_stream *cis;
 	struct ll_conn_iso_group *cig;
+	uint32_t cig_remainder_us;
+	uint32_t acl_remainder_us;
+	uint32_t cig_interval_us;
 	uint32_t ticks_to_expire;
 	uint32_t ticks_current;
+	uint32_t offset_min_us;
 	struct ll_conn *conn;
 	uint32_t remainder;
-	uint32_t offset_us;
 	uint8_t ticker_id;
 	uint16_t lazy;
 	uint8_t retry;
@@ -908,13 +940,48 @@ static void mfy_cis_offset_get(void *param)
 	 * value.
 	 */
 	hal_ticker_remove_jitter(&ticks_to_expire, &remainder);
+	cig_remainder_us = remainder;
 
-	offset_us = HAL_TICKER_TICKS_TO_US(ticks_to_expire) + remainder +
-		    cig->sync_delay - cis->sync_delay;
-
+	/* Add a tick for negative remainder and return positive remainder
+	 * value.
+	 */
 	conn = ll_conn_get(cis->lll.acl_handle);
+	remainder = conn->llcp.prep.remainder;
+	hal_ticker_add_jitter(&ticks_to_expire, &remainder);
+	acl_remainder_us = remainder;
 
-	ull_cp_cc_offset_calc_reply(conn, offset_us);
+	/* Calculate the CIS offset in the CIG */
+	offset_min_us = HAL_TICKER_TICKS_TO_US(ticks_to_expire) +
+			cig_remainder_us + cig->sync_delay -
+			acl_remainder_us - cis->sync_delay;
+
+	/* Calculate instant latency */
+	/* 32-bits are sufficient as maximum connection interval is 4 seconds,
+	 * and latency counts (typically 3) is low enough to avoid 32-bit
+	 * overflow. Refer to ull_central_iso_cis_offset_get().
+	 */
+	latency_acl = cis->central.instant - ull_conn_event_counter(conn);
+	elapsed_acl_us = latency_acl * conn->lll.interval * CONN_INT_UNIT_US;
+
+	/* Calculate elapsed CIG intervals until the instant */
+	cig_interval_us = cig->iso_interval * ISO_INT_UNIT_US;
+	latency_cig = DIV_ROUND_UP(elapsed_acl_us, cig_interval_us);
+	elapsed_cig_us = latency_cig * cig_interval_us;
+
+	/* Compensate for the difference between ACL elapsed vs CIG elapsed */
+	offset_min_us += elapsed_cig_us - elapsed_acl_us;
+	while (offset_min_us > (cig_interval_us + PDU_CIS_OFFSET_MIN_US)) {
+		offset_min_us -= cig_interval_us;
+	}
+
+	/* Decrement event_count to compensate for offset_min_us greater than
+	 * CIG interval due to offset being atleast PDU_CIS_OFFSET_MIN_US.
+	 */
+	if (offset_min_us > cig_interval_us) {
+		cis->lll.event_count--;
+	}
+
+	ull_cp_cc_offset_calc_reply(conn, offset_min_us, offset_min_us);
 }
 
 static void ticker_op_cb(uint32_t status, void *param)

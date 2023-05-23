@@ -98,7 +98,8 @@ struct ll_conn_iso_group *ll_conn_iso_group_acquire(void)
 void ll_conn_iso_group_release(struct ll_conn_iso_group *cig)
 {
 	cig->cig_id  = 0xFF;
-	cig->started = 0;
+	cig->started = 0U;
+	cig->lll.num_cis = 0U;
 
 	mem_release(cig, &cig_free);
 }
@@ -310,10 +311,24 @@ void ull_conn_iso_lll_cis_established(struct lll_conn_iso_stream *cis_lll)
 {
 	struct ll_conn_iso_stream *cis =
 		ll_conn_iso_stream_get(cis_lll->handle);
+	struct node_rx_pdu *node_rx;
 
 	if (cis->established) {
 		return;
 	}
+
+	node_rx = ull_pdu_rx_alloc();
+	if (!node_rx) {
+		/* No node available - try again later */
+		return;
+	}
+
+	node_rx->hdr.type = NODE_RX_TYPE_CIS_ESTABLISHED;
+
+	/* Send node to ULL RX demuxer for triggering LLCP state machine */
+	node_rx->hdr.handle = cis->lll.acl_handle;
+
+	ull_rx_put_sched(node_rx->hdr.link, node_rx);
 
 	cis->established = 1;
 }
@@ -349,11 +364,18 @@ void ull_conn_iso_done(struct node_rx_event_done *done)
 
 		if (cis->lll.active && cis->lll.handle != LLL_HANDLE_INVALID) {
 			/* CIS was setup and is now expected to be going */
-			if (done->extra.mic_state == LLL_CONN_MIC_FAIL) {
-				/* MIC failure - stop CIS and defer cleanup to after teardown. */
-				ull_conn_iso_cis_stop(cis, NULL, BT_HCI_ERR_TERM_DUE_TO_MIC_FAIL);
-			} else if (!(done->extra.trx_performed_bitmask &
-				     (1U << LL_CIS_IDX_FROM_HANDLE(cis->lll.handle)))) {
+			if (done->extra.trx_performed_bitmask &
+			    (1U << LL_CIS_IDX_FROM_HANDLE(cis->lll.handle))) {
+				if (done->extra.mic_state == LLL_CONN_MIC_FAIL) {
+					/* MIC failure - stop CIS and defer cleanup to after
+					 * teardown.
+					 */
+					ull_conn_iso_cis_stop(cis, NULL,
+							      BT_HCI_ERR_TERM_DUE_TO_MIC_FAIL);
+				} else {
+					cis->event_expire = 0U;
+				}
+			} else {
 				/* We did NOT have successful transaction on established CIS,
 				 * or CIS was not yet established, so handle timeout
 				 */
@@ -381,8 +403,6 @@ void ull_conn_iso_done(struct node_rx_event_done *done)
 							      BT_HCI_ERR_CONN_FAIL_TO_ESTAB);
 
 				}
-			} else {
-				cis->event_expire = 0U;
 			}
 		}
 	}
@@ -910,30 +930,34 @@ void ull_conn_iso_start(struct ll_conn *conn, uint16_t cis_handle,
 #else /* !CONFIG_BT_CTLR_JIT_SCHEDULING */
 	uint32_t ticks_slot_overhead;
 	uint32_t ticks_slot_offset;
-	uint32_t slot_us;
 
 	/* Calculate time reservations for sequential and interleaved packing as
 	 * configured.
 	 */
-	if (IS_CENTRAL(cig)) {
-		/* CIG sync_delay has been calculated considering the configured
-		 * packing.
-		 */
-		slot_us = cig->sync_delay;
-	} else {
+	if (IS_PERIPHERAL(cig)) {
+		uint32_t slot_us;
+
 		/* FIXME: Time reservation for interleaved packing */
 		/* Below is time reservation for sequential packing */
 		slot_us = cis->lll.sub_interval * cis->lll.nse;
-	}
-	slot_us += EVENT_OVERHEAD_START_US + EVENT_OVERHEAD_END_US;
 
-	/* Populate the ULL hdr with event timings overheads */
-	cig->ull.ticks_active_to_start = 0U;
-	cig->ull.ticks_prepare_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
-	cig->ull.ticks_preempt_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
-	cig->ull.ticks_slot = HAL_TICKER_US_TO_TICKS(slot_us);
+		slot_us += EVENT_OVERHEAD_START_US + EVENT_OVERHEAD_END_US;
+
+		/* FIXME: How to use ready_delay_us in the time reservation?
+		 *        i.e. when CISes use different PHYs? Is that even
+		 *        allowed?
+		 *
+		 *        Missing code here, i.e. slot_us += ready_delay_us;
+		 */
+
+		/* Populate the ULL hdr with event timings overheads */
+		cig->ull.ticks_active_to_start = 0U;
+		cig->ull.ticks_prepare_to_start =
+			HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
+		cig->ull.ticks_preempt_to_start =
+			HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
+		cig->ull.ticks_slot = HAL_TICKER_US_TO_TICKS(slot_us);
+	}
 
 	ticks_slot_offset = MAX(cig->ull.ticks_active_to_start,
 				cig->ull.ticks_prepare_to_start);

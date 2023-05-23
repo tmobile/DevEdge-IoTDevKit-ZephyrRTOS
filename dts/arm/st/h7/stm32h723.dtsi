@@ -7,11 +7,13 @@
 
 #include <mem.h>
 #include <st/h7/stm32h7.dtsi>
-#include <zephyr/dt-bindings/display/stm32_ltdc.h>
+#include <zephyr/dt-bindings/display/panel.h>
 #include <zephyr/dt-bindings/flash_controller/ospi.h>
 
 / {
 	soc {
+		compatible = "st,stm32h723", "st,stm32h7", "simple-bus";
+
 		flash-controller@52002000 {
 			flash0: flash@8000000 {
 				compatible = "st,stm32-nv-flash", "soc-nv-flash";
@@ -51,6 +53,7 @@
 				       STM32H72X_ADC3_RES(10, 0x01)
 				       STM32H72X_ADC3_RES(8, 0x02)
 				       STM32H72X_ADC3_RES(6, 0x03)>;
+			sampling-times = <3 7 13 25 48 93 248 641>;
 		};
 
 		dmamux1: dmamux@40020800 {

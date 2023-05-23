@@ -430,8 +430,25 @@ Coding Guidelines:
     - carlescufi
     - jfischer-no
   files:
+    - .checkpatch.conf
     - .clang-format
+    - .editorconfig
+    - .gitlint
+    - .yamllint
     - doc/contribute/guidelines.rst
+    - doc/contribute/coding_guidelines/
+    - scripts/checkpatch.pl
+    - scripts/checkpatch/
+    - scripts/ci/check_compliance.py
+    - scripts/ci/guideline_check.py
+    - scripts/ci/pylintrc
+    - scripts/coccicheck
+    - scripts/coccinelle/
+    - scripts/gitlint/
+    - scripts/pylint/
+    - scripts/spelling.txt
+  labels:
+    - "area: Coding Guidelines"
 
 Common Architecture Interface:
   status: odd fixes
@@ -472,8 +489,9 @@ Debug:
 Device Driver Model:
   status: maintained
   maintainers:
-    - tbursztyka
+    - gmarull
   collaborators:
+    - tbursztyka
     - dcpleung
     - nashif
   files:
@@ -1108,6 +1126,7 @@ Release Notes:
     - gmarull
   collaborators:
     - danieldegrasse
+    - aasinclair
   files:
     - drivers/regulator/
     - include/zephyr/drivers/regulator/
@@ -1681,9 +1700,9 @@ Mbed TLS:
 MCU Manager:
   status: maintained
   maintainers:
-    - de-nordic
-  collaborators:
     - nordicjm
+  collaborators:
+    - de-nordic
   files:
     - subsys/mgmt/mcumgr/
     - include/zephyr/mgmt/mcumgr/
@@ -3016,7 +3035,7 @@ West:
     - de-nordic
     - nordicjm
   files:
-    - modules/Kconfig.mcuboot_bootutil
+    - modules/Kconfig.mcuboot
     - tests/boot/test_mcuboot/
   labels:
     - manifest-mcuboot

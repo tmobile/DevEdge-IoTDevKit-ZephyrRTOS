@@ -292,10 +292,18 @@ static int prepare_cb(struct lll_prepare_param *p)
 	radio_tmr_aa_save(0U);
 	radio_tmr_aa_capture();
 
+	/* Header Complete Timeout, use additional EVENT_TICKER_RES_MARGIN_US to
+	 * compensate for possible shift in ACL peripheral's anchor point at
+	 * the instant the CIS is to be established.
+	 *
+	 * FIXME: use a one time value in a window member variable to avoid
+	 *        using this additional EVENT_TICKER_RES_MARGIN_US window in
+	 *        subsequent events once CIS is established.
+	 */
 	hcto = start_us +
 	       ((EVENT_JITTER_US + EVENT_TICKER_RES_MARGIN_US +
 		 EVENT_US_FRAC_TO_US(cig_lll->window_widening_event_us_frac)) <<
-		1U);
+		1U) + EVENT_TICKER_RES_MARGIN_US;
 
 #if defined(CONFIG_BT_CTLR_PHY)
 	hcto += radio_rx_ready_delay_get(cis_lll->rx.phy, PHY_FLAGS_S8);
@@ -395,6 +403,21 @@ static void abort_cb(struct lll_prepare_param *prepare_param, void *param)
 
 		cis_lll = ull_conn_iso_lll_stream_get_by_group(cig_lll, NULL);
 
+		/* FIXME: Consider Flush Timeout when resetting current burst number */
+		if (!has_tx) {
+			has_tx = 1U;
+
+			/* Adjust nesn when flushing Tx */
+			/* FIXME: When Flush Timeout is implemented */
+			if (bn_tx <= cis_lll->tx.bn) {
+				/* sn and nesn are 1-bit, only Least Significant bit is needed */
+				cis_lll->sn += cis_lll->tx.bn + 1U - bn_tx;
+			}
+
+			/* Set to last burst number in previous event */
+			bn_tx = cis_lll->tx.bn;
+		}
+
 		/* Perform event abort here.
 		 * After event has been cleanly aborted, clean up resources
 		 * and dispatch event done.
@@ -443,6 +466,21 @@ static void isr_rx(void *param)
 
 	/* No Rx */
 	if (!trx_done) {
+		/* FIXME: Consider Flush Timeout when resetting current burst number */
+		if (!has_tx) {
+			has_tx = 1U;
+
+			/* Adjust nesn when flushing Tx */
+			/* FIXME: When Flush Timeout is implemented */
+			if (bn_tx <= cis_lll->tx.bn) {
+				/* sn and nesn are 1-bit, only Least Significant bit is needed */
+				cis_lll->sn += cis_lll->tx.bn + 1U - bn_tx;
+			}
+
+			/* Set to last burst number in previous event */
+			bn_tx = cis_lll->tx.bn;
+		}
+
 		if (se_curr < cis_lll->nse) {
 			radio_isr_set(isr_prepare_subevent, param);
 		} else {
@@ -495,29 +533,6 @@ static void isr_rx(void *param)
 			/* Increment sequence number */
 			cis_lll->sn++;
 
-#if defined(CONFIG_BT_CTLR_LE_ENC)
-			if (!cis_lll->npi) {
-				/* Get reference to PDU Tx */
-				struct node_tx_iso *node_tx;
-				struct pdu_cis *pdu_tx;
-				uint8_t payload_index;
-				memq_link_t *link;
-
-				payload_index = bn_tx - 1U;
-				link = memq_peek_n(cis_lll->memq_tx.head,
-						   cis_lll->memq_tx.tail,
-						   payload_index,
-						   (void **)&node_tx);
-				pdu_tx = (void *)node_tx->pdu;
-				if (pdu_tx->len) {
-					/* if encrypted increment tx counter */
-					if (conn_lll->enc_tx) {
-						cis_lll->tx.ccm.counter++;
-					}
-				}
-			}
-#endif /* CONFIG_BT_CTLR_LE_ENC */
-
 			/* Increment burst number */
 			if (bn_tx <= cis_lll->tx.bn) {
 				bn_tx++;
@@ -534,7 +549,7 @@ static void isr_rx(void *param)
 		    ull_iso_pdu_rx_alloc_peek(2U)) {
 			struct node_rx_iso_meta *iso_meta;
 
-			/* Increment next expected serial number */
+			/* Increment next expected sequence number */
 			cis_lll->nesn++;
 
 #if defined(CONFIG_BT_CTLR_LE_ENC)
@@ -556,9 +571,6 @@ static void isr_rx(void *param)
 
 					return;
 				}
-
-				/* Increment counter */
-				cis_lll->rx.ccm.counter++;
 
 				/* Record MIC valid */
 				mic_state = LLL_CONN_MIC_PASS;
@@ -618,19 +630,16 @@ static void isr_rx(void *param)
 	if (!has_tx) {
 		has_tx = 1U;
 
-		/* Adjust sn when flushing Tx. Stop at sn != nesn, hence
-		 * (bn < cis_lll->tx.bn).
-		 */
+		/* Adjust nesn when flushing Tx */
 		/* FIXME: When Flush Timeout is implemented */
-		if (bn_tx < cis_lll->tx.bn) {
+		if (bn_tx <= cis_lll->tx.bn) {
 			/* sn and nesn are 1-bit, only Least Significant bit is needed */
-			cis_lll->sn += cis_lll->tx.bn - bn_tx;
+			cis_lll->sn += cis_lll->tx.bn + 1U - bn_tx;
 		}
 
 		/* Start transmitting new burst */
 		bn_tx = 1U;
 	}
-
 
 	/* Close Isochronous Event */
 	cie = cie || ((bn_rx > cis_lll->rx.bn) &&
@@ -1237,7 +1246,6 @@ static void isr_done(void *param)
 
 	e->type = EVENT_DONE_EXTRA_TYPE_CIS;
 	e->trx_performed_bitmask = trx_performed_bitmask;
-	e->crc_valid = 1U;
 
 #if defined(CONFIG_BT_CTLR_LE_ENC)
 	e->mic_state = mic_state;

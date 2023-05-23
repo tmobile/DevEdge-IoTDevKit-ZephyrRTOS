@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <zephyr/mgmt/ec_host_cmd/backend.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/iterable_sections.h>
 
 struct ec_host_cmd {
 	struct ec_host_cmd_rx_ctx rx_ctx;
@@ -24,6 +25,7 @@ struct ec_host_cmd {
 	struct ec_host_cmd_backend *backend;
 	struct k_thread *thread;
 	k_thread_stack_t *stack;
+	k_tid_t thread_id;
 };
 
 /**
@@ -231,16 +233,28 @@ enum ec_host_cmd_status {
  * This routine initializes the host command subsystem. It includes initialization
  * of a backend and the handler.
  * When the application configures the zephyr,host-cmd-espi-backend/zephyr,host-cmd-shi-backend/
- * zephyr,host-cmd-uart-backend chosen node, the chosen backend automatically
- * calls this routine at CONFIG_EC_HOST_CMD_INIT_PRIORITY.
- * Applications that require a run-time selection of the backend must leave
- * zephyr,host-cmd-backend undefined and must explicitly call this routine.
+ * zephyr,host-cmd-uart-backend chosen node and @kconfig{CONFIG_EC_HOST_CMD_INITIALIZE_AT_BOOT} is
+ * set, the chosen backend automatically calls this routine at
+ * @kconfig{CONFIG_EC_HOST_CMD_INIT_PRIORITY}. Applications that require a run-time selection of the
+ * backend must set @kconfig{CONFIG_EC_HOST_CMD_INITIALIZE_AT_BOOT} to n and must explicitly call
+ * this routine.
  *
  * @param[in] backend        Pointer to the backend structure to initialize.
  *
  * @retval 0 if successful
  */
 int ec_host_cmd_init(struct ec_host_cmd_backend *backend);
+
+/**
+ * @brief Get the main ec host command structure
+ *
+ * This routine returns a pointer to the main host command structure.
+ * It allows the application code to get inside information for any reason e.g.
+ * the host command thread id.
+ *
+ * @retval A pointer to the main host command structure
+ */
+const struct ec_host_cmd *ec_host_cmd_get_hc(void);
 
 /**
  * @}

@@ -17,6 +17,8 @@
 			compatible = "cdns,tensilica-xtensa-lx7";
 			reg = <0>;
 			cpu-power-states = <&d0i3 &d3>;
+			i-cache-line-size = <64>;
+			d-cache-line-size = <64>;
 		};
 
 		cpu1: cpu@1 {
@@ -37,6 +39,13 @@
 			device_type = "cpu";
 			compatible = "cdns,tensilica-xtensa-lx7";
 			reg = <3>;
+			cpu-power-states = <&d0i3 &d3>;
+		};
+
+		cpu4: cpu@4 {
+			device_type = "cpu";
+			compatible = "cdns,tensilica-xtensa-lx7";
+			reg = <4>;
 			cpu-power-states = <&d0i3 &d3>;
 		};
 

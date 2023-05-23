@@ -972,6 +972,15 @@ int coap_block_transfer_init(struct coap_block_context *ctx,
 #define SET_MORE(v, m) ((v) |= (m) ? 0x08 : 0x00)
 #define SET_NUM(v, n) ((v) |= ((n) << 4))
 
+int coap_append_descriptive_block_option(struct coap_packet *cpkt, struct coap_block_context *ctx)
+{
+	if (is_request(cpkt)) {
+		return coap_append_block1_option(cpkt, ctx);
+	} else {
+		return coap_append_block2_option(cpkt, ctx);
+	}
+}
+
 int coap_append_block1_option(struct coap_packet *cpkt,
 			      struct coap_block_context *ctx)
 {
@@ -1039,6 +1048,20 @@ int coap_get_option_int(const struct coap_packet *cpkt, uint16_t code)
 	val = coap_option_value_to_int(&option);
 
 	return val;
+}
+
+int coap_get_block1_option(const struct coap_packet *cpkt, bool *has_more, uint8_t *block_number)
+{
+	int ret = coap_get_option_int(cpkt, COAP_OPTION_BLOCK1);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	*has_more = GET_MORE(ret);
+	*block_number = GET_NUM(ret);
+	ret = 1 << (GET_BLOCK_SIZE(ret) + 4);
+	return ret;
 }
 
 int insert_option(struct coap_packet *cpkt, uint16_t code, const uint8_t *value, uint16_t len)

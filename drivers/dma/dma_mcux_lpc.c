@@ -70,6 +70,8 @@ static void nxp_lpc_dma_callback(dma_handle_t *handle, void *param,
 		DMA_AbortTransfer(handle);
 	}
 
+	data->busy = DMA_ChannelIsBusy(data->dma_handle.base, channel);
+
 	data->dma_callback(data->dev, data->user_data, channel, ret);
 }
 
@@ -455,9 +457,18 @@ static int dma_mcux_lpc_reload(const struct device *dev, uint32_t channel,
 static int dma_mcux_lpc_get_status(const struct device *dev, uint32_t channel,
 				   struct dma_status *status)
 {
+	const struct dma_mcux_lpc_config *config = dev->config;
 	struct dma_mcux_lpc_dma_data *dev_data = dev->data;
 	uint32_t virtual_channel = dev_data->channel_index[channel];
 	struct call_back *data = DEV_CHANNEL_DATA(dev, virtual_channel);
+
+	if (channel > config->num_of_channels) {
+		return -EINVAL;
+	}
+
+	if (virtual_channel > config->num_of_channels) {
+		return -EACCES;
+	}
 
 	if (data->busy) {
 		status->busy = true;
@@ -475,36 +486,14 @@ static int dma_mcux_lpc_get_status(const struct device *dev, uint32_t channel,
 
 static int dma_mcux_lpc_init(const struct device *dev)
 {
-	const struct dma_mcux_lpc_config *config = dev->config;
 	struct dma_mcux_lpc_dma_data *data = dev->data;
-	int size_channel_data;
 	int total_dma_channels;
-
-	/* Array to store DMA channel data */
-	size_channel_data =
-		sizeof(struct call_back) * config->num_of_channels;
-	data->data_cb = k_malloc(size_channel_data);
-	if (!data->data_cb) {
-		LOG_ERR("HEAP_MEM_POOL_SIZE is too small");
-		return -ENOMEM;
-	}
-
-	memset(data->data_cb, 0, size_channel_data);
 
 #if defined FSL_FEATURE_DMA_NUMBER_OF_CHANNELS
 	total_dma_channels = FSL_FEATURE_DMA_NUMBER_OF_CHANNELS;
 #else
 	total_dma_channels = FSL_FEATURE_DMA_NUMBER_OF_CHANNELSn(DEV_BASE(dev));
 #endif
-	/*
-	 * This array is used to hold the index associated with the array
-	 * holding channel data
-	 */
-	data->channel_index = k_malloc(sizeof(uint32_t) * total_dma_channels);
-	if (!data->channel_index) {
-		LOG_ERR("HEAP_MEM_POOL_SIZE is too small");
-		return -ENOMEM;
-	}
 
 	/*
 	 * Initialize to -1 to indicate dma channel does not have a slot
@@ -515,7 +504,6 @@ static int dma_mcux_lpc_init(const struct device *dev)
 	}
 
 	data->num_channels_used = 0;
-
 
 	DMA_Init(DEV_BASE(dev));
 	INPUTMUX_Init(INPUTMUX);
@@ -553,19 +541,33 @@ static const struct dma_mcux_lpc_config dma_##n##_config = {	\
 	IRQ_FUNC_INIT							\
 }
 
+#ifdef FSL_FEATURE_DMA_NUMBER_OF_CHANNELS
+#define TOTAL_DMA_CHANNELS FSL_FEATURE_DMA_NUMBER_OF_CHANNELS
+#else
+#define TOTAL_DMA_CHANNELS FSL_FEATURE_DMA_NUMBER_OF_CHANNELSn		\
+				((DMA_Type *)DT_INST_REG_ADDR(n))
+#endif
+
 #define DMA_INIT(n) \
 									\
-	static const struct dma_mcux_lpc_config dma_##n##_config;\
+	static const struct dma_mcux_lpc_config dma_##n##_config;	\
 									\
-	static struct dma_mcux_lpc_dma_data dma_data_##n = {	\
-		.data_cb = NULL,					\
+	static struct call_back	dma_##n##_data_cb_arr			\
+				[DT_INST_PROP(n, dma_channels)] = {0};	\
+									\
+	static uint32_t							\
+		dma_##n##_channel_index_arr[TOTAL_DMA_CHANNELS] = {0};	\
+									\
+	static struct dma_mcux_lpc_dma_data dma_data_##n = {		\
+		.data_cb = dma_##n##_data_cb_arr,					\
+		.channel_index = dma_##n##_channel_index_arr,		\
 	};								\
 									\
 	DEVICE_DT_INST_DEFINE(n,					\
 			    &dma_mcux_lpc_init,				\
 			    NULL,					\
 			    &dma_data_##n, &dma_##n##_config,\
-			    POST_KERNEL, CONFIG_DMA_INIT_PRIORITY,	\
+			    PRE_KERNEL_1, CONFIG_DMA_INIT_PRIORITY,	\
 			    &dma_mcux_lpc_api);			\
 									\
 	DMA_MCUX_LPC_CONFIG_FUNC(n)				\

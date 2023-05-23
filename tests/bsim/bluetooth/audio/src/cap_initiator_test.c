@@ -52,6 +52,8 @@ static K_SEM_DEFINE(sem_broadcast_started, 0U, ARRAY_SIZE(broadcast_streams));
 static K_SEM_DEFINE(sem_broadcast_stopped, 0U, ARRAY_SIZE(broadcast_streams));
 
 CREATE_FLAG(flag_discovered);
+CREATE_FLAG(flag_codec_found);
+CREATE_FLAG(flag_endpoint_found);
 CREATE_FLAG(flag_started);
 CREATE_FLAG(flag_updated);
 CREATE_FLAG(flag_stopped);
@@ -242,59 +244,59 @@ static struct bt_cap_initiator_cb cap_cb = {
 	.unicast_stop_complete = unicast_stop_complete_cb,
 };
 
-static void add_remote_sink(struct bt_bap_ep *ep, uint8_t index)
+static void add_remote_sink(struct bt_bap_ep *ep)
 {
-	printk("Sink #%u: ep %p\n", index, ep);
+	for (size_t i = 0U; i < ARRAY_SIZE(unicast_sink_eps); i++) {
+		if (unicast_sink_eps[i] == NULL) {
+			printk("Sink #%zu: ep %p\n", i, ep);
+			unicast_sink_eps[i] = ep;
+			return;
+		}
+	}
 
-	unicast_sink_eps[index] = ep;
+	FAIL("Could not add source ep\n");
 }
 
-static void print_remote_codec(struct bt_codec *codec, int index, enum bt_audio_dir dir)
+static void print_remote_codec(const struct bt_codec *codec, enum bt_audio_dir dir)
 {
-	printk("#%u: codec %p dir 0x%02x\n", index, codec, dir);
+	printk("codec %p dir 0x%02x\n", codec, dir);
 
 	print_codec(codec);
 }
 
-static void discover_sink_cb(struct bt_conn *conn, struct bt_codec *codec, struct bt_bap_ep *ep,
-			     struct bt_bap_unicast_client_discover_params *params)
+static void pac_record_cb(struct bt_conn *conn, enum bt_audio_dir dir, const struct bt_codec *codec)
 {
-	static bool codec_found;
-	static bool endpoint_found;
+	print_remote_codec(codec, dir);
+	SET_FLAG(flag_codec_found);
+}
 
-	if (params->err != 0) {
-		FAIL("Discovery failed: %d\n", params->err);
-		return;
-	}
-
-	if (codec != NULL) {
-		print_remote_codec(codec, params->num_caps, params->dir);
-		codec_found = true;
-
-		return;
-	}
-
-	if (ep != NULL) {
-		if (params->dir == BT_AUDIO_DIR_SINK) {
-			add_remote_sink(ep, params->num_eps);
-			endpoint_found = true;
-		} else {
-			FAIL("Invalid param dir: %u\n", params->dir);
-		}
-
+static void discover_sink_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
+{
+	if (err != 0) {
+		FAIL("Discovery failed: %d\n", err);
 		return;
 	}
 
 	printk("Sink discover complete\n");
 
-	(void)memset(params, 0, sizeof(*params));
+	SET_FLAG(flag_sink_discovered);
+}
 
-	if (endpoint_found && codec_found) {
-		SET_FLAG(flag_sink_discovered);
+static void endpoint_cb(struct bt_conn *conn, enum bt_audio_dir dir, struct bt_bap_ep *ep)
+{
+	if (dir == BT_AUDIO_DIR_SINK) {
+		add_remote_sink(ep);
+		SET_FLAG(flag_endpoint_found);
 	} else {
-		FAIL("Did not discover endpoint and codec\n");
+		FAIL("Invalid param dir: %u\n", dir);
 	}
 }
+
+static const struct bt_bap_unicast_client_cb unicast_client_cbs = {
+	.discover = discover_sink_cb,
+	.pac_record = pac_record_cb,
+	.endpoint = endpoint_cb,
+};
 
 static void att_mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
 {
@@ -318,6 +320,12 @@ static void init(void)
 
 	if (IS_ENABLED(CONFIG_BT_BAP_UNICAST_CLIENT)) {
 		bt_gatt_cb_register(&gatt_callbacks);
+
+		err = bt_bap_unicast_client_register_cb(&unicast_client_cbs);
+		if (err != 0) {
+			FAIL("Failed to register BAP unicast client callbacks (err %d)\n", err);
+			return;
+		}
 
 		err = bt_cap_initiator_register_cb(&cap_cb);
 		if (err != 0) {
@@ -359,19 +367,52 @@ static void scan_and_connect(void)
 
 static void discover_sink(void)
 {
-	static struct bt_bap_unicast_client_discover_params params;
 	int err;
 
-	params.func = discover_sink_cb;
-	params.dir = BT_AUDIO_DIR_SINK;
+	UNSET_FLAG(flag_sink_discovered);
+	UNSET_FLAG(flag_codec_found);
+	UNSET_FLAG(flag_endpoint_found);
 
-	err = bt_bap_unicast_client_discover(default_conn, &params);
+	err = bt_bap_unicast_client_discover(default_conn, BT_AUDIO_DIR_SINK);
 	if (err != 0) {
 		printk("Failed to discover sink: %d\n", err);
 		return;
 	}
 
+	memset(unicast_sink_eps, 0, sizeof(unicast_sink_eps));
+
 	WAIT_FOR_FLAG(flag_sink_discovered);
+	WAIT_FOR_FLAG(flag_endpoint_found);
+	WAIT_FOR_FLAG(flag_codec_found);
+}
+
+static void discover_cas_inval(void)
+{
+	int err;
+
+	err = bt_cap_initiator_unicast_discover(NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_discover with NULL conn did not fail\n");
+		return;
+	}
+
+	/* Test if it handles concurrent request for same connection */
+	UNSET_FLAG(flag_discovered);
+
+	err = bt_cap_initiator_unicast_discover(default_conn);
+	if (err != 0) {
+		printk("Failed to discover CAS: %d\n", err);
+		return;
+	}
+
+	err = bt_cap_initiator_unicast_discover(default_conn);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_discover while previous discovery has not completed "
+		     "did not fail\n");
+		return;
+	}
+
+	WAIT_FOR_FLAG(flag_discovered);
 }
 
 static void discover_cas(void)
@@ -412,6 +453,127 @@ static void unicast_group_create(struct bt_bap_unicast_group **out_unicast_group
 	}
 }
 
+static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group)
+{
+	struct bt_codec invalid_codec =
+		BT_CODEC_LC3_CONFIG_16_2(BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
+	struct bt_cap_unicast_audio_start_stream_param invalid_stream_param;
+	struct bt_cap_unicast_audio_start_stream_param valid_stream_param;
+	struct bt_cap_unicast_audio_start_param invalid_start_param;
+	struct bt_cap_unicast_audio_start_param valid_start_param;
+	int err;
+
+	valid_start_param.type = BT_CAP_SET_TYPE_AD_HOC;
+	valid_start_param.count = 1u;
+	valid_start_param.stream_params = &valid_stream_param;
+
+	valid_stream_param.member.member = default_conn;
+	valid_stream_param.stream = &unicast_client_streams[0];
+	valid_stream_param.ep = unicast_sink_eps[0];
+	valid_stream_param.codec = &unicast_preset_16_2_1.codec;
+	valid_stream_param.qos = &unicast_preset_16_2_1.qos;
+
+	/* Test NULL parameters */
+	err = bt_cap_initiator_unicast_audio_start(NULL, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL param did not fail\n");
+		return;
+	}
+
+	err = bt_cap_initiator_unicast_audio_start(&valid_start_param, NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL group did not fail\n");
+		return;
+	}
+
+	/* Test invalid parameters */
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+	memcpy(&invalid_start_param, &valid_start_param, sizeof(valid_start_param));
+	invalid_start_param.stream_params = &invalid_stream_param;
+
+	/* Test invalid stream_start parameters */
+	invalid_start_param.count = 0U;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with 0 count did not fail\n");
+		return;
+	}
+
+	memcpy(&invalid_start_param, &valid_start_param, sizeof(valid_start_param));
+	invalid_start_param.stream_params = &invalid_stream_param;
+
+	invalid_start_param.stream_params = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params did not fail\n");
+		return;
+	}
+
+	memcpy(&invalid_start_param, &valid_start_param, sizeof(valid_start_param));
+	invalid_start_param.stream_params = &invalid_stream_param;
+
+	/* Test invalid stream_param parameters */
+	invalid_stream_param.member.member = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params member did not "
+		     "fail\n");
+		return;
+	}
+
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+
+	invalid_stream_param.stream = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params stream did not "
+		     "fail\n");
+		return;
+	}
+
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+
+	invalid_stream_param.ep = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params ep did not "
+		     "fail\n");
+		return;
+	}
+
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+
+	invalid_stream_param.codec = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params codec did not "
+		     "fail\n");
+		return;
+	}
+
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+
+	invalid_stream_param.qos = NULL;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params qos did not "
+		     "fail\n");
+		return;
+	}
+
+	/* Clear metadata so that it does not contain the mandatory stream context */
+	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
+	memset(&invalid_codec.meta, 0, sizeof(invalid_codec.meta));
+
+	invalid_stream_param.codec = &invalid_codec;
+	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_start with invalid Codec metadata did not "
+		     "fail\n");
+		return;
+	}
+}
+
 static void unicast_audio_start(struct bt_bap_unicast_group *unicast_group)
 {
 	struct bt_cap_unicast_audio_start_stream_param stream_param[1];
@@ -438,6 +600,41 @@ static void unicast_audio_start(struct bt_bap_unicast_group *unicast_group)
 	WAIT_FOR_FLAG(flag_started);
 }
 
+static void unicast_audio_update_inval(void)
+{
+	struct bt_codec invalid_codec =
+		BT_CODEC_LC3_CONFIG_16_2(BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
+	struct bt_cap_unicast_audio_update_param param;
+	int err;
+
+	param.stream = &unicast_client_streams[0];
+	param.meta = unicast_preset_16_2_1.codec.meta;
+	param.meta_count = unicast_preset_16_2_1.codec.meta_count;
+
+	err = bt_cap_initiator_unicast_audio_update(NULL, 1);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_update with NULL params did not fail\n");
+		return;
+	}
+
+	err = bt_cap_initiator_unicast_audio_update(&param, 0);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_update with 0 param count did not fail\n");
+		return;
+	}
+
+	/* Clear metadata so that it does not contain the mandatory stream context */
+	memset(&invalid_codec.meta, 0, sizeof(invalid_codec.meta));
+	param.meta = invalid_codec.meta;
+
+	err = bt_cap_initiator_unicast_audio_update(&param, 1);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_update with invalid Codec metadata did not "
+		     "fail\n");
+		return;
+	}
+}
+
 static void unicast_audio_update(void)
 {
 	struct bt_cap_unicast_audio_update_param param;
@@ -458,6 +655,17 @@ static void unicast_audio_update(void)
 	WAIT_FOR_FLAG(flag_updated);
 }
 
+static void unicast_audio_stop_inval(void)
+{
+	int err;
+
+	err = bt_cap_initiator_unicast_audio_stop(NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_stop with NULL group did not fail\n");
+		return;
+	}
+}
+
 static void unicast_audio_stop(struct bt_bap_unicast_group *unicast_group)
 {
 	int err;
@@ -471,6 +679,25 @@ static void unicast_audio_stop(struct bt_bap_unicast_group *unicast_group)
 	}
 
 	WAIT_FOR_FLAG(flag_stopped);
+
+	/* Verify that it cannot be stopped twice */
+	err = bt_cap_initiator_unicast_audio_stop(unicast_group);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_unicast_audio_stop with already-stopped unicast group did "
+		     "not fail\n");
+		return;
+	}
+}
+
+static void unicast_group_delete_inval(void)
+{
+	int err;
+
+	err = bt_bap_unicast_group_delete(NULL);
+	if (err == 0) {
+		FAIL("bt_bap_unicast_group_delete with NULL group did not fail\n");
+		return;
+	}
 }
 
 static void unicast_group_delete(struct bt_bap_unicast_group *unicast_group)
@@ -480,6 +707,14 @@ static void unicast_group_delete(struct bt_bap_unicast_group *unicast_group)
 	err = bt_bap_unicast_group_delete(unicast_group);
 	if (err != 0) {
 		FAIL("Failed to create group: %d\n", err);
+		return;
+	}
+
+	/* Verify that it cannot be deleted twice */
+	err = bt_bap_unicast_group_delete(unicast_group);
+	if (err == 0) {
+		FAIL("bt_bap_unicast_group_delete with already-deleted unicast group did not "
+		     "fail\n");
 		return;
 	}
 }
@@ -494,48 +729,50 @@ static void test_cap_initiator_unicast(void)
 
 	WAIT_FOR_FLAG(flag_mtu_exchanged);
 
+	discover_cas_inval();
 	discover_cas();
 
 	discover_sink();
 
 	unicast_group_create(&unicast_group);
 
+	unicast_audio_start_inval(unicast_group);
 	unicast_audio_start(unicast_group);
 
+	unicast_audio_update_inval();
 	unicast_audio_update();
 
+	unicast_audio_stop_inval();
 	unicast_audio_stop(unicast_group);
 
+	unicast_group_delete_inval();
 	unicast_group_delete(unicast_group);
 	unicast_group = NULL;
 
 	PASS("CAP initiator unicast passed\n");
 }
 
-static int setup_extended_adv(struct bt_le_ext_adv **adv)
+static void setup_extended_adv(struct bt_le_ext_adv **adv)
 {
 	int err;
 
 	/* Create a non-connectable non-scannable advertising set */
 	err = bt_le_ext_adv_create(BT_LE_EXT_ADV_NCONN_NAME, NULL, adv);
 	if (err != 0) {
-		printk("Unable to create extended advertising set: %d\n", err);
-		return err;
+		FAIL("Unable to create extended advertising set: %d\n", err);
+		return;
 	}
 
 	/* Set periodic advertising parameters */
 	err = bt_le_per_adv_set_param(*adv, BT_LE_PER_ADV_DEFAULT);
 	if (err) {
-		printk("Failed to set periodic advertising parameters: %d\n",
-		       err);
-		return err;
+		FAIL("Failed to set periodic advertising parameters: %d\n", err);
+		return;
 	}
-
-	return 0;
 }
 
-static int setup_extended_adv_data(struct bt_cap_broadcast_source *source,
-				   struct bt_le_ext_adv *adv)
+static void setup_extended_adv_data(struct bt_cap_broadcast_source *source,
+				    struct bt_le_ext_adv *adv)
 {
 	/* Broadcast Audio Streaming Endpoint advertising data */
 	NET_BUF_SIMPLE_DEFINE(ad_buf,
@@ -548,8 +785,8 @@ static int setup_extended_adv_data(struct bt_cap_broadcast_source *source,
 
 	err = bt_cap_initiator_broadcast_get_id(source, &broadcast_id);
 	if (err != 0) {
-		printk("Unable to get broadcast ID: %d\n", err);
-		return err;
+		FAIL("Unable to get broadcast ID: %d\n", err);
+		return;
 	}
 
 	/* Setup extended advertising data */
@@ -560,15 +797,15 @@ static int setup_extended_adv_data(struct bt_cap_broadcast_source *source,
 	ext_ad.data = ad_buf.data;
 	err = bt_le_ext_adv_set_data(adv, &ext_ad, 1, NULL, 0);
 	if (err != 0) {
-		printk("Failed to set extended advertising data: %d\n", err);
-		return err;
+		FAIL("Failed to set extended advertising data: %d\n", err);
+		return;
 	}
 
 	/* Setup periodic advertising data */
 	err = bt_cap_initiator_broadcast_get_base(source, &base_buf);
 	if (err != 0) {
-		printk("Failed to get encoded BASE: %d\n", err);
-		return err;
+		FAIL("Failed to get encoded BASE: %d\n", err);
+		return;
 	}
 
 	per_ad.type = BT_DATA_SVC_DATA16;
@@ -576,86 +813,69 @@ static int setup_extended_adv_data(struct bt_cap_broadcast_source *source,
 	per_ad.data = base_buf.data;
 	err = bt_le_per_adv_set_data(adv, &per_ad, 1);
 	if (err != 0) {
-		printk("Failed to set periodic advertising data: %d\n", err);
-		return err;
+		FAIL("Failed to set periodic advertising data: %d\n", err);
+		return;
 	}
-
-	return 0;
 }
 
-static int start_extended_adv(struct bt_le_ext_adv *adv)
+static void start_extended_adv(struct bt_le_ext_adv *adv)
 {
 	int err;
 
 	/* Start extended advertising */
 	err = bt_le_ext_adv_start(adv, BT_LE_EXT_ADV_START_DEFAULT);
 	if (err) {
-		printk("Failed to start extended advertising: %d\n", err);
-		return err;
+		FAIL("Failed to start extended advertising: %d\n", err);
+		return;
 	}
 
 	/* Enable Periodic Advertising */
 	err = bt_le_per_adv_start(adv);
 	if (err) {
-		printk("Failed to enable periodic advertising: %d\n", err);
-		return err;
+		FAIL("Failed to enable periodic advertising: %d\n", err);
+		return;
 	}
-
-	return 0;
 }
 
-static int stop_and_delete_extended_adv(struct bt_le_ext_adv *adv)
+static void stop_and_delete_extended_adv(struct bt_le_ext_adv *adv)
 {
 	int err;
 
 	/* Stop extended advertising */
 	err = bt_le_per_adv_stop(adv);
 	if (err) {
-		printk("Failed to stop periodic advertising: %d\n", err);
-		return err;
+		FAIL("Failed to stop periodic advertising: %d\n", err);
+		return;
 	}
 
 	err = bt_le_ext_adv_stop(adv);
 	if (err) {
-		printk("Failed to stop extended advertising: %d\n", err);
-		return err;
+		FAIL("Failed to stop extended advertising: %d\n", err);
+		return;
 	}
 
 	err = bt_le_ext_adv_delete(adv);
 	if (err) {
-		printk("Failed to delete extended advertising: %d\n", err);
-		return err;
+		FAIL("Failed to delete extended advertising: %d\n", err);
+		return;
 	}
-
-	return 0;
 }
 
-static void test_cap_initiator_broadcast(void)
+static void test_broadcast_audio_start_inval(struct bt_le_ext_adv *adv)
 {
-	struct bt_codec_data bis_codec_data = BT_CODEC_DATA(BT_CODEC_CONFIG_LC3_FREQ,
-							    BT_CODEC_CONFIG_LC3_FREQ_16KHZ);
-	const uint16_t mock_ccid = 0x1234;
-	const struct bt_codec_data new_metadata[] = {
-		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT,
-			      BT_BYTES_LIST_LE16(BT_AUDIO_CONTEXT_TYPE_MEDIA)),
-		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_CCID_LIST,
-			      BT_BYTES_LIST_LE16(mock_ccid)),
-	};
+	struct bt_codec_data bis_codec_data =
+		BT_CODEC_DATA(BT_CODEC_CONFIG_LC3_FREQ, BT_CODEC_CONFIG_LC3_FREQ_16KHZ);
 	struct bt_cap_initiator_broadcast_stream_param
 		stream_params[ARRAY_SIZE(broadcast_source_streams)];
 	struct bt_cap_initiator_broadcast_subgroup_param subgroup_param;
 	struct bt_cap_initiator_broadcast_create_param create_param;
 	struct bt_cap_broadcast_source *broadcast_source;
-	struct bt_le_ext_adv *adv;
+	struct bt_codec invalid_codec =
+		BT_CODEC_LC3_CONFIG_16_2(BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
 	int err;
 
-	(void)memset(broadcast_source_streams, 0,
-		     sizeof(broadcast_source_streams));
-
-	for (size_t i = 0; i < ARRAY_SIZE(broadcast_streams); i++) {
+	for (size_t i = 0U; i < ARRAY_SIZE(broadcast_streams); i++) {
 		stream_params[i].stream = &broadcast_source_streams[i];
-		bt_cap_stream_ops_register(stream_params[i].stream,
-					   &broadcast_stream_ops);
 		stream_params[i].data_count = 1U;
 		stream_params[i].data = &bis_codec_data;
 	}
@@ -670,35 +890,248 @@ static void test_cap_initiator_broadcast(void)
 	create_param.packing = BT_ISO_PACKING_SEQUENTIAL;
 	create_param.encryption = false;
 
-	init();
+	/* Test NULL parameters */
+	err = bt_cap_initiator_broadcast_audio_start(NULL, adv, &broadcast_source);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_start with NULL param did not fail\n");
+		return;
+	}
+
+	err = bt_cap_initiator_broadcast_audio_start(&create_param, NULL, &broadcast_source);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_start with NULL adv did not fail\n");
+		return;
+	}
+
+	err = bt_cap_initiator_broadcast_audio_start(&create_param, adv, NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_start with NULL broadcast source did not "
+		     "fail\n");
+		return;
+	}
+
+	/* Clear metadata so that it does not contain the mandatory stream context */
+	memset(&invalid_codec.meta, 0, sizeof(invalid_codec.meta));
+	subgroup_param.codec = &invalid_codec;
+	err = bt_cap_initiator_broadcast_audio_start(&create_param, adv, NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_start with invalid metadata did not fail\n");
+		return;
+	}
+
+	/* Since we are just casting the CAP parameters to BAP parameters,
+	 * we can rely on the BAP tests to verify the values
+	 */
+}
+
+static void test_broadcast_audio_start(struct bt_le_ext_adv *adv,
+				       struct bt_cap_broadcast_source **broadcast_source)
+{
+	struct bt_codec_data bis_codec_data =
+		BT_CODEC_DATA(BT_CODEC_CONFIG_LC3_FREQ, BT_CODEC_CONFIG_LC3_FREQ_16KHZ);
+	struct bt_cap_initiator_broadcast_stream_param
+		stream_params[ARRAY_SIZE(broadcast_source_streams)];
+	struct bt_cap_initiator_broadcast_subgroup_param subgroup_param;
+	struct bt_cap_initiator_broadcast_create_param create_param;
+	int err;
+
+	for (size_t i = 0; i < ARRAY_SIZE(broadcast_streams); i++) {
+		stream_params[i].stream = &broadcast_source_streams[i];
+		stream_params[i].data_count = 1U;
+		stream_params[i].data = &bis_codec_data;
+	}
+
+	subgroup_param.stream_count = ARRAY_SIZE(broadcast_streams);
+	subgroup_param.stream_params = stream_params;
+	subgroup_param.codec = &broadcast_preset_16_2_1.codec;
+
+	create_param.subgroup_count = 1U;
+	create_param.subgroup_params = &subgroup_param;
+	create_param.qos = &broadcast_preset_16_2_1.qos;
+	create_param.packing = BT_ISO_PACKING_SEQUENTIAL;
+	create_param.encryption = false;
 
 	printk("Creating broadcast source with %zu broadcast_streams\n",
 	       ARRAY_SIZE(broadcast_streams));
 
-	err = setup_extended_adv(&adv);
-	if (err != 0) {
-		FAIL("Unable to setup extended advertiser: %d\n", err);
-		return;
-	}
-
-	err = bt_cap_initiator_broadcast_audio_start(&create_param, adv,
-						     &broadcast_source);
+	err = bt_cap_initiator_broadcast_audio_start(&create_param, adv, broadcast_source);
 	if (err != 0) {
 		FAIL("Unable to start broadcast source: %d\n", err);
 		return;
 	}
 
-	err = setup_extended_adv_data(broadcast_source, adv);
-	if (err != 0) {
-		FAIL("Unable to setup extended advertising data: %d\n", err);
+	printk("Broadcast source created with %zu broadcast_streams\n",
+	       ARRAY_SIZE(broadcast_streams));
+}
+
+static void test_broadcast_audio_update_inval(struct bt_cap_broadcast_source *broadcast_source)
+{
+	const uint16_t mock_ccid = 0x1234;
+	const struct bt_codec_data new_metadata[] = {
+		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT,
+			      (BT_AUDIO_CONTEXT_TYPE_MEDIA & 0xFFU),
+			      ((BT_AUDIO_CONTEXT_TYPE_MEDIA >> 8) & 0xFFU)),
+		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_CCID_LIST, (mock_ccid & 0xFFU),
+			      ((mock_ccid >> 8) & 0xFFU)),
+	};
+	const struct bt_codec_data invalid_metadata[] = {
+		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_CCID_LIST, (mock_ccid & 0xFFU),
+			      ((mock_ccid >> 8) & 0xFFU)),
+	};
+	int err;
+
+	/* Test NULL parameters */
+	err = bt_cap_initiator_broadcast_audio_update(NULL, new_metadata, ARRAY_SIZE(new_metadata));
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_update with NULL broadcast source did not "
+		     "fail\n");
 		return;
 	}
 
-	err = start_extended_adv(adv);
-	if (err != 0) {
-		FAIL("Unable to start extended advertiser: %d\n", err);
+	err = bt_cap_initiator_broadcast_audio_update(broadcast_source, NULL,
+						      ARRAY_SIZE(new_metadata));
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_update with NULL metadata did not fail\n");
 		return;
 	}
+
+	err = bt_cap_initiator_broadcast_audio_update(broadcast_source, new_metadata, 0);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_update with 0 metadata count did not "
+		     "fail\n");
+		return;
+	}
+
+	/* Test with metadata without streaming context */
+	err = bt_cap_initiator_broadcast_audio_update(broadcast_source, invalid_metadata,
+						      ARRAY_SIZE(invalid_metadata));
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_update with invalid metadata did not "
+		     "fail\n");
+		return;
+	}
+
+	printk("Broadcast metadata updated\n");
+}
+
+static void test_broadcast_audio_update(struct bt_cap_broadcast_source *broadcast_source)
+{
+	const uint16_t mock_ccid = 0x1234;
+	const struct bt_codec_data new_metadata[] = {
+		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT,
+			      BT_BYTES_LIST_LE16(BT_AUDIO_CONTEXT_TYPE_MEDIA)),
+		BT_CODEC_DATA(BT_AUDIO_METADATA_TYPE_CCID_LIST,
+			      BT_BYTES_LIST_LE16(mock_ccid)),
+	};
+	int err;
+
+	printk("Updating broadcast metadata\n");
+
+	err = bt_cap_initiator_broadcast_audio_update(broadcast_source, new_metadata,
+						      ARRAY_SIZE(new_metadata));
+	if (err != 0) {
+		FAIL("Failed to update broadcast source metadata: %d\n", err);
+		return;
+	}
+
+	printk("Broadcast metadata updated\n");
+}
+
+static void test_broadcast_audio_stop_inval(void)
+{
+	int err;
+
+	/* Test NULL parameters */
+	err = bt_cap_initiator_broadcast_audio_stop(NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_stop with NULL broadcast source did not "
+		     "fail\n");
+		return;
+	}
+}
+
+static void test_broadcast_audio_stop(struct bt_cap_broadcast_source *broadcast_source)
+{
+	int err;
+
+	printk("Stopping broadcast metadata\n");
+
+	err = bt_cap_initiator_broadcast_audio_stop(broadcast_source);
+	if (err != 0) {
+		FAIL("Failed to stop broadcast source: %d\n", err);
+		return;
+	}
+
+	/* Wait for all to be stopped */
+	printk("Waiting for broadcast_streams to be stopped\n");
+	for (size_t i = 0U; i < ARRAY_SIZE(broadcast_streams); i++) {
+		k_sem_take(&sem_broadcast_stopped, K_FOREVER);
+	}
+
+	printk("Broadcast metadata stopped\n");
+
+	/* Verify that it cannot be stopped twice */
+	err = bt_cap_initiator_broadcast_audio_stop(broadcast_source);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_stop with already-stopped broadcast source "
+		     "did not fail\n");
+		return;
+	}
+}
+
+static void test_broadcast_audio_delete_inval(void)
+{
+	int err;
+
+	/* Test NULL parameters */
+	err = bt_cap_initiator_broadcast_audio_delete(NULL);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_delete with NULL broadcast source did not "
+		     "fail\n");
+		return;
+	}
+}
+
+static void test_broadcast_audio_delete(struct bt_cap_broadcast_source *broadcast_source)
+{
+	int err;
+
+	printk("Stopping broadcast metadata\n");
+
+	err = bt_cap_initiator_broadcast_audio_delete(broadcast_source);
+	if (err != 0) {
+		FAIL("Failed to stop broadcast source: %d\n", err);
+		return;
+	}
+
+	printk("Broadcast metadata stopped\n");
+
+	/* Verify that it cannot be deleted twice */
+	err = bt_cap_initiator_broadcast_audio_delete(broadcast_source);
+	if (err == 0) {
+		FAIL("bt_cap_initiator_broadcast_audio_delete with already-deleted broadcast "
+		     "source did not fail\n");
+		return;
+	}
+}
+
+static void test_cap_initiator_broadcast(void)
+{
+	struct bt_cap_broadcast_source *broadcast_source;
+	struct bt_le_ext_adv *adv;
+
+	(void)memset(broadcast_source_streams, 0, sizeof(broadcast_source_streams));
+
+	init();
+
+	setup_extended_adv(&adv);
+
+	test_broadcast_audio_start_inval(adv);
+	test_broadcast_audio_start(adv, &broadcast_source);
+
+	setup_extended_adv_data(broadcast_source, adv);
+
+	start_extended_adv(adv);
 
 	/* Wait for all to be started */
 	printk("Waiting for broadcast_streams to be started\n");
@@ -716,41 +1149,20 @@ static void test_cap_initiator_broadcast(void)
 	/* Keeping running for a little while */
 	k_sleep(K_SECONDS(5));
 
-	err = bt_cap_initiator_broadcast_audio_update(broadcast_source,
-						      new_metadata,
-						      ARRAY_SIZE(new_metadata));
-	if (err != 0) {
-		FAIL("Failed to update broadcast source metadata: %d\n", err);
-		return;
-	}
+	test_broadcast_audio_update_inval(broadcast_source);
+	test_broadcast_audio_update(broadcast_source);
 
 	/* Keeping running for a little while */
 	k_sleep(K_SECONDS(5));
 
-	err = bt_cap_initiator_broadcast_audio_stop(broadcast_source);
-	if (err != 0) {
-		FAIL("Failed to stop broadcast source: %d\n", err);
-		return;
-	}
+	test_broadcast_audio_stop_inval();
+	test_broadcast_audio_stop(broadcast_source);
 
-	/* Wait for all to be stopped */
-	printk("Waiting for broadcast_streams to be stopped\n");
-	for (size_t i = 0U; i < ARRAY_SIZE(broadcast_streams); i++) {
-		k_sem_take(&sem_broadcast_stopped, K_FOREVER);
-	}
-
-	err = bt_cap_initiator_broadcast_audio_delete(broadcast_source);
-	if (err != 0) {
-		FAIL("Failed to stop broadcast source: %d\n", err);
-		return;
-	}
+	test_broadcast_audio_delete_inval();
+	test_broadcast_audio_delete(broadcast_source);
 	broadcast_source = NULL;
 
-	err = stop_and_delete_extended_adv(adv);
-	if (err != 0) {
-		FAIL("Failed to stop and delete extended advertising: %d\n", err);
-		return;
-	}
+	stop_and_delete_extended_adv(adv);
 	adv = NULL;
 
 	PASS("CAP initiator broadcast passed\n");

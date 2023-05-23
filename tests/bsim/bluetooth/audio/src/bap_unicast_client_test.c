@@ -30,6 +30,8 @@ static struct bt_bap_lc3_preset preset_16_2_1 = BT_BAP_LC3_UNICAST_PRESET_16_2_1
 CREATE_FLAG(flag_mtu_exchanged);
 CREATE_FLAG(flag_sink_discovered);
 CREATE_FLAG(flag_source_discovered);
+CREATE_FLAG(flag_codec_found);
+CREATE_FLAG(flag_endpoint_found);
 CREATE_FLAG(flag_stream_codec_configured);
 static atomic_t flag_stream_qos_configured;
 CREATE_FLAG(flag_stream_enabled);
@@ -198,7 +200,81 @@ static void release_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code r
 	}
 }
 
-const struct bt_bap_unicast_client_cb unicast_client_cbs = {
+static void add_remote_sink(struct bt_bap_ep *ep)
+{
+	for (size_t i = 0U; i < ARRAY_SIZE(g_sinks); i++) {
+		if (g_sinks[i] == NULL) {
+			printk("Sink #%zu: ep %p\n", i, ep);
+			g_sinks[i] = ep;
+			return;
+		}
+	}
+
+	FAIL("Could not add sink ep\n");
+}
+
+static void add_remote_source(struct bt_bap_ep *ep)
+{
+	for (size_t i = 0U; i < ARRAY_SIZE(g_sources); i++) {
+		if (g_sources[i] == NULL) {
+			printk("Source #%u: ep %p\n", i, ep);
+			g_sources[i] = ep;
+			return;
+		}
+	}
+
+	FAIL("Could not add source ep\n");
+}
+
+static void print_remote_codec(const struct bt_codec *codec, enum bt_audio_dir dir)
+{
+	printk("codec %p dir 0x%02x\n", codec, dir);
+
+	print_codec(codec);
+}
+
+static void discover_sinks_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
+{
+	if (err != 0) {
+		FAIL("Discovery failed: %d\n", err);
+		return;
+	}
+
+	printk("Discover complete\n");
+
+	SET_FLAG(flag_sink_discovered);
+}
+
+static void discover_sources_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
+{
+	if (err != 0) {
+		FAIL("Discovery failed: %d\n", err);
+		return;
+	}
+
+	printk("Sources discover complete\n");
+
+	SET_FLAG(flag_source_discovered);
+}
+
+static void pac_record_cb(struct bt_conn *conn, enum bt_audio_dir dir, const struct bt_codec *codec)
+{
+	print_remote_codec(codec, dir);
+	SET_FLAG(flag_codec_found);
+}
+
+static void endpoint_cb(struct bt_conn *conn, enum bt_audio_dir dir, struct bt_bap_ep *ep)
+{
+	if (dir == BT_AUDIO_DIR_SINK) {
+		add_remote_sink(ep);
+	} else {
+		add_remote_source(ep);
+	}
+
+	SET_FLAG(flag_endpoint_found);
+}
+
+static struct bt_bap_unicast_client_cb unicast_client_cbs = {
 	.location = unicast_client_location_cb,
 	.available_contexts = available_contexts_cb,
 	.config = config_cb,
@@ -209,106 +285,9 @@ const struct bt_bap_unicast_client_cb unicast_client_cbs = {
 	.disable = disable_cb,
 	.metadata = metadata_cb,
 	.release = release_cb,
+	.pac_record = pac_record_cb,
+	.endpoint = endpoint_cb,
 };
-
-static void add_remote_sink(struct bt_bap_ep *ep, uint8_t index)
-{
-	printk("Sink #%u: ep %p\n", index, ep);
-
-	g_sinks[index] = ep;
-}
-
-static void add_remote_source(struct bt_bap_ep *ep, uint8_t index)
-{
-	printk("Source #%u: ep %p\n", index, ep);
-
-	g_sources[index] = ep;
-}
-
-static void print_remote_codec(struct bt_codec *codec, int index, enum bt_audio_dir dir)
-{
-	printk("#%u: codec %p dir 0x%02x\n", index, codec, dir);
-
-	print_codec(codec);
-}
-
-static void discover_sinks_cb(struct bt_conn *conn, struct bt_codec *codec, struct bt_bap_ep *ep,
-			      struct bt_bap_unicast_client_discover_params *params)
-{
-	static bool codec_found;
-	static bool endpoint_found;
-
-	if (params->err != 0) {
-		FAIL("Discovery failed: %d\n", params->err);
-		return;
-	}
-
-	if (codec != NULL) {
-		print_remote_codec(codec, params->num_caps, params->dir);
-		codec_found = true;
-		return;
-	}
-
-	if (ep != NULL) {
-		if (params->dir == BT_AUDIO_DIR_SINK) {
-			add_remote_sink(ep, params->num_eps);
-			endpoint_found = true;
-		} else {
-			FAIL("Invalid param dir: %u\n", params->dir);
-		}
-
-		return;
-	}
-
-	printk("Sinks discover complete\n");
-
-	(void)memset(params, 0, sizeof(*params));
-
-	if (endpoint_found && codec_found) {
-		SET_FLAG(flag_sink_discovered);
-	} else {
-		FAIL("Did not discover endpoint and codec\n");
-	}
-}
-
-static void discover_sources_cb(struct bt_conn *conn, struct bt_codec *codec, struct bt_bap_ep *ep,
-				struct bt_bap_unicast_client_discover_params *params)
-{
-	static bool codec_found;
-	static bool endpoint_found;
-
-	if (params->err != 0) {
-		FAIL("Discovery failed: %d\n", params->err);
-		return;
-	}
-
-	if (codec != NULL) {
-		print_remote_codec(codec, params->num_caps, params->dir);
-		codec_found = true;
-		return;
-	}
-
-	if (ep != NULL) {
-		if (params->dir == BT_AUDIO_DIR_SOURCE) {
-			add_remote_source(ep, params->num_eps);
-			endpoint_found = true;
-		} else {
-			FAIL("Invalid param dir: %u\n", params->dir);
-		}
-
-		return;
-	}
-
-	printk("Sources discover complete\n");
-
-	(void)memset(params, 0, sizeof(*params));
-
-	if (endpoint_found && codec_found) {
-		SET_FLAG(flag_source_discovered);
-	} else {
-		FAIL("Did not discover endpoint and codec\n");
-	}
-}
 
 static void att_mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
 {
@@ -364,39 +343,45 @@ static void exchange_mtu(void)
 
 static void discover_sinks(void)
 {
-	static struct bt_bap_unicast_client_discover_params params;
 	int err;
 
-	params.func = discover_sinks_cb;
-	params.dir = BT_AUDIO_DIR_SINK;
+	unicast_client_cbs.discover = discover_sinks_cb;
 
+	UNSET_FLAG(flag_codec_found);
 	UNSET_FLAG(flag_sink_discovered);
+	UNSET_FLAG(flag_endpoint_found);
 
-	err = bt_bap_unicast_client_discover(default_conn, &params);
+	err = bt_bap_unicast_client_discover(default_conn, BT_AUDIO_DIR_SINK);
 	if (err != 0) {
 		printk("Failed to discover sink: %d\n", err);
 		return;
 	}
 
+	memset(g_sinks, 0, sizeof(g_sinks));
+
+	WAIT_FOR_FLAG(flag_codec_found);
+	WAIT_FOR_FLAG(flag_endpoint_found);
 	WAIT_FOR_FLAG(flag_sink_discovered);
 }
 
 static void discover_sources(void)
 {
-	static struct bt_bap_unicast_client_discover_params params;
 	int err;
 
-	params.func = discover_sources_cb;
-	params.dir = BT_AUDIO_DIR_SOURCE;
+	unicast_client_cbs.discover = discover_sources_cb;
 
+	UNSET_FLAG(flag_codec_found);
 	UNSET_FLAG(flag_source_discovered);
 
-	err = bt_bap_unicast_client_discover(default_conn, &params);
+	err = bt_bap_unicast_client_discover(default_conn, BT_AUDIO_DIR_SOURCE);
 	if (err != 0) {
 		printk("Failed to discover sink: %d\n", err);
 		return;
 	}
 
+	memset(g_sources, 0, sizeof(g_sources));
+
+	WAIT_FOR_FLAG(flag_codec_found);
 	WAIT_FOR_FLAG(flag_source_discovered);
 }
 

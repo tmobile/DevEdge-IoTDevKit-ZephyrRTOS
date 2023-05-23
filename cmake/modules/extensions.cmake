@@ -2498,8 +2498,8 @@ function(zephyr_get variable)
   cmake_parse_arguments(GET_VAR "MERGE" "SYSBUILD" "" ${ARGN})
 
   if(DEFINED GET_VAR_SYSBUILD)
-    if(NOT (${GET_VAR_SYSBUILD} STREQUAL "GLOBAL" OR
-            ${GET_VAR_SYSBUILD} STREQUAL "LOCAL")
+    if(NOT ("${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL" OR
+            "${GET_VAR_SYSBUILD}" STREQUAL "LOCAL")
     )
       message(FATAL_ERROR "zephyr_get(... SYSBUILD) requires GLOBAL or LOCAL.")
     endif()
@@ -2508,7 +2508,9 @@ function(zephyr_get variable)
   endif()
 
   if(GET_VAR_MERGE)
-    # Clear variable before appending items in MERGE mode
+    # Clear variable before appending items in MERGE mode but keep a backup for
+    # local appending later
+    set(local_var_backup ${${variable}})
     set(${variable})
   endif()
 
@@ -2519,7 +2521,7 @@ function(zephyr_get variable)
     get_property(sysbuild_main_app TARGET sysbuild_cache PROPERTY SYSBUILD_MAIN_APP)
     get_property(sysbuild_${variable} TARGET sysbuild_cache PROPERTY ${sysbuild_name}_${variable})
     if(NOT DEFINED sysbuild_${variable} AND
-       (${GET_VAR_SYSBUILD} STREQUAL "GLOBAL" OR sysbuild_main_app)
+       ("${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL" OR sysbuild_main_app)
     )
       get_property(sysbuild_${variable} TARGET sysbuild_cache PROPERTY ${variable})
       set(used_global true)
@@ -2534,7 +2536,7 @@ function(zephyr_get variable)
       return()
     endif()
   endif()
-  if(SYSBUILD AND GET_VAR_MERGE AND NOT used_global AND ${GET_VAR_SYSBUILD} STREQUAL "GLOBAL")
+  if(SYSBUILD AND GET_VAR_MERGE AND NOT used_global AND "${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL")
     get_property(sysbuild_${variable} TARGET sysbuild_cache PROPERTY ${variable})
     list(APPEND ${variable} ${sysbuild_${variable}})
   endif()
@@ -2574,6 +2576,7 @@ function(zephyr_get variable)
   endif()
 
   if(GET_VAR_MERGE)
+    list(APPEND ${variable} ${local_var_backup})
     list(REMOVE_DUPLICATES ${variable})
     set(${variable} ${${variable}} PARENT_SCOPE)
   endif()
@@ -4165,6 +4168,7 @@ endmacro()
 # ADDRESS <address>   : Specific address to use for this section.
 # ALIGN_WITH_INPUT    : The alignment difference between VMA and LMA is kept
 #                       intact for this section.
+# NUMERIC             : Use numeric sorting.
 # SUBALIGN <alignment>: Force input alignment with size <alignment>
 #  Note: Regarding all alignment attributes. Not all linkers may handle alignment
 #        in identical way. For example the Scatter file will align both load and
@@ -4172,7 +4176,7 @@ endmacro()
 #/
 function(zephyr_iterable_section)
   # ToDo - Should we use ROM, RAM, etc as arguments ?
-  set(options     "ALIGN_WITH_INPUT")
+  set(options     "ALIGN_WITH_INPUT;NUMERIC")
   set(single_args "GROUP;LMA;NAME;SUBALIGN;VMA")
   set(multi_args  "")
   set(align_input)
@@ -4194,6 +4198,12 @@ function(zephyr_iterable_section)
     set(align_input ALIGN_WITH_INPUT)
   endif()
 
+  if(SECTION_NUMERIC)
+    set(INPUT "._${SECTION_NAME}.static.*_?_*;._${SECTION_NAME}.static.*_??_*")
+  else()
+    set(INPUT "._${SECTION_NAME}.static.*")
+  endif()
+
   zephyr_linker_section(
     NAME ${SECTION_NAME}_area
     GROUP "${SECTION_GROUP}"
@@ -4202,7 +4212,7 @@ function(zephyr_iterable_section)
   )
   zephyr_linker_section_configure(
     SECTION ${SECTION_NAME}_area
-    INPUT "._${SECTION_NAME}.static.*"
+    INPUT "${INPUT}"
     SYMBOLS _${SECTION_NAME}_list_start _${SECTION_NAME}_list_end
     KEEP SORT NAME
   )
@@ -4244,13 +4254,13 @@ function(zephyr_linker_section_obj_level)
 
   zephyr_linker_section_configure(
     SECTION ${OBJ_SECTION}
-    INPUT ".z_${OBJ_SECTION}_${OBJ_LEVEL}?_"
+    INPUT ".z_${OBJ_SECTION}_${OBJ_LEVEL}?_*"
     SYMBOLS __${OBJ_SECTION}_${OBJ_LEVEL}_start
     KEEP SORT NAME
   )
   zephyr_linker_section_configure(
     SECTION ${OBJ_SECTION}
-    INPUT ".z_${OBJ_SECTION}_${OBJ_LEVEL}??_"
+    INPUT ".z_${OBJ_SECTION}_${OBJ_LEVEL}??_*"
     KEEP SORT NAME
   )
 endfunction()

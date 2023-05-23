@@ -30,7 +30,7 @@
 #include <zephyr/mgmt/mcumgr/mgmt/handlers.h>
 #include <zephyr/net/net_mgmt.h>
 #include <zephyr/net/net_event.h>
-#include <zephyr/net/net_conn_mgr.h>
+#include <zephyr/net/conn_mgr.h>
 #endif
 
 #define LOG_LEVEL CONFIG_MCUMGR_LOG_LEVEL
@@ -174,20 +174,25 @@ static void smp_udp_receive_thread(void *p1, void *p2, void *p3)
 
 static int smp_udp_init(void)
 {
+	int rc;
 
 #ifdef CONFIG_MCUMGR_TRANSPORT_UDP_IPV4
-	smp_transport_init(&configs.ipv4.smp_transport,
-			   smp_udp4_tx, smp_udp_get_mtu,
-			   smp_udp_ud_copy, NULL, NULL);
+	configs.ipv4.smp_transport.functions.output = smp_udp4_tx;
+	configs.ipv4.smp_transport.functions.get_mtu = smp_udp_get_mtu;
+	configs.ipv4.smp_transport.functions.ud_copy = smp_udp_ud_copy;
+
+	rc = smp_transport_init(&configs.ipv4.smp_transport);
 #endif
 
 #ifdef CONFIG_MCUMGR_TRANSPORT_UDP_IPV6
-	smp_transport_init(&configs.ipv6.smp_transport,
-			   smp_udp6_tx, smp_udp_get_mtu,
-			   smp_udp_ud_copy, NULL, NULL);
+	configs.ipv6.smp_transport.functions.output = smp_udp6_tx;
+	configs.ipv6.smp_transport.functions.get_mtu = smp_udp_get_mtu;
+	configs.ipv6.smp_transport.functions.ud_copy = smp_udp_ud_copy;
+
+	rc = smp_transport_init(&configs.ipv6.smp_transport);
 #endif
 
-	return MGMT_ERR_EOK;
+	return rc;
 }
 
 static int create_socket(struct sockaddr *addr, const char *proto)
@@ -316,7 +321,7 @@ static void smp_udp_start(void)
 	net_mgmt_init_event_callback(&smp_udp_mgmt_cb, smp_udp_net_event_handler,
 				     (NET_EVENT_L4_CONNECTED | NET_EVENT_L4_DISCONNECTED));
 	net_mgmt_add_event_callback(&smp_udp_mgmt_cb);
-	net_conn_mgr_resend_status();
+	conn_mgr_resend_status();
 }
 
 MCUMGR_HANDLER_DEFINE(smp_udp, smp_udp_start);

@@ -593,7 +593,7 @@
 #elif CONFIG_LSM6DSL_GYRO_FS == 125
 	#define LSM6DSL_DEFAULT_GYRO_FULLSCALE		4
 	#define LSM6DSL_DEFAULT_GYRO_SENSITIVITY	SENSI_GRAIN_G
-#elif CONFIG_LSM6DSL_GYRO_FS == 245
+#elif CONFIG_LSM6DSL_GYRO_FS == 250
 	#define LSM6DSL_DEFAULT_GYRO_FULLSCALE		0
 	#define LSM6DSL_DEFAULT_GYRO_SENSITIVITY	(2.0 * SENSI_GRAIN_G)
 #elif CONFIG_LSM6DSL_GYRO_FS == 500
@@ -667,9 +667,6 @@ struct lsm6dsl_data {
 #endif
 	const struct lsm6dsl_transfer_function *hw_tf;
 	uint16_t accel_freq;
-	uint8_t accel_fs;
-	uint16_t gyro_freq;
-	uint8_t gyro_fs;
 
 #ifdef CONFIG_LSM6DSL_TRIGGER
 	const struct device *dev;

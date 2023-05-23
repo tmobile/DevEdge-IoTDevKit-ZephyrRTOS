@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include <zephyr/linker/iterable_sections.h>
+
 #if defined(CONFIG_NETWORKING)
 #ifndef NETWORK_RAM_SECTIONS
 #define NETWORK_RAM_SECTIONS \
@@ -111,12 +113,12 @@
 	} GROUP_DATA_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
 #endif /* CONFIG_USB_DEVICE_BOS */
 
-
 #if defined(CONFIG_RTIO)
 	ITERABLE_SECTION_RAM(rtio, 4)
 	ITERABLE_SECTION_RAM(rtio_iodev, 4)
+	ITERABLE_SECTION_RAM(rtio_sqe_pool, 4)
+	ITERABLE_SECTION_RAM(rtio_cqe_pool, 4)
 #endif /* CONFIG_RTIO */
-
 
 #ifdef CONFIG_USERSPACE
 	_static_kernel_objects_end = .;

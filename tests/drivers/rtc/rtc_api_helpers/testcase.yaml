@@ -2,5 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
-  drivers.rtc.rtc_api:
-    tags: drivers rtc api helpers
+  drivers.rtc.rtc_api_helpers:
+    tags:
+      - drivers
+      - rtc
+      - api
+      - helpers

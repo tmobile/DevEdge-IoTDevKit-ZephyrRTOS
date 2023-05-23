@@ -24,7 +24,7 @@
 LOG_MODULE_REGISTER(LSM6DSL, CONFIG_SENSOR_LOG_LEVEL);
 
 static const uint16_t lsm6dsl_odr_map[] = {0, 12, 26, 52, 104, 208, 416, 833,
-					1660, 3330, 6660};
+					1666, 3332, 6664};
 
 #if defined(LSM6DSL_ACCEL_ODR_RUNTIME) || defined(LSM6DSL_GYRO_ODR_RUNTIME)
 static int lsm6dsl_freq_to_odr_val(uint16_t freq)
@@ -71,7 +71,7 @@ static int lsm6dsl_accel_range_to_fs_val(int32_t range)
 #endif
 
 #ifdef LSM6DSL_GYRO_FS_RUNTIME
-static const uint16_t lsm6dsl_gyro_fs_map[] = {245, 500, 1000, 2000, 125};
+static const uint16_t lsm6dsl_gyro_fs_map[] = {250, 500, 1000, 2000, 125};
 static const uint16_t lsm6dsl_gyro_fs_sens[] = {2, 4, 8, 16, 1};
 
 static int lsm6dsl_gyro_range_to_fs_val(int32_t range)
@@ -115,8 +115,6 @@ static int lsm6dsl_accel_set_fs_raw(const struct device *dev, uint8_t fs)
 		return -EIO;
 	}
 
-	data->accel_fs = fs;
-
 	return 0;
 }
 
@@ -143,14 +141,14 @@ static int lsm6dsl_gyro_set_fs_raw(const struct device *dev, uint8_t fs)
 	if (fs == GYRO_FULLSCALE_125) {
 		if (data->hw_tf->update_reg(dev,
 					LSM6DSL_REG_CTRL2_G,
-					LSM6DSL_MASK_CTRL2_FS125,
+					LSM6DSL_MASK_CTRL2_FS125 | LSM6DSL_MASK_CTRL2_G_FS_G,
 					1 << LSM6DSL_SHIFT_CTRL2_FS125) < 0) {
 			return -EIO;
 		}
 	} else {
 		if (data->hw_tf->update_reg(dev,
 					LSM6DSL_REG_CTRL2_G,
-					LSM6DSL_MASK_CTRL2_G_FS_G,
+					LSM6DSL_MASK_CTRL2_FS125 | LSM6DSL_MASK_CTRL2_G_FS_G,
 					fs << LSM6DSL_SHIFT_CTRL2_G_FS_G) < 0) {
 			return -EIO;
 		}
@@ -560,7 +558,7 @@ static int lsm6dsl_gyro_channel_get(enum sensor_channel chan,
 				    struct lsm6dsl_data *data)
 {
 	return lsm6dsl_gyro_get_channel(chan, val, data,
-					LSM6DSL_DEFAULT_GYRO_SENSITIVITY);
+					data->gyro_sensitivity);
 }
 
 #if defined(CONFIG_LSM6DSL_ENABLE_TEMP)
@@ -736,7 +734,6 @@ static int lsm6dsl_init_chip(const struct device *dev)
 	}
 	data->accel_sensitivity = LSM6DSL_DEFAULT_ACCEL_SENSITIVITY;
 
-	data->accel_freq = lsm6dsl_odr_to_freq_val(CONFIG_LSM6DSL_ACCEL_ODR);
 	if (lsm6dsl_accel_set_odr_raw(dev, CONFIG_LSM6DSL_ACCEL_ODR) < 0) {
 		LOG_DBG("failed to set accelerometer sampling rate");
 		return -EIO;
@@ -748,7 +745,6 @@ static int lsm6dsl_init_chip(const struct device *dev)
 	}
 	data->gyro_sensitivity = LSM6DSL_DEFAULT_GYRO_SENSITIVITY;
 
-	data->gyro_freq = lsm6dsl_odr_to_freq_val(CONFIG_LSM6DSL_GYRO_ODR);
 	if (lsm6dsl_gyro_set_odr_raw(dev, CONFIG_LSM6DSL_GYRO_ODR) < 0) {
 		LOG_DBG("failed to set gyroscope sampling rate");
 		return -EIO;

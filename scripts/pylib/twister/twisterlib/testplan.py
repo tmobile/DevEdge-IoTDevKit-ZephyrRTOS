@@ -176,6 +176,8 @@ class TestPlan:
         for _, ts in self.testsuites.items():
             self.scenarios.append(ts.id)
 
+        self.report_duplicates()
+
         self.parse_configuration(config_file=self.env.test_config)
         self.add_configurations()
 
@@ -301,10 +303,7 @@ class TestPlan:
 
 
     def report(self):
-        if self.options.list_test_duplicates:
-            self.report_duplicates()
-            return 0
-        elif self.options.test_tree:
+        if self.options.test_tree:
             self.report_test_tree()
             return 0
         elif self.options.list_tests:
@@ -319,13 +318,14 @@ class TestPlan:
     def report_duplicates(self):
         dupes = [item for item, count in collections.Counter(self.scenarios).items() if count > 1]
         if dupes:
-            print("Tests with duplicate identifiers:")
+            msg = "Duplicated test scenarios found:\n"
             for dupe in dupes:
-                print("- {}".format(dupe))
+                msg += ("- {} found in:\n".format(dupe))
                 for dc in self.get_testsuite(dupe):
-                    print("  - {}".format(dc.name))
+                    msg += ("  - {}\n".format(dc.yamlfile))
+            raise TwisterRuntimeError(msg)
         else:
-            print("No duplicates found.")
+            logger.debug("No duplicates found.")
 
     def report_tag_list(self):
         tags = set()
@@ -504,6 +504,16 @@ class TestPlan:
 
                 suite_yaml_path = os.path.join(dirpath, filename)
                 suite_path = os.path.dirname(suite_yaml_path)
+
+                for alt_config_root in self.env.alt_config_root:
+                    alt_config = os.path.join(os.path.abspath(alt_config_root),
+                                              os.path.relpath(suite_path, root),
+                                              filename)
+                    if os.path.exists(alt_config):
+                        logger.info("Using alternative configuration from %s" %
+                                    os.path.normpath(alt_config))
+                        suite_yaml_path = alt_config
+                        break
 
                 try:
                     parsed_data = TwisterConfigParser(suite_yaml_path, self.suite_schema)

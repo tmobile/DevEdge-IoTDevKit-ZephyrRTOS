@@ -1203,7 +1203,8 @@ static int eth_initialize(const struct device *dev)
 	memset(&tx_config, 0, sizeof(ETH_TxPacketConfig));
 	tx_config.Attributes = ETH_TX_PACKETS_FEATURES_CSUM |
 				ETH_TX_PACKETS_FEATURES_CRCPAD;
-	tx_config.ChecksumCtrl = ETH_CHECKSUM_IPHDR_PAYLOAD_INSERT_PHDR_CALC;
+	tx_config.ChecksumCtrl = IS_ENABLED(CONFIG_ETH_STM32_HW_CHECKSUM) ?
+			ETH_CHECKSUM_IPHDR_PAYLOAD_INSERT_PHDR_CALC : ETH_CHECKSUM_DISABLE;
 	tx_config.CRCPadCtrl = ETH_CRC_PAD_INSERT;
 #endif /* CONFIG_SOC_SERIES_STM32H7X || CONFIG_ETH_STM32_HAL_API_V2 */
 
@@ -1215,15 +1216,6 @@ static int eth_initialize(const struct device *dev)
 #if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_ETH_STM32_HAL_API_V2)
 	k_sem_init(&dev_data->tx_int_sem, 0, K_SEM_MAX_LIMIT);
 #endif /* CONFIG_SOC_SERIES_STM32H7X || CONFIG_ETH_STM32_HAL_API_V2 */
-
-	/* Start interruption-poll thread */
-	k_thread_create(&dev_data->rx_thread, dev_data->rx_thread_stack,
-			K_KERNEL_STACK_SIZEOF(dev_data->rx_thread_stack),
-			rx_thread, (void *) dev, NULL, NULL,
-			K_PRIO_COOP(CONFIG_ETH_STM32_HAL_RX_THREAD_PRIO),
-			0, K_NO_WAIT);
-
-	k_thread_name_set(&dev_data->rx_thread, "stm_eth");
 
 #if defined(CONFIG_SOC_SERIES_STM32H7X) || defined(CONFIG_ETH_STM32_HAL_API_V2)
 	/* Adjust MDC clock range depending on HCLK frequency: */
@@ -1519,6 +1511,15 @@ static void eth_iface_init(struct net_if *iface)
 		/* Now that the iface is setup, we are safe to enable IRQs. */
 		__ASSERT_NO_MSG(cfg->config_func != NULL);
 		cfg->config_func();
+
+		/* Start interruption-poll thread */
+		k_thread_create(&dev_data->rx_thread, dev_data->rx_thread_stack,
+				K_KERNEL_STACK_SIZEOF(dev_data->rx_thread_stack),
+				rx_thread, (void *) dev, NULL, NULL,
+				K_PRIO_COOP(CONFIG_ETH_STM32_HAL_RX_THREAD_PRIO),
+				0, K_NO_WAIT);
+
+		k_thread_name_set(&dev_data->rx_thread, "stm_eth");
 	}
 }
 

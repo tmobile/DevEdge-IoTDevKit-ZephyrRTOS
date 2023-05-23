@@ -360,7 +360,7 @@
 		};
 
 		adc1: adc@40012000 {
-			compatible = "st,stm32-adc";
+			compatible = "st,stm32f4-adc", "st,stm32-adc";
 			reg = <0x40012000 0x400>;
 			clocks = <&rcc STM32_CLOCK_BUS_APB2 0x00000100>;
 			interrupts = <18 0>;
@@ -372,6 +372,7 @@
 				       STM32_ADC_RES(10, 0x01)
 				       STM32_ADC_RES(8, 0x02)
 				       STM32_ADC_RES(6, 0x03)>;
+			sampling-times = <3 15 28 58 84 112 144 480>;
 		};
 
 		dma1: dma@40026000 {

@@ -447,7 +447,7 @@ uint8_t ll_feature_req_send(uint16_t handle)
 
 	uint8_t err;
 
-	err = ull_cp_feature_exchange(conn);
+	err = ull_cp_feature_exchange(conn, 1U);
 	if (err) {
 		return err;
 	}
@@ -824,13 +824,11 @@ int ull_conn_rx(memq_link_t *link, struct node_rx_pdu **rx)
 	switch (pdu_rx->ll_id) {
 	case PDU_DATA_LLID_CTRL:
 	{
-		ARG_UNUSED(link);
-		ARG_UNUSED(pdu_rx);
-
-		ull_cp_rx(conn, *rx);
-
 		/* Mark buffer for release */
 		(*rx)->hdr.type = NODE_RX_TYPE_RELEASE;
+
+		ull_cp_rx(conn, link, *rx);
+
 		return 0;
 	}
 
@@ -1729,6 +1727,7 @@ static void conn_cleanup_finalize(struct ll_conn *conn)
 #if defined(LLCP_TX_CTRL_BUF_QUEUE_ENABLE)
 	ull_cp_update_tx_buffer_queue(conn);
 #endif /* LLCP_TX_CTRL_BUF_QUEUE_ENABLE */
+	ull_cp_release_nodes(conn);
 
 	/* flush demux-ed Tx buffer still in ULL context */
 	tx_ull_flush(conn);
