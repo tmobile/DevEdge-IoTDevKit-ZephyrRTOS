@@ -22,7 +22,8 @@ LOG_MODULE_DECLARE(LIS2DW12, CONFIG_SENSOR_LOG_LEVEL);
 /**
  * lis2dw12_enable_int - enable selected int pin to generate interrupt
  */
-static int lis2dw12_enable_int(const struct device *dev, enum sensor_trigger_type type, int enable)
+static int lis2dw12_enable_int(const struct device *dev,
+			       enum sensor_trigger_type type, int enable)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -105,8 +106,9 @@ static int lis2dw12_enable_int(const struct device *dev, enum sensor_trigger_typ
 /**
  * lis2dw12_trigger_set - link external trigger to event data ready
  */
-int lis2dw12_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
-			 sensor_trigger_handler_t handler)
+int lis2dw12_trigger_set(const struct device *dev,
+			  const struct sensor_trigger *trig,
+			  sensor_trigger_handler_t handler)
 {
 	const struct lis2dw12_device_config *cfg = dev->config;
 	stmdev_ctx_t *ctx = (stmdev_ctx_t *)&cfg->ctx;
@@ -122,6 +124,7 @@ int lis2dw12_trigger_set(const struct device *dev, const struct sensor_trigger *
 	switch (trig->type) {
 	case SENSOR_TRIG_DATA_READY:
 		lis2dw12->drdy_handler = handler;
+		lis2dw12->drdy_trig = trig;
 		if (state) {
 			/* dummy read: re-trigger interrupt */
 			lis2dw12_acceleration_raw_get(ctx, raw);
@@ -141,26 +144,102 @@ int lis2dw12_trigger_set(const struct device *dev, const struct sensor_trigger *
 
 		/* Set single TAP trigger  */
 		if (trig->type == SENSOR_TRIG_TAP) {
+#ifdef CONFIG_LIS2DW12_TAP_3D
+			switch (trig->chan) {
+			case SENSOR_CHAN_ACCEL_XYZ:
+			case SENSOR_CHAN_ALL:
+				lis2dw12->tap_handler = handler;
+				lis2dw12->tap_trig = trig;
+				break;
+			case SENSOR_CHAN_ACCEL_X:
+				lis2dw12->tap_handler_x = handler;
+				lis2dw12->tap_trig_x = trig;
+				break;
+			case SENSOR_CHAN_ACCEL_Y:
+				lis2dw12->tap_handler_y = handler;
+				lis2dw12->tap_trig_y = trig;
+				break;
+			case SENSOR_CHAN_ACCEL_Z:
+				lis2dw12->tap_handler_z = handler;
+				lis2dw12->tap_trig_z = trig;
+				break;
+			default:
+				return -EINVAL;
+			}
+#else
 			lis2dw12->tap_handler = handler;
+			lis2dw12->tap_trig = trig;
+#endif /* CONFIG_LIS2DW12_TAP_3D */
 			return lis2dw12_enable_int(dev, SENSOR_TRIG_TAP, state);
 		}
 
+#ifdef CONFIG_LIS2DW12_TAP_3D
+		switch (trig->chan) {
+		case SENSOR_CHAN_ACCEL_XYZ:
+		case SENSOR_CHAN_ALL:
+			lis2dw12->double_tap_handler = handler;
+			lis2dw12->double_tap_trig = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_X:
+			lis2dw12->double_tap_handler_x = handler;
+			lis2dw12->double_tap_trig_x = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_Y:
+			lis2dw12->double_tap_handler_y = handler;
+			lis2dw12->double_tap_trig_y = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_Z:
+			lis2dw12->double_tap_handler_z = handler;
+			lis2dw12->double_tap_trig_z = trig;
+			break;
+		default:
+			return -EINVAL;
+		}
+#else
 		/* Set double TAP trigger  */
 		lis2dw12->double_tap_handler = handler;
+		lis2dw12->double_tap_trig = trig;
+#endif /* CONFIG_LIS2DW12_TAP_3D */
 		return lis2dw12_enable_int(dev, SENSOR_TRIG_DOUBLE_TAP, state);
 #endif /* CONFIG_LIS2DW12_TAP */
 #ifdef CONFIG_LIS2DW12_THRESHOLD
 	case SENSOR_TRIG_THRESHOLD:
 	{
 		LOG_DBG("Set trigger %d (handler: %p)\n", trig->type, handler);
+#ifdef CONFIG_LIS2DW12_THRESHOLD_3D
+		switch (trig->chan) {
+		case SENSOR_CHAN_ACCEL_XYZ:
+		case SENSOR_CHAN_ALL:
+			lis2dw12->threshold_handler = handler;
+			lis2dw12->threshold_trig = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_X:
+			lis2dw12->threshold_handler_x = handler;
+			lis2dw12->threshold_trig_x = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_Y:
+			lis2dw12->threshold_handler_y = handler;
+			lis2dw12->threshold_trig_y = trig;
+			break;
+		case SENSOR_CHAN_ACCEL_Z:
+			lis2dw12->threshold_handler_z = handler;
+			lis2dw12->threshold_trig_z = trig;
+			break;
+		default:
+			return -EINVAL;
+		}
+#else
 		lis2dw12->threshold_handler = handler;
+		lis2dw12->threshold_trig = trig;
+#endif /* CONFIG_LIS2DW12_THRESHOLD_3D */
 		return lis2dw12_enable_int(dev, SENSOR_TRIG_THRESHOLD, state);
 	}
-#endif
+#endif /* CONFIG_LIS2DW12_THRESHOLD */
 #ifdef CONFIG_LIS2DW12_FREEFALL
 	case SENSOR_TRIG_FREEFALL:
 	LOG_DBG("Set freefall %d (handler: %p)\n", trig->type, handler);
 		lis2dw12->freefall_handler = handler;
+		lis2dw12->freefall_trig = trig;
 		return lis2dw12_enable_int(dev, SENSOR_TRIG_FREEFALL, state);
 	break;
 #endif /* CONFIG_LIS2DW12_FREEFALL */
@@ -174,68 +253,109 @@ static int lis2dw12_handle_drdy_int(const struct device *dev)
 {
 	struct lis2dw12_data *data = dev->data;
 
-	struct sensor_trigger drdy_trig = {
-		.type = SENSOR_TRIG_DATA_READY,
-		.chan = SENSOR_CHAN_ALL,
-	};
-
 	if (data->drdy_handler) {
-		data->drdy_handler(dev, &drdy_trig);
+		data->drdy_handler(dev, data->drdy_trig);
 	}
 
 	return 0;
 }
 
 #ifdef CONFIG_LIS2DW12_TAP
-static int lis2dw12_handle_single_tap_int(const struct device *dev)
+static int lis2dw12_handle_single_tap_int(const struct device *dev, lis2dw12_tap_src_t *tap_src)
 {
 	struct lis2dw12_data *data = dev->data;
 	sensor_trigger_handler_t handler = data->tap_handler;
 
-	struct sensor_trigger pulse_trig = {
-		.type = SENSOR_TRIG_TAP,
-		.chan = SENSOR_CHAN_ALL,
-	};
-
 	if (handler) {
-		handler(dev, &pulse_trig);
+		handler(dev, data->tap_trig);
 	}
+
+#ifdef CONFIG_LIS2DW12_TAP_3D
+	if (tap_src->x_tap) {
+		if (data->tap_handler_x) {
+			data->tap_handler_x(dev, data->tap_trig_x);
+		}
+	}
+
+	if (tap_src->y_tap) {
+		if (data->tap_handler_y) {
+			data->tap_handler_y(dev, data->tap_trig_y);
+		}
+	}
+
+	if (tap_src->z_tap) {
+		if (data->tap_handler_z) {
+			data->tap_handler_z(dev, data->tap_trig_z);
+		}
+	}
+#endif
 
 	return 0;
 }
 
-static int lis2dw12_handle_double_tap_int(const struct device *dev)
+static int lis2dw12_handle_double_tap_int(const struct device *dev, lis2dw12_tap_src_t *tap_src)
 {
 	struct lis2dw12_data *data = dev->data;
 	sensor_trigger_handler_t handler = data->double_tap_handler;
 
-	struct sensor_trigger pulse_trig = {
-		.type = SENSOR_TRIG_DOUBLE_TAP,
-		.chan = SENSOR_CHAN_ALL,
-	};
-
 	if (handler) {
-		handler(dev, &pulse_trig);
+		handler(dev, data->double_tap_trig);
 	}
+
+#ifdef CONFIG_LIS2DW12_TAP_3D
+	if (tap_src->x_tap) {
+		if (data->double_tap_handler_x) {
+			data->double_tap_handler_x(dev, data->double_tap_trig_x);
+		}
+	}
+
+	if (tap_src->y_tap) {
+		if (data->double_tap_handler_y) {
+			data->double_tap_handler_y(dev, data->double_tap_trig_y);
+		}
+	}
+
+	if (tap_src->z_tap) {
+		if (data->double_tap_handler_z) {
+			data->double_tap_handler_z(dev, data->double_tap_trig_z);
+		}
+	}
+#endif
 
 	return 0;
 }
 #endif /* CONFIG_LIS2DW12_TAP */
 
 #ifdef CONFIG_LIS2DW12_THRESHOLD
-static int lis2dw12_handle_wu_ia_int(const struct device *dev)
+static int lis2dw12_handle_wu_ia_int(const struct device *dev, lis2dw12_wake_up_src_t *wup_src)
 {
-	struct lis2dw12_data *lis2dw12 = dev->data;
-	sensor_trigger_handler_t handler = lis2dw12->threshold_handler;
-
-	struct sensor_trigger thresh_trig = {
-		.type = SENSOR_TRIG_THRESHOLD,
-		.chan = SENSOR_CHAN_ALL,
-	};
+	struct lis2dw12_data *data = dev->data;
+	sensor_trigger_handler_t handler = data->threshold_handler;
 
 	if (handler) {
-		handler(dev, &thresh_trig);
+		handler(dev, data->threshold_trig);
 	}
+
+#ifdef CONFIG_LIS2DW12_THRESHOLD_3D
+
+	if (wup_src->x_wu) {
+		if (data->threshold_handler_x) {
+			data->threshold_handler_x(dev, data->threshold_trig_x);
+		}
+	}
+
+	if (wup_src->y_wu) {
+		if (data->threshold_handler_y) {
+			data->threshold_handler_y(dev, data->threshold_trig_y);
+		}
+	}
+
+	if (wup_src->z_wu) {
+		if (data->threshold_handler_z) {
+			data->threshold_handler_z(dev, data->threshold_trig_z);
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -247,13 +367,8 @@ static int lis2dw12_handle_ff_ia_int(const struct device *dev)
 	struct lis2dw12_data *lis2dw12 = dev->data;
 	sensor_trigger_handler_t handler = lis2dw12->freefall_handler;
 
-	struct sensor_trigger freefall_trig = {
-		.type = SENSOR_TRIG_FREEFALL,
-		.chan = SENSOR_CHAN_ALL,
-	};
-
 	if (handler) {
-		handler(dev, &freefall_trig);
+		handler(dev, lis2dw12->freefall_trig);
 	}
 
 	return 0;
@@ -277,15 +392,15 @@ static void lis2dw12_handle_interrupt(const struct device *dev)
 	}
 #ifdef CONFIG_LIS2DW12_TAP
 	if (sources.status_dup.single_tap) {
-		lis2dw12_handle_single_tap_int(dev);
+		lis2dw12_handle_single_tap_int(dev, &sources.tap_src);
 	}
 	if (sources.status_dup.double_tap) {
-		lis2dw12_handle_double_tap_int(dev);
+		lis2dw12_handle_double_tap_int(dev, &sources.tap_src);
 	}
 #endif /* CONFIG_LIS2DW12_TAP */
 #ifdef CONFIG_LIS2DW12_THRESHOLD
 	if (sources.all_int_src.wu_ia) {
-		lis2dw12_handle_wu_ia_int(dev);
+		lis2dw12_handle_wu_ia_int(dev, &sources.wake_up_src);
 	}
 #endif
 #ifdef CONFIG_LIS2DW12_FREEFALL
@@ -298,8 +413,8 @@ static void lis2dw12_handle_interrupt(const struct device *dev)
 					GPIO_INT_EDGE_TO_ACTIVE);
 }
 
-static void lis2dw12_gpio_callback(const struct device *dev, struct gpio_callback *cb,
-				   uint32_t pins)
+static void lis2dw12_gpio_callback(const struct device *dev,
+				    struct gpio_callback *cb, uint32_t pins)
 {
 	struct lis2dw12_data *lis2dw12 =
 		CONTAINER_OF(cb, struct lis2dw12_data, gpio_cb);
@@ -331,7 +446,8 @@ static void lis2dw12_thread(struct lis2dw12_data *lis2dw12)
 #ifdef CONFIG_LIS2DW12_TRIGGER_GLOBAL_THREAD
 static void lis2dw12_work_cb(struct k_work *work)
 {
-	struct lis2dw12_data *lis2dw12 = CONTAINER_OF(work, struct lis2dw12_data, work);
+	struct lis2dw12_data *lis2dw12 =
+		CONTAINER_OF(work, struct lis2dw12_data, work);
 
 	lis2dw12_handle_interrupt(lis2dw12->dev);
 }
@@ -467,9 +583,10 @@ int lis2dw12_init_interrupt(const struct device *dev)
 	k_sem_init(&lis2dw12->gpio_sem, 0, K_SEM_MAX_LIMIT);
 
 	k_thread_create(&lis2dw12->thread, lis2dw12->thread_stack,
-			CONFIG_LIS2DW12_THREAD_STACK_SIZE, (k_thread_entry_t)lis2dw12_thread,
-			lis2dw12, NULL, NULL, K_PRIO_COOP(CONFIG_LIS2DW12_THREAD_PRIORITY), 0,
-			K_NO_WAIT);
+		       CONFIG_LIS2DW12_THREAD_STACK_SIZE,
+		       (k_thread_entry_t)lis2dw12_thread, lis2dw12,
+		       NULL, NULL, K_PRIO_COOP(CONFIG_LIS2DW12_THREAD_PRIORITY),
+		       0, K_NO_WAIT);
 #elif defined(CONFIG_LIS2DW12_TRIGGER_GLOBAL_THREAD)
 	lis2dw12->work.handler = lis2dw12_work_cb;
 #endif /* CONFIG_LIS2DW12_TRIGGER_OWN_THREAD */
