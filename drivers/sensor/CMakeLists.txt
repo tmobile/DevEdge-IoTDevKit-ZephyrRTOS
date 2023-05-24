@@ -158,6 +158,8 @@ add_subdirectory_ifdef(CONFIG_XMC4XXX_TEMP xmc4xxx_temp)
 add_subdirectory_ifdef(CONFIG_TMD2620 tmd2620)
 add_subdirectory_ifdef(CONFIG_S11059 s11059)
 
+zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/sensor.h)
+
 zephyr_library()
 zephyr_library_property(ALLOW_EMPTY TRUE)
 
