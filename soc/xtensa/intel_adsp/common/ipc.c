@@ -135,6 +135,19 @@ bool intel_adsp_ipc_is_complete(const struct device *dev)
 int intel_adsp_ipc_send_message(const struct device *dev,
 			   uint32_t data, uint32_t ext_data)
 {
+#ifdef CONFIG_PM_DEVICE
+	enum pm_device_state current_state;
+
+	if (pm_device_state_get(INTEL_ADSP_IPC_HOST_DEV, &current_state) != 0 ||
+		current_state != PM_DEVICE_STATE_ACTIVE) {
+		return -ESHUTDOWN;
+	}
+#endif
+
+	if (pm_device_state_is_locked(INTEL_ADSP_IPC_HOST_DEV)) {
+		return -EAGAIN;
+	}
+
 	pm_device_busy_set(dev);
 	const struct intel_adsp_ipc_config *config = dev->config;
 	struct intel_adsp_ipc_data *devdata = dev->data;
