@@ -22,6 +22,7 @@
 		};
 
 		adc3: adc@58026000 {
+			vbat-channel = <17>;
 			temp-channel = <18>;
 			vref-channel = <19>;
 		};
@@ -90,5 +91,13 @@
 		compatible = "zephyr,memory-region", "arm,dtcm";
 		reg = <0x20000000 DT_SIZE_K(128)>;
 		zephyr,memory-region = "DTCM";
+	};
+
+	vref: vref {
+		io-channels = <&adc3 19>;
+	};
+
+	vbat: vbat {
+		io-channels = <&adc3 17>;
 	};
 };

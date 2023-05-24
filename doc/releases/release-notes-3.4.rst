@@ -159,6 +159,12 @@ Changes in this release
   registration function now returns a value which is 0 for success or a
   negative error code if an error occurred.
 
+* Added a new flag :c:struct:`dac_channel_cfg` ``buffered`` for DAC channels in
+  :c:struct:`dac_channel_cfg` to allow the configuration of the output buffer.
+  The actual interpretation of this depends on the hardware and is so far only
+  implemented for the STM32 DAC driver. Implicitly for this driver this changes
+  the default from being buffered to unbuffered.
+
 Removed APIs in this release
 ============================
 
@@ -350,6 +356,18 @@ Build system and infrastructure
 
 * Added a new CMake helper function for setting/updating sysbuild CMake cache
   variables: ``sysbuild_cache_set``.
+
+* Enhanced ``zephyr_get`` CMake helper function to lookup multiple variables
+  and return the result in a variable of different name.
+
+* Introduced ``EXTRA_CONF_FILE``, ``EXTRA_DTC_OVERLAY_FILE``, and
+  ``EXTRA_ZEPHYR_MODULES`` for better naming consistency and uniform behavior
+  for applying extra build settings in addition to Zephyr automatic build
+  setting lookup.
+  ``EXTRA_CONF_FILE`` replaces ``OVERLAY_CONFIG``.
+  ``EXTRA_ZEPHYR_MODULES`` replaces ``ZEPHYR_EXTRA_MODULES``.
+  ``EXTRA_DTC_OVERLAY_FILE`` is new, see
+  :ref:`Set devicetree overlays <set-devicetree-overlays>` for further details.
 
 Drivers and Sensors
 *******************
@@ -553,6 +571,8 @@ Libraries / Subsystems
     per group, see the
     :ref:`MCUmgr SMP protocol specification <mcumgr_smp_protocol_specification>`
     for details.
+
+  * MCUmgr has now been marked as a stable Zephyr API.
 
 * Retention
 

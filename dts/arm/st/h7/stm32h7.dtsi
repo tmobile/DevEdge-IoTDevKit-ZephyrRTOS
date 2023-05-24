@@ -1032,6 +1032,19 @@
 		io-channels = <&adc3 18>;
 		status = "disabled";
 	};
+
+	vbat: vbat {
+		compatible = "st,stm32-vbat";
+		ratio = <4>;
+		status = "disabled";
+	};
+
+	vref: vref {
+		compatible = "st,stm32-vref";
+		vrefint-cal-addr = <0x1FF1E860>;
+		vrefint-cal-mv = <3300>;
+		status = "disabled";
+	};
 };
 
 &nvic {
