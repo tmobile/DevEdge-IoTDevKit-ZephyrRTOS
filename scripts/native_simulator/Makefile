@@ -10,8 +10,6 @@
 
 NSI_CONFIG_FILE?=nsi_config
 -include ${NSI_CONFIG_FILE}
-#If the file does not exist, we don't use it as a build dependency
-NSI_CONFIG_FILE:=$(wildcard ${NSI_CONFIG_FILE})
 
 NSI_PATH?=./
 NSI_BUILD_PATH?=$(abspath _build/)
