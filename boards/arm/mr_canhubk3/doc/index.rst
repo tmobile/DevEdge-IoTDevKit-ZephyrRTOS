@@ -49,12 +49,6 @@ SIUL2         on-chip     | pinctrl
                           | gpio
                           | external interrupt controller
 LPUART        on-chip     serial
-QSPI          on-chip     flash
-FLEXCAN       on-chip     can
-LPI2C         on-chip     i2c
-ADC SAR       on-chip     adc
-LPSPI         on-chip     spi
-WDT           FS26 SBC    watchdog
 ============  ==========  ================================
 
 The default configuration can be found in the Kconfig file
@@ -112,121 +106,18 @@ P6.2       PTA9   LPUART2_TX
 P6.3       PTA8   LPUART2_RX
 =========  =====  ============
 
-CAN
-===
-
-CAN is provided through FLEXCAN interface with 6 instances.
-
-===============  =======  ===============  =============
-Devicetree node  Pin      Pin Function     Bus Connector
-===============  =======  ===============  =============
-flexcan0         | PTA6   | PTA6_CAN0_RX   P12/P13
-                 | PTA7   | PTA7_CAN0_TX
-flexcan1         | PTC9   | PTC9_CAN0_RX   P14/P15
-                 | PTC8   | PTC8_CAN0_TX
-flexcan2         | PTE25  | PTE25_CAN0_RX  P16/P17
-                 | PTE24  | PTE24_CAN0_TX
-flexcan3         | PTC29  | PTC29_CAN0_RX  P18/019
-                 | PTC28  | PTC28_CAN0_TX
-flexcan4         | PTC31  | PTC31_CAN0_RX  P20/P21
-                 | PTC30  | PTC30_CAN0_TX
-flexcan5         | PTC11  | PTC11_CAN0_RX  P22/P23
-                 | PTC10  | PTC10_CAN0_TX
-===============  =======  ===============  =============
-
-.. note::
-   There is limitation by HAL SDK, so CAN only has support maximum 64 message buffers (MBs)
-   and support maximum 32 message buffers for concurrent active instances with 8 bytes
-   payload. We need to pay attention to configuration options:
-
-   1. :kconfig:option:`CONFIG_CAN_MAX_MB` must be less or equal than the
-      maximum number of message buffers that is according to the table below.
-
-   2. :kconfig:option:`CONFIG_CAN_MAX_FILTER` must be less or equal than
-      :kconfig:option:`CONFIG_CAN_MAX_MB`.
-
-===============  ==========  ================  ================
-Devicetree node  Payload     Hardware support  Software support
-===============  ==========  ================  ================
-flexcan0         | 8 bytes   | 96 MBs          | 64 MBs
-                 | 16 bytes  | 63 MBs          | 42 MBs
-                 | 32 bytes  | 36 MBs          | 24 MBs
-                 | 64 bytes  | 21 MBs          | 14 MBs
-flexcan1         | 8 bytes   | 64 MBs          | 64 MBs
-                 | 16 bytes  | 42 MBs          | 42 MBs
-                 | 32 bytes  | 24 MBs          | 24 MBs
-                 | 64 bytes  | 14 MBs          | 14 MBs
-flexcan2         | 8 bytes   | 64 MBs          | 64 MBs
-                 | 16 bytes  | 42 MBs          | 42 MBs
-                 | 32 bytes  | 24 MBs          | 24 MBs
-                 | 64 bytes  | 14 MBs          | 14 MBs
-flexcan3         | 8 bytes   | 32 MBs          | 32 MBs
-                 | 16 bytes  | 21 MBs          | 21 MBs
-                 | 32 bytes  | 12 MBs          | 12 MBs
-                 | 64 bytes  | 7 MBs           | 7 MBs
-flexcan4         | 8 bytes   | 32 MBs          | 32 MBs
-                 | 16 bytes  | 21 MBs          | 21 MBs
-                 | 32 bytes  | 12 MBs          | 12 MBs
-                 | 64 bytes  | 7 MBs           | 7 MBs
-flexcan5         | 8 bytes   | 32 MBs          | 32 MBs
-                 | 16 bytes  | 21 MBs          | 21 MBs
-                 | 32 bytes  | 12 MBs          | 12 MBs
-                 | 64 bytes  | 7 MBs           | 7 MBs
-===============  ==========  ================  ================
-
-.. note::
-   A CAN bus usually requires 60 Ohm termination at both ends of the bus. This may be
-   accomplished using one of the included CAN termination boards. For more details, refer
-   to the section ``6.3 CAN Connectors`` in the Hardware User Manual of `NXP MR-CANHUBK3`_.
-
-I2C
-===
-
-I2C is provided through LPI2C interface with 2 instances ``lpi2c0`` and ``lpi2c1``
-on corresponding connectors ``P4``, ``P3``.
-
-=========  =====  ============
-Connector  Pin    Pin Function
-=========  =====  ============
-P3.2       PTD9   LPI2C1_SCL
-P3.3       PTD8   LPI2C1_SDA
-P4.3       PTD14  LPI2C0_SCL
-P4.4       PTD13  LPI2C0_SDA
-=========  =====  ============
-
-ADC
-===
-
-ADC is provided through ADC SAR controller with 3 instances. ADC channels are divided into
-3 groups (precision, standard and external).
-
-.. note::
-   All channels of an instance only run on 1 group channel at the same time.
-
 FS26 SBC Watchdog
 =================
 
 On normal operation after the board is powered on, there is a window of 256 ms
 on which the FS26 watchdog must be serviced with a good token refresh, otherwise
-the watchdog will signal a reset to the MCU. This board configuration enables
-the FS26 watchdog driver that handles this initialization.
+the watchdog will signal a reset to the MCU. Currently there is no driver for
+the watchdog so the FS26 must be started in debug mode following these steps:
 
-.. note::
-
-   The FS26 can also be started in debug mode (watchdog disabled) following
-   these steps:
-
-   1. Power off the board.
-   2. Remove the jumper ``JP1`` (pins 1-2 open), which is connected by default.
-   3. Power on the board.
-   4. Reconnect the jumper ``JP1`` (pins 1-2 shorted).
-
-External Flash
-==============
-
-The on-board MX25L6433F 64M-bit multi-I/O Serial NOR Flash memory is connected
-to the QSPI controller port A1. This board configuration selects it as the
-default flash controller.
+1. Power off the board.
+2. Remove the jumper ``JP1`` (pins 1-2 open), which is connected by default.
+3. Power on the board.
+4. Reconnect the jumper ``JP1`` (pins 1-2 shorted).
 
 Programming and Debugging
 *************************
