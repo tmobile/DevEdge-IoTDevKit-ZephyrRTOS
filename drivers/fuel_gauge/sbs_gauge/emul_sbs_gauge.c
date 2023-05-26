@@ -300,7 +300,7 @@ static int emul_sbs_sbs_gauge_init(const struct emul *target, const struct devic
  * Main instantiation macro. SBS Gauge Emulator only implemented for I2C
  */
 #define SBS_GAUGE_EMUL(n)                                                                          \
-	static struct sbs_gauge_emul_data sbs_gauge_emul_data_##n;                      \
+	static struct sbs_gauge_emul_data sbs_gauge_emul_data_##n;                                 \
 	static const struct sbs_gauge_emul_cfg sbs_gauge_emul_cfg_##n = {                          \
 		.addr = DT_INST_REG_ADDR(n),                                                       \
 	};                                                                                         \
