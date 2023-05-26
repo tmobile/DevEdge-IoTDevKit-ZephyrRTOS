@@ -114,6 +114,34 @@ void posix_atomic_halt_cpu(unsigned int imask)
 	posix_irq_unlock(imask);
 }
 
+
+/**
+ * Just a wrapper function to call Zephyr's z_cstart()
+ * called from posix_boot_cpu()
+ */
+static void *zephyr_wrapper(void *a)
+{
+	/* Ensure posix_boot_cpu has reached the cond loop */
+	PC_SAFE_CALL(pthread_mutex_lock(&mtx_cpu));
+	PC_SAFE_CALL(pthread_mutex_unlock(&mtx_cpu));
+
+#if (POSIX_ARCH_SOC_DEBUG_PRINTS)
+		pthread_t zephyr_thread = pthread_self();
+
+		PS_DEBUG("Zephyr init started (%lu)\n",
+			zephyr_thread);
+#endif
+
+	posix_arch_init();
+
+	/* Start Zephyr: */
+	z_cstart();
+	CODE_UNREACHABLE;
+
+	return NULL;
+}
+
+
 /**
  * The HW models will call this function to "boot" the CPU
  * == spawn the Zephyr init thread, which will then spawn
@@ -148,7 +176,36 @@ void posix_boot_cpu(void)
  */
 void posix_soc_clean_up(void)
 {
-	nce_terminate(nce_st);
-	posix_arch_clean_up();
-	run_native_tasks(_NATIVE_ON_EXIT_LEVEL);
+	/* LCOV_EXCL_START */ /* See Note1 */
+	/*
+	 * If we are being called from a HW thread we can cleanup
+	 *
+	 * Otherwise (!cpu_halted) we give back control to the HW thread and
+	 * tell it to terminate ASAP
+	 */
+	if (cpu_halted) {
+
+		posix_arch_clean_up();
+		run_native_tasks(_NATIVE_ON_EXIT_LEVEL);
+
+	} else if (soc_terminate == false) {
+
+		soc_terminate = true;
+
+		PC_SAFE_CALL(pthread_mutex_lock(&mtx_cpu));
+
+		cpu_halted = true;
+
+		PC_SAFE_CALL(pthread_cond_broadcast(&cond_cpu));
+		PC_SAFE_CALL(pthread_mutex_unlock(&mtx_cpu));
+
+		while (1) {
+			sleep(1);
+			/* This SW thread will wait until being cancelled from
+			 * the HW thread. sleep() is a cancellation point, so it
+			 * won't really wait 1 second
+			 */
+		}
+	}
+	/* LCOV_EXCL_STOP */
 }
