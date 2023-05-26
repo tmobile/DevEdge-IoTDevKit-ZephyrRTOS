@@ -22,7 +22,7 @@ extern "C" {
 
 /**
  * @brief Fuel gauge backend emulator APIs
- * @defgroup fuel_gauge_emulator_backend Fuel gauge backend emulator APIs
+ * @defgroup fuel_gauge_emulator_backend fuel gauge backed emulator APIs
  * @ingroup io_interfaces
  * @{
  */
@@ -58,10 +58,6 @@ static inline int emul_fuel_gauge_set_battery_charging(const struct emul *target
 {
 	const struct fuel_gauge_emul_driver_api *backend_api =
 		(const struct fuel_gauge_emul_driver_api *)target->backend_api;
-
-	if (backend_api->set_battery_charging == 0) {
-		return -ENOTSUP;
-	}
 
 	return backend_api->set_battery_charging(target, uV, uA);
 }
