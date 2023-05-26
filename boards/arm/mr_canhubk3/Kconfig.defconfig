@@ -6,18 +6,4 @@ if BOARD_MR_CANHUBK3
 config BOARD
 	default "mr_canhubk3"
 
-if SERIAL
-
-config UART_CONSOLE
-	default y
-
-endif # SERIAL
-
-if CAN
-
-config GPIO
-	default y
-
-endif # CAN
-
 endif # BOARD_MR_CANHUBK3
