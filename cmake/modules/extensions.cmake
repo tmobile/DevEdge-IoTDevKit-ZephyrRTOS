@@ -2493,10 +2493,13 @@ function(zephyr_var_name variable scope out)
 endfunction()
 
 # Usage:
-#   zephyr_get(<variable> [MERGE] [SYSBUILD [LOCAL|GLOBAL]] [VAR <var1> ...])
+#   zephyr_get(<variable> [MERGE [REVERSE]] [SYSBUILD [LOCAL|GLOBAL]] [VAR <var1> ...])
 #
 # Return the value of <variable> as local scoped variable of same name. If MERGE
-# is supplied, will return a list of found items.
+# is supplied, will return a list of found items. If REVERSE is supplied
+# together with MERGE, the order of the list will be reversed before being
+# returned. Reverse will happen before the list is returned and hence it will
+# not change the order of precedence in which the list itself is constructed.
 #
 # VAR can be used either to store the result in a variable with a different
 # name, or to look for values from multiple variables.
@@ -2526,7 +2529,7 @@ endfunction()
 # using `-DZEPHYR_TOOLCHAIN_VARIANT=<val>`, then the value from the cache is
 # returned.
 function(zephyr_get variable)
-  cmake_parse_arguments(GET_VAR "MERGE" "SYSBUILD" "VAR" ${ARGN})
+  cmake_parse_arguments(GET_VAR "MERGE;REVERSE" "SYSBUILD" "VAR" ${ARGN})
 
   if(DEFINED GET_VAR_SYSBUILD)
     if(NOT ("${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL" OR
@@ -2536,6 +2539,10 @@ function(zephyr_get variable)
     endif()
   else()
     set(GET_VAR_SYSBUILD "GLOBAL")
+  endif()
+
+  if(GET_VAR_REVERSE AND NOT GET_VAR_MERGE)
+    message(FATAL_ERROR "zephyr_get(... REVERSE) missing a required argument: MERGE")
   endif()
 
   if(NOT DEFINED GET_VAR_VAR)
@@ -2561,9 +2568,16 @@ function(zephyr_get variable)
     else()
       set(sysbuild_${var})
     endif()
+
+    if(TARGET snippets_scope)
+      get_property(snippets_${var} TARGET snippets_scope PROPERTY ${var})
+    endif()
   endforeach()
 
-  set(scopes "sysbuild;CACHE;ENV;current")
+  set(scopes "sysbuild;CACHE;snippets;ENV;current")
+  if(GET_VAR_REVERSE)
+    list(REVERSE scopes)
+  endif()
   foreach(scope IN LISTS scopes)
     foreach(var ${GET_VAR_VAR})
       zephyr_var_name("${var}" "${scope}" expansion_var)
@@ -2601,10 +2615,62 @@ function(zephyr_get variable)
   endforeach()
 
   if(GET_VAR_MERGE)
-    list(REMOVE_DUPLICATES ${variable})
+    if(GET_VAR_REVERSE)
+      list(REVERSE ${variable})
+      list(REMOVE_DUPLICATES ${variable})
+      list(REVERSE ${variable})
+    else()
+      list(REMOVE_DUPLICATES ${variable})
+    endif()
     set(${variable} ${${variable}} PARENT_SCOPE)
   endif()
 endfunction(zephyr_get variable)
+
+# Usage:
+#   zephyr_create_scope(<scope>)
+#
+# Create a new scope for creation of scoped variables.
+#
+# <scope>: Name of new scope.
+#
+function(zephyr_create_scope scope)
+  if(TARGET ${scope}_scope)
+    message(FATAL_ERROR "zephyr_create_scope(${scope}) already exists.")
+  endif()
+
+  add_custom_target(${scope}_scope)
+endfunction()
+
+# Usage:
+#   zephyr_set(<variable> <value> SCOPE <scope> [APPEND])
+#
+# Zephyr extension of CMake set which allows a variable to be set in a specific
+# scope. The scope is used on later zephyr_get() invocation for precedence
+# handling when a variable it set in multiple scopes.
+#
+# <variable>   : Name of variable
+# <value>      : Value of variable, multiple values will create a list.
+#                The SCOPE argument identifies the end of value list.
+# SCOPE <scope>: Name of scope for the variable
+# APPEND       : Append values to the already existing variable in <scope>
+#
+function(zephyr_set variable)
+  cmake_parse_arguments(SET_VAR "APPEND" "SCOPE" "" ${ARGN})
+
+  zephyr_check_arguments_required_all(zephyr_set SET_VAR SCOPE)
+
+  if(NOT TARGET ${SET_VAR_SCOPE}_scope)
+    message(FATAL_ERROR "zephyr_set(... SCOPE ${SET_VAR_SCOPE}) doesn't exists.")
+  endif()
+
+  if(SET_VAR_APPEND)
+    set(property_args APPEND)
+  endif()
+
+  set_property(TARGET ${SET_VAR_SCOPE}_scope ${property_args}
+               PROPERTY ${variable} ${SET_VAR_UNPARSED_ARGUMENTS}
+  )
+endfunction()
 
 # Usage:
 #   zephyr_check_cache(<variable> [REQUIRED])

@@ -9,6 +9,7 @@
 #include <zephyr/kernel_structs.h>
 #include <kernel_arch_interface.h>
 #include <zephyr/arch/cpu.h>
+#include <zephyr/sys/barrier.h>
 
 /* to be found in fpu.S */
 extern void z_arm64_fpu_save(struct z_arm64_fp_context *saved_fp_context);
@@ -73,12 +74,12 @@ void z_arm64_flush_local_fpu(void)
 
 		/* turn on FPU access */
 		write_cpacr_el1(cpacr | CPACR_EL1_FPEN_NOTRAP);
-		isb();
+		barrier_isync_fence_full();
 
 		/* save current owner's content */
 		z_arm64_fpu_save(&owner->arch.saved_fp_context);
 		/* make sure content made it to memory before releasing */
-		dsb();
+		barrier_dsync_fence_full();
 		/* release ownership */
 		_current_cpu->arch.fpu_owner = NULL;
 		DBG("disable", owner);
@@ -125,7 +126,7 @@ static void flush_owned_fpu(struct k_thread *thread)
 			if (thread == _current) {
 				z_arm64_flush_local_fpu();
 				while (_kernel.cpus[i].arch.fpu_owner == thread) {
-					dsb();
+					barrier_dsync_fence_full();
 				}
 			}
 		}
@@ -140,7 +141,7 @@ void z_arm64_fpu_enter_exc(void)
 
 	/* always deny FPU access whenever an exception is entered */
 	write_cpacr_el1(read_cpacr_el1() & ~CPACR_EL1_FPEN_NOTRAP);
-	isb();
+	barrier_isync_fence_full();
 }
 
 /*
@@ -229,14 +230,14 @@ void z_arm64_fpu_trap(z_arch_esf_t *esf)
 
 	/* turn on FPU access */
 	write_cpacr_el1(read_cpacr_el1() | CPACR_EL1_FPEN_NOTRAP);
-	isb();
+	barrier_isync_fence_full();
 
 	/* save current owner's content  if any */
 	struct k_thread *owner = _current_cpu->arch.fpu_owner;
 
 	if (owner) {
 		z_arm64_fpu_save(&owner->arch.saved_fp_context);
-		dsb();
+		barrier_dsync_fence_full();
 		_current_cpu->arch.fpu_owner = NULL;
 		DBG("save", owner);
 	}

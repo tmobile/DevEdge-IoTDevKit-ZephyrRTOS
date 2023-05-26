@@ -13,6 +13,7 @@
 #include <zephyr/drivers/timer/nrf_rtc_timer.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys_clock.h>
+#include <zephyr/sys/barrier.h>
 #include <hal/nrf_rtc.h>
 #include <zephyr/irq.h>
 
@@ -152,8 +153,8 @@ static bool compare_int_lock(int32_t chan)
 
 	nrf_rtc_int_disable(RTC, NRF_RTC_CHANNEL_INT_MASK(chan));
 
-	__DMB();
-	__ISB();
+	barrier_dmem_fence_full();
+	barrier_isync_fence_full();
 
 	return prev & BIT(chan);
 }
@@ -387,7 +388,7 @@ uint64_t z_nrf_rtc_timer_read(void)
 {
 	uint64_t val = ((uint64_t)overflow_cnt) << COUNTER_BIT_WIDTH;
 
-	__DMB();
+	barrier_dmem_fence_full();
 
 	uint32_t cntr = counter();
 
