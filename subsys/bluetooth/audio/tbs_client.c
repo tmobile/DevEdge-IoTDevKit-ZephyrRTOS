@@ -24,6 +24,24 @@
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(bt_tbs_client, CONFIG_BT_TBS_CLIENT_LOG_LEVEL);
+/* TODO TBS client attempts to subscribe to all characteristics at once if the MTU is large enough.
+ * This requires a significant amount of buffers, and should be optimized.
+ */
+
+/* Calculate the requiered buffers for TBS Client discovery */
+#define TBS_CLIENT_BUF_COUNT                                                                       \
+	(1 /* Discover buffer */ + 1 /* terminate reason */ +                                      \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_BEARER_PROVIDER_NAME) +                                   \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_BEARER_TECHNOLOGY) +                                      \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_BEARER_SIGNAL_STRENGTH) +                                 \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_BEARER_LIST_CURRENT_CALLS) +                              \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_INCOMING_URI) +                                           \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_STATUS_FLAGS) +                                           \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_CP_PROCEDURES) +                                          \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_CALL_FRIENDLY_NAME) +                                     \
+	 IS_ENABLED(CONFIG_BT_TBS_CLIENT_INCOMING_CALL))
+
+BUILD_ASSERT(CONFIG_BT_L2CAP_TX_BUF_COUNT >= TBS_CLIENT_BUF_COUNT, "Too few L2CAP buffers");
 
 #include "common/bt_str.h"
 
@@ -599,6 +617,12 @@ static uint8_t notify_handler(struct bt_conn *conn,
 	return BT_GATT_ITER_CONTINUE;
 }
 
+#if defined(CONFIG_BT_TBS_CLIENT_BEARER_PROVIDER_NAME) ||                                          \
+	defined(CONFIG_BT_TBS_CLIENT_BEARER_UCI) ||                                                \
+	defined(CONFIG_BT_TBS_CLIENT_BEARER_URI_SCHEMES_SUPPORTED_LIST) ||                         \
+	defined(CONFIG_BT_TBS_CLIENT_INCOMING_URI) ||                                              \
+	defined(CONFIG_BT_TBS_CLIENT_INCOMING_CALL) ||                                             \
+	defined(CONFIG_BT_TBS_CLIENT_CALL_FRIENDLY_NAME)
 /* Common function to read tbs_client strings which may require long reads */
 static uint8_t handle_string_long_read(struct bt_conn *conn, uint8_t err,
 				       struct bt_gatt_read_params *params,
@@ -699,6 +723,13 @@ static uint8_t handle_string_long_read(struct bt_conn *conn, uint8_t err,
 
 	return BT_GATT_ITER_STOP;
 }
+#endif /* CONFIG_BT_TBS_CLIENT_BEARER_PROVIDER_NAME ||                                             \
+	* CONFIG_BT_TBS_CLIENT_BEARER_UCI ||                                                       \
+	* CONFIG_BT_TBS_CLIENT_BEARER_URI_SCHEMES_SUPPORTED_LIST ||                                \
+	* CONFIG_BT_TBS_CLIENT_INCOMING_URI ||                                                     \
+	* CONFIG_BT_TBS_CLIENT_INCOMING_CALL ||                                                    \
+	* CONFIG_BT_TBS_CLIENT_CALL_FRIENDLY_NAME                                                  \
+	*/
 
 #if defined(CONFIG_BT_TBS_CLIENT_CP_PROCEDURES)
 static int tbs_client_common_call_control(struct bt_conn *conn,

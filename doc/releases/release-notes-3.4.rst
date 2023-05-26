@@ -165,6 +165,14 @@ Changes in this release
   implemented for the STM32 DAC driver. Implicitly for this driver this changes
   the default from being buffered to unbuffered.
 
+* MCUmgr fs_mgmt group's file access hook is now called for all fs_mgmt group
+  functions (adding support for file status and file hash/checksum). In
+  addition, if the file access state is not lost, it will now only be called
+  once for the file access instead of each time a command is received.
+  Note that the structure for the notification has changed, the ``upload`` bool
+  has been replaced with an enum to indicate what function is used, see
+  :c:struct:`fs_mgmt_file_access` for the new structure definition.
+
 Removed APIs in this release
 ============================
 
@@ -305,6 +313,13 @@ Boards & SoC Support
 
 * Made these changes for ARM boards:
 
+  * Changed the default board revision to 0.14.0 for the Nordic boards
+    ``nrf9160dk_nrf9160`` and ``nrf9160dk_nrf52840``. To build for an
+    older revision of the nRF9160 DK without external flash, specify that
+    older board revision when building.
+
+  * Enabled external_flash_pins_routing switch in ``nrf9160dk_nrf52840`` by default.
+
 * Made these changes for ARM64 boards:
 
 * Made these changes for RISC-V boards:
@@ -370,6 +385,10 @@ Build system and infrastructure
   :ref:`Set devicetree overlays <set-devicetree-overlays>` for further details.
 
 * Twister now supports ``gtest`` harness for running tests written in gTest.
+
+* Added an option to validate device initialization priorities at build time.
+  To use it, enable :kconfig:option:`CONFIG_CHECK_INIT_PRIORITIES`, see
+  :ref:`check_init_priorities.py` for more details.
 
 Drivers and Sensors
 *******************

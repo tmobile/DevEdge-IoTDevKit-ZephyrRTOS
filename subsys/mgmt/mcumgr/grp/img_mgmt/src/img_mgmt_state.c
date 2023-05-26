@@ -23,7 +23,6 @@
 
 #include <mgmt/mcumgr/util/zcbor_bulk.h>
 #include <mgmt/mcumgr/grp/img_mgmt/img_mgmt_priv.h>
-#include <mgmt/mcumgr/grp/img_mgmt/img_mgmt_impl.h>
 
 #ifdef CONFIG_MCUMGR_MGMT_NOTIFICATION_HOOKS
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
@@ -127,7 +126,7 @@ img_mgmt_state_flags(int query_slot)
 		int rca = img_mgmt_read_info(active_slot, &aver, NULL, NULL);
 
 		if (rcs == 0 && rca == 0 && img_mgmt_vercmp(&aver, &sver) < 0) {
-			flags = IMG_MGMT_STATE_F_PENDING;
+			flags = IMG_MGMT_STATE_F_PENDING | IMG_MGMT_STATE_F_PERMANENT;
 		}
 	}
 
@@ -271,7 +270,7 @@ img_mgmt_state_read(struct smp_streamer *ctxt)
 			}
 		}
 
-		ok = zcbor_tstr_put_term(zse, "hash")						&&
+		ok = ok && zcbor_tstr_put_term(zse, "hash")					&&
 		     zcbor_bstr_encode(zse, &zhash)						&&
 		     ZCBOR_ENCODE_FLAG(zse, "bootable", !(flags & IMAGE_F_NON_BOOTABLE))	&&
 		     ZCBOR_ENCODE_FLAG(zse, "pending",
