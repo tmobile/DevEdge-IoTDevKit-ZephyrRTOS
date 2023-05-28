@@ -12,6 +12,7 @@
 #include <zephyr/drivers/pcie/msi.h>
 #include <zephyr/drivers/pcie/cap.h>
 
+#include <zephyr/drivers/pcie/vc.h>
 #include "vc.h"
 
 struct pcie_cap_id_to_str {
