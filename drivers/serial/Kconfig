@@ -220,6 +220,4 @@ source "drivers/serial/Kconfig.emul"
 
 source "drivers/serial/Kconfig.native_tty"
 
-source "drivers/serial/Kconfig.numaker"
-
 endif # SERIAL
