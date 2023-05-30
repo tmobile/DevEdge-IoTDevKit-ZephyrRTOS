@@ -172,7 +172,8 @@ static volatile rfc_CMD_PROP_RADIO_DIV_SETUP_PA_t ieee802154_cc13xx_subg_radio_d
 	},
 	.config.biasMode = true, /* Rely on an external antenna biasing network. */
 	.txPower = 0x013f, /* 14 dBm, see TRM 25.3.3.2.16 */
-	.centerFreq = 906, /* Set channel page zero, channel 1 by default,
+	.centerFreq = 906, /* Set channel page zero, channel 1 by default, see IEEE 802.15.4,
+			    * section 10.1.3.3.
 			    * TODO: Use compliant SUN PHY frequencies from channel page 9.
 			    */
 	.intFreq = 0x8000, /* Use default intermediate frequency. */
@@ -544,12 +545,14 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 
 	k_mutex_lock(&drv_data->tx_mutex, K_FOREVER);
 
-	/* Prepend data with the SUN FSK PHY header */
+	/* Prepend data with the SUN FSK PHY header,
+	 * see IEEE 802.15.4, section 19.2.4.
+	 */
 	drv_data->tx_data[0] = buf->len + IEEE802154_PHY_SUN_FSK_PHR_LEN;
-	/* 20.2.2 PHR field format. 802.15.4-2015 */
 	drv_data->tx_data[1] = 0;
 	drv_data->tx_data[1] |= BIT(3); /* FCS Type: 2-octet FCS */
 	drv_data->tx_data[1] |= BIT(4); /* DW: Enable Data Whitening */
+	/* TODO: Zero-copy TX, see discussion in #49775. */
 	memcpy(&drv_data->tx_data[IEEE802154_PHY_SUN_FSK_PHR_LEN], buf->data, buf->len);
 
 	/* TODO: Zero-copy TX, see discussion in #49775. */
@@ -898,7 +901,9 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 			.bAppendRssi = true,
 			.bAppendStatus = true,
 		},
-		/* Preamble & SFD for 2-FSK SUN PHY. 802.15.4-2015, 20.2.1 */
+		/* Last preamble byte and SFD for uncoded 2-FSK SUN PHY, phySunFskSfd = 0,
+		 * see IEEE 802.15.4, section 19.2.3.2, table 19-2.
+		 */
 		.syncWord0 = 0x55904E,
 		.maxPktLen = IEEE802154_MAX_PHY_PACKET_SIZE,
 		/* PHR field format, see IEEE 802.15.4, section 19.2.4 */
@@ -918,7 +923,7 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 	.cmd_prop_cs = {
 		.commandNo = CMD_PROP_CS,
 		.condition.rule = COND_NEVER,
-		/* CCA Mode 1: Energy above threshold */
+		/* CCA Mode 1: Energy above threshold, see section 10.2.8 */
 		.csConf = {
 			.bEnaRssi = true,
 			.busyOp = true,
@@ -942,7 +947,9 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 		.numHdrBits = 16,
 		.preTrigger.triggerType = TRIG_REL_START,
 		.preTrigger.pastTrig = true,
-		/* Preamble & SFD for 2-FSK SUN PHY. 802.15.4-2015, 20.2.1 */
+		/* Last preamble byte and SFD for uncoded 2-FSK SUN PHY, phySunFskSfd = 0,
+		 * see IEEE 802.15.4, section 19.2.3.2, table 19-2.
+		 */
 		.syncWord = 0x55904E,
 	},
 };
