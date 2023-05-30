@@ -445,14 +445,14 @@ static int ieee802154_cc13xx_cc26xx_subg_set_channel(
 	struct ieee802154_cc13xx_cc26xx_subg_data *drv_data = dev->data;
 	RF_EventMask events;
 	uint16_t freq, fract;
-	bool was_rx_on;
 	int ret;
 
 	if (!is_subghz(channel)) {
 		return -EINVAL;
 	}
 
-	ret = ieee802154_cc13xx_cc26xx_subg_channel_to_frequency(channel, &freq, &fract);
+	ret = ieee802154_cc13xx_cc26xx_subg_channel_to_frequency(
+		channel, &freq, &fract);
 	if (ret < 0) {
 		return -EINVAL;
 	}
@@ -478,15 +478,14 @@ static int ieee802154_cc13xx_cc26xx_subg_set_channel(
 	if (events != RF_EventLastCmdDone) {
 		LOG_DBG("Failed to set frequency: 0x%" PRIx64, events);
 		ret = -EIO;
+		goto out;
 	}
 
-	k_mutex_unlock(&drv_data->tx_mutex);
+	/* Run BG receive process on requested channel */
+	ret = ieee802154_cc13xx_cc26xx_subg_rx(dev);
 
 out:
-	/* Re-enable RX if we found it on initially. */
-	if (was_rx_on) {
-		ieee802154_cc13xx_cc26xx_subg_rx(dev);
-	}
+	k_mutex_unlock(&drv_data->tx_mutex);
 	return ret;
 }
 
@@ -532,6 +531,7 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 					    struct net_buf *buf)
 {
 	struct ieee802154_cc13xx_cc26xx_subg_data *drv_data = dev->data;
+	int retry = CONFIG_IEEE802154_CC13XX_CC26XX_SUB_GHZ_RADIO_TX_RETRIES;
 	RF_EventMask events;
 	int ret;
 
@@ -543,19 +543,19 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 	k_mutex_lock(&drv_data->tx_mutex, K_FOREVER);
 
 	/* Prepend data with the SUN FSK PHY header */
-	drv_data->tx_data[0] = frag->len + IEEE802154_PHY_SUN_FSK_PHR_LEN;
+	drv_data->tx_data[0] = buf->len + IEEE802154_PHY_SUN_FSK_PHR_LEN;
 	/* 20.2.2 PHR field format. 802.15.4-2015 */
 	drv_data->tx_data[1] = 0;
 	drv_data->tx_data[1] |= BIT(3); /* FCS Type: 2-octet FCS */
 	drv_data->tx_data[1] |= BIT(4); /* DW: Enable Data Whitening */
-	memcpy(&drv_data->tx_data[IEEE802154_PHY_SUN_FSK_PHR_LEN], frag->data, frag->len);
+	memcpy(&drv_data->tx_data[IEEE802154_PHY_SUN_FSK_PHR_LEN], buf->data, buf->len);
 
 	/* TODO: Zero-copy TX, see discussion in #49775. */
 	__ASSERT_NO_MSG(buf->len + IEEE802154_PHY_SUN_FSK_PHR_LEN <= CC13XX_CC26XX_TX_BUF_SIZE);
 	memcpy(&drv_data->tx_data[IEEE802154_PHY_SUN_FSK_PHR_LEN], buf->data, buf->len);
 
 	/* Set TX data */
-	drv_data->cmd_prop_tx_adv.pktLen = frag->len + IEEE802154_PHY_SUN_FSK_PHR_LEN;
+	drv_data->cmd_prop_tx_adv.pktLen = buf->len + IEEE802154_PHY_SUN_FSK_PHR_LEN;
 	drv_data->cmd_prop_tx_adv.pPkt = drv_data->tx_data;
 
 	/* Reset command status */
@@ -574,13 +574,13 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 		drv_data->cmd_prop_cs.status = IDLE;
 		drv_data->cmd_prop_tx_adv.status = IDLE;
 
-		reason = RF_runCmd(drv_data->rf_handle,
+		events = RF_runCmd(drv_data->rf_handle,
 				   (RF_Op *)&drv_data->cmd_prop_cs,
 				   RF_PriorityNormal, cmd_prop_tx_adv_callback,
 				   RF_EventLastCmdDone);
-		if ((reason & RF_EventLastCmdDone) == 0) {
-			LOG_DBG("Failed to run command (%" PRIx64 ")", reason);
-			r = -EIO;
+		if ((events & RF_EventLastCmdDone) == 0) {
+			LOG_DBG("Failed to run command (%" PRIx64 ")", events);
+			ret = -EIO;
 			goto out;
 		}
 
@@ -603,20 +603,19 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 			continue;
 		}
 
-		r = 0;
+		ret = 0;
 		goto out;
 	}
 
-	if (drv_data->cmd_prop_tx_adv.status != PROP_DONE_OK) {
-		LOG_DBG("Transmit failed (0x%x)", drv_data->cmd_prop_tx_adv.status);
-		ret = -EIO;
-		goto out;
-	}
+	} while (retry-- > 0);
+
+	LOG_DBG("Failed to TX");
+	ret = -EIO;
 
 out:
 	(void)ieee802154_cc13xx_cc26xx_subg_rx(dev);
 	k_mutex_unlock(&drv_data->tx_mutex);
-	return r;
+	return ret;
 }
 
 static void ieee802154_cc13xx_cc26xx_subg_rx_done(
@@ -869,6 +868,10 @@ static int ieee802154_cc13xx_cc26xx_subg_init(const struct device *dev)
 }
 
 static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_data = {
+	.cmd_set_tx_power = {
+		.commandNo = CMD_SET_TX_POWER
+	},
+
 	/* Common Radio Commands */
 	.cmd_fs = {
 		.commandNo = CMD_FS,
