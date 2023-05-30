@@ -172,8 +172,7 @@ static volatile rfc_CMD_PROP_RADIO_DIV_SETUP_PA_t ieee802154_cc13xx_subg_radio_d
 	},
 	.config.biasMode = true, /* Rely on an external antenna biasing network. */
 	.txPower = 0x013f, /* 14 dBm, see TRM 25.3.3.2.16 */
-	.centerFreq = 906, /* Set channel page zero, channel 1 by default, see IEEE 802.15.4,
-			    * section 10.1.3.3.
+	.centerFreq = 906, /* Set channel page zero, channel 1 by default,
 			    * TODO: Use compliant SUN PHY frequencies from channel page 9.
 			    */
 	.intFreq = 0x8000, /* Use default intermediate frequency. */
@@ -891,9 +890,7 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 			.bAppendRssi = true,
 			.bAppendStatus = true,
 		},
-		/* Last preamble byte and SFD for uncoded 2-FSK SUN PHY, phySunFskSfd = 0,
-		 * see IEEE 802.15.4, section 19.2.3.2, table 19-2.
-		 */
+		/* Preamble & SFD for 2-FSK SUN PHY. 802.15.4-2015, 20.2.1 */
 		.syncWord0 = 0x55904E,
 		.maxPktLen = IEEE802154_MAX_PHY_PACKET_SIZE,
 		/* PHR field format, see IEEE 802.15.4, section 19.2.4 */
@@ -913,13 +910,11 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 	.cmd_prop_cs = {
 		.commandNo = CMD_PROP_CS,
 		.condition.rule = COND_NEVER,
+		/* CCA Mode 1: Energy above threshold */
 		.csConf = {
-			/* CCA Mode 1: Energy above threshold, see section 10.2.8. */
 			.bEnaRssi = true,
-			/* Abort as soon as any energy above the ED threshold is detected. */
 			.busyOp = true,
-			/* Continue sensing until the timeout is reached. */
-			.idleOp = false,
+			.idleOp = true,
 		},
 		.rssiThr = CONFIG_IEEE802154_CC13XX_CC26XX_SUB_GHZ_CS_THRESHOLD,
 		.csEndTrigger.triggerType = TRIG_REL_START,
@@ -939,9 +934,7 @@ static struct ieee802154_cc13xx_cc26xx_subg_data ieee802154_cc13xx_cc26xx_subg_d
 		.numHdrBits = 16,
 		.preTrigger.triggerType = TRIG_REL_START,
 		.preTrigger.pastTrig = true,
-		/* Last preamble byte and SFD for uncoded 2-FSK SUN PHY, phySunFskSfd = 0,
-		 * see IEEE 802.15.4, section 19.2.3.2, table 19-2.
-		 */
+		/* Preamble & SFD for 2-FSK SUN PHY. 802.15.4-2015, 20.2.1 */
 		.syncWord = 0x55904E,
 	},
 };
