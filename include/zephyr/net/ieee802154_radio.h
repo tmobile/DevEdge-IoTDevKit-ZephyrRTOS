@@ -15,6 +15,7 @@
 #define ZEPHYR_INCLUDE_NET_IEEE802154_RADIO_H_
 
 #include <zephyr/device.h>
+#include <zephyr/sys_clock.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/net/net_time.h>
@@ -41,7 +42,7 @@ extern "C" {
  *       https://github.com/zephyrproject-rtos/zephyr/issues/50336#issuecomment-1251122582.
  *       For now we assume PHYs that current drivers actually implement.
  */
-#define IEEE802154_PHY_SYMBOL_PERIOD_US(is_subg_phy)                                               \
+#define IEEE802154_PHY_SYMBOL_PERIOD(is_subg_phy)                                                  \
 	((is_subg_phy) ? IEEE802154_PHY_SUN_FSK_863MHZ_915MHZ_SYMBOL_PERIOD_US                     \
 		       : IEEE802154_PHY_OQPSK_2450MHZ_SYMBOL_PERIOD_US)
 
@@ -69,9 +70,9 @@ extern "C" {
  *       For now we assume PHYs that current drivers actually implement.
  */
 #define IEEE802154_PHY_A_TURNAROUND_TIME(is_subg_phy)                                              \
-	((is_subg_phy) ? IEEE802154_PHY_A_TURNAROUND_TIME_1MS(                                     \
-				 IEEE802154_PHY_SYMBOL_PERIOD_US(is_subg_phy))                     \
-		       : IEEE802154_PHY_A_TURNAROUND_TIME_DEFAULT)
+	((is_subg_phy)                                                                             \
+		 ? IEEE802154_PHY_A_TURNAROUND_TIME_1MS(IEEE802154_PHY_SYMBOL_PERIOD(is_subg_phy)) \
+		 : IEEE802154_PHY_A_TURNAROUND_TIME_DEFAULT)
 
 /* PHY PIB attribute aCcaTime, in PHY symbols, all PHYs except for SUN O-QPSK,
  * see section 11.3, table 11-1.
@@ -287,7 +288,6 @@ enum ieee802154_config_type {
 	 *  provided with ``IEEE802154_CONFIG_ACK_FPB`` config and FPB address
 	 *  matching mode specified. Otherwise, Frame Pending bit should be set
 	 *  to ``1`` (see section 6.7.3).
-	 *  Requires IEEE802154_HW_TX_RX_ACK capability.
 	 */
 	IEEE802154_CONFIG_AUTO_ACK_FPB,
 
