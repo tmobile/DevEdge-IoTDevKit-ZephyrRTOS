@@ -210,7 +210,6 @@ enum ieee802154_config_type {
 	 *  provided with ``IEEE802154_CONFIG_ACK_FPB`` config and FPB address
 	 *  matching mode specified. Otherwise, Frame Pending bit should be set
 	 *  to ``1`` (see section 6.7.3).
-	 *  Requires IEEE802154_HW_TX_RX_ACK capability.
 	 */
 	IEEE802154_CONFIG_AUTO_ACK_FPB,
 
