@@ -306,33 +306,11 @@ int ec_host_cmd_send_response(enum ec_host_cmd_status status,
 	return hc->backend->api->send(hc->backend);
 }
 
-void ec_host_cmd_rx_notify(void)
-{
-	struct ec_host_cmd *hc = &ec_host_cmd;
-	struct ec_host_cmd_rx_ctx *rx = &hc->rx_ctx;
-
-	hc->rx_status = verify_rx(rx);
-
-	if (!hc->rx_status && hc->user_cb) {
-		hc->user_cb(rx, hc->user_data);
-	}
-
-	k_sem_give(&hc->rx_ready);
-}
-
 static void ec_host_cmd_log_request(const uint8_t *rx_buf)
 {
 	static uint16_t prev_cmd;
 	const struct ec_host_cmd_request_header *const rx_header =
 		(const struct ec_host_cmd_request_header *const)rx_buf;
-
-#ifdef CONFIG_EC_HOST_CMD_LOG_SUPPRESSED
-	if (ec_host_cmd_is_suppressed(rx_header->cmd_id)) {
-		ec_host_cmd_check_suppressed();
-
-		return;
-	}
-#endif /* CONFIG_EC_HOST_CMD_LOG_SUPPRESSED */
 
 	if (IS_ENABLED(CONFIG_EC_HOST_CMD_LOG_DBG_BUFFERS)) {
 		if (rx_header->data_len) {
@@ -384,6 +362,7 @@ FUNC_NORETURN static void ec_host_cmd_thread(void *hc_handle, void *arg2, void *
 		/* Wait until RX messages is received on host interface */
 		k_sem_take(&hc->rx_ready, K_FOREVER);
 
+		ec_host_cmd_log_request(rx->buf);
 		status = verify_rx(rx);
 		if (status != EC_HOST_CMD_SUCCESS) {
 			ec_host_cmd_send_response(status, &args);
