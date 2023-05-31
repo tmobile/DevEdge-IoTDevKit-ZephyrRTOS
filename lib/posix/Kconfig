@@ -27,8 +27,10 @@ config APP_LINK_WITH_POSIX_SUBSYS
 	help
 	  Add POSIX subsystem header files to the 'app' include path.
 
-config PTHREAD_IPC
-	bool "POSIX pthread IPC API"
+config EVENTFD
+	bool "Support for eventfd"
+	depends on !NATIVE_APPLICATION
+	select POLL
 	default y if POSIX_API
 	depends on POSIX_CLOCK
 	help
