@@ -302,13 +302,23 @@ static int wifi_set_power_save_mode(uint32_t mgmt_request, struct net_if *iface,
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_PS_MODE, wifi_set_power_save_mode);
 
-static int wifi_set_twt(uint32_t mgmt_request, struct net_if *iface,
-			  void *data, size_t len)
-{
-	const struct device *dev = net_if_get_device(iface);
-	struct net_wifi_mgmt_offload *off_api =
-		(struct net_wifi_mgmt_offload *) dev->api;
-	struct wifi_twt_params *twt_params = data;
+#ifdef CONFIG_WIFI_MGMT_TWT_CHECK_IP
+	if ((!net_if_ipv4_get_global_addr(iface, NET_ADDR_PREFERRED)) &&
+	    (!net_if_ipv6_get_global_addr(NET_ADDR_PREFERRED, &iface))) {
+		twt_params->fail_reason =
+			WIFI_TWT_FAIL_IP_NOT_ASSIGNED;
+		goto fail;
+	}
+#else
+	NET_WARN("Check for valid IP address been disabled. "
+		 "Device might be unreachable or might not receive traffic.\n");
+#endif /* CONFIG_WIFI_MGMT_TWT_CHECK_IP */
+
+	if (info.link_mode < WIFI_6) {
+		twt_params->fail_reason =
+			WIFI_TWT_FAIL_PEER_NOT_HE_CAPAB;
+		goto fail;
+	}
 
 	if (off_api == NULL || off_api->set_twt == NULL) {
 		return -ENOTSUP;
