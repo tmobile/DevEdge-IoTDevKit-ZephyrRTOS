@@ -19,7 +19,6 @@
 #include <zephyr/kernel.h>
 #include <kernel_internal.h>
 #include <zephyr/linker/linker-defs.h>
-#include <zephyr/sys/barrier.h>
 
 #if !defined(CONFIG_CPU_CORTEX_M)
 #include <zephyr/arch/arm/aarch32/cortex_a_r/lib_helpers.h>
@@ -54,8 +53,8 @@ void *_vector_table_pointer;
 static inline void relocate_vector_table(void)
 {
 	SCB->VTOR = VECTOR_ADDRESS & SCB_VTOR_TBLOFF_Msk;
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 #elif defined(CONFIG_AARCH32_ARMV8_R)
@@ -66,7 +65,7 @@ static inline void relocate_vector_table(void)
 {
 	write_sctlr(read_sctlr() & ~HIVECS);
 	write_vbar(VECTOR_ADDRESS & VBAR_MASK);
-	barrier_isync_fence_full();
+	__ISB();
 }
 
 #else
@@ -150,8 +149,8 @@ static inline void z_arm_floating_point_init(void)
 	/* Make the side-effects of modifying the FPCCR be realized
 	 * immediately.
 	 */
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 
 	/* Initialize the Floating Point Status and Control Register. */
 #if defined(CONFIG_ARMV8_1_M_MAINLINE)
@@ -215,7 +214,7 @@ static inline void z_arm_floating_point_init(void)
 	/* Enable PL1 access to CP10, CP11 */
 	reg_val |= (CPACR_CP10(CPACR_FA) | CPACR_CP11(CPACR_FA));
 	__set_CPACR(reg_val);
-	barrier_isync_fence_full();
+	__ISB();
 
 #if !defined(CONFIG_FPU_SHARING)
 	/*

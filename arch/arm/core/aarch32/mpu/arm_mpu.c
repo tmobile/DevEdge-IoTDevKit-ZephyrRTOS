@@ -7,7 +7,6 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys/barrier.h>
 #include "arm_core_mpu_dev.h"
 #include <zephyr/linker/linker-defs.h>
 #include <kernel_arch_data.h>
@@ -152,8 +151,8 @@ void arm_core_mpu_enable(void)
 	__set_SCTLR(val);
 
 	/* Make sure that all the registers are set before proceeding */
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 /**
@@ -164,15 +163,15 @@ void arm_core_mpu_disable(void)
 	uint32_t val;
 
 	/* Force any outstanding transfers to complete before disabling MPU */
-	barrier_dsync_fence_full();
+	__DSB();
 
 	val = __get_SCTLR();
 	val &= ~SCTLR_MPU_ENABLE;
 	__set_SCTLR(val);
 
 	/* Make sure that all the registers are set before proceeding */
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 #else
 /**
@@ -190,8 +189,8 @@ void arm_core_mpu_enable(void)
 #endif
 
 	/* Make sure that all the registers are set before proceeding */
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 /**
@@ -200,7 +199,7 @@ void arm_core_mpu_enable(void)
 void arm_core_mpu_disable(void)
 {
 	/* Force any outstanding transfers to complete before disabling MPU */
-	barrier_dmem_fence_full();
+	__DMB();
 
 	/* Disable MPU */
 	MPU->CTRL = 0;

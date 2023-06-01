@@ -435,10 +435,7 @@ static int http_wait_data(int sock, struct http_request *req, int32_t timeout)
 			}
 		}
 
-		ret = zsock_poll(fds, nfds,
-			 req->packet_timeout ?
-			 MIN(req->packet_timeout, remaining_time) :
-			 remaining_time);
+		ret = zsock_poll(fds, nfds, remaining_time);
 		if (ret == 0) {
 			LOG_DBG("Timeout");
 			goto finalize_data;

@@ -10,7 +10,6 @@
 #include <zephyr/sys/mpsc_packet.h>
 #include <zephyr/sys/cbprintf.h>
 #include <zephyr/sys/atomic.h>
-#include <zephyr/sys/iterable_sections.h>
 #include <zephyr/sys/util.h>
 #include <string.h>
 #include <zephyr/toolchain.h>

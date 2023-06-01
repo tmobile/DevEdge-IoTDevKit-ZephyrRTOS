@@ -9,7 +9,6 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util_macro.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -7,11 +7,16 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_CONSOLE_NATIVE_POSIX_CONSOLE_H_
 #define ZEPHYR_INCLUDE_DRIVERS_CONSOLE_NATIVE_POSIX_CONSOLE_H_
 
-/*
- * This header is left for compatibility with old applications
- * The console for native_posix is now provided by the posix_arch_console driver
- */
+#include <zephyr/kernel.h>
 
-#include <posix_arch_console.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void posix_flush_stdout(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_CONSOLE_NATIVE_POSIX_CONSOLE_H_ */

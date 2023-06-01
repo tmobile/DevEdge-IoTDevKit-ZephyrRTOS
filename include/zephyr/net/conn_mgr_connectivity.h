@@ -15,7 +15,6 @@
 
 #include <zephyr/device.h>
 #include <zephyr/net/net_if.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
 extern "C" {

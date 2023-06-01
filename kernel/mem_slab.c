@@ -14,7 +14,6 @@
 #include <ksched.h>
 #include <zephyr/init.h>
 #include <zephyr/sys/check.h>
-#include <zephyr/sys/iterable_sections.h>
 
 /**
  * @brief Initialize kernel memory slab subsystem.

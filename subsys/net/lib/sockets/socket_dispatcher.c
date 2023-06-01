@@ -6,7 +6,6 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/net/socket.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #include "sockets_internal.h"
 

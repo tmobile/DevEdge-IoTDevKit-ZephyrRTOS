@@ -242,31 +242,16 @@ struct bt_mesh_model_op {
 
 /** End of the opcode list. Must always be present. */
 #define BT_MESH_MODEL_OP_END { 0, 0, NULL }
-
-#if !defined(__cplusplus) || defined(__DOXYGEN__)
-/**
- * @brief Helper to define an empty opcode list.
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- */
+/** Helper to define an empty opcode list. */
 #define BT_MESH_MODEL_NO_OPS ((struct bt_mesh_model_op []) \
 			      { BT_MESH_MODEL_OP_END })
 
-/**
- *  @brief Helper to define an empty model array
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- */
+/** Helper to define an empty model array */
 #define BT_MESH_MODEL_NONE ((struct bt_mesh_model []){})
 
 /**
  *  @brief Composition data SIG model entry with callback functions
  *	   with specific number of keys & groups.
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
  *
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
@@ -294,9 +279,6 @@ struct bt_mesh_model_op {
 /**
  *  @brief Composition data vendor model entry with callback functions
  *	   with specific number of keys & groups.
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
  *
  *  @param _company   Company ID.
  *  @param _id        Model ID.
@@ -326,9 +308,6 @@ struct bt_mesh_model_op {
 /**
  *  @brief Composition data SIG model entry with callback functions.
  *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- *
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
  *  @param _pub       Model publish parameters.
@@ -344,9 +323,6 @@ struct bt_mesh_model_op {
 /**
  *
  *  @brief Composition data SIG model entry with callback functions and metadata.
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
  *
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
@@ -378,9 +354,6 @@ struct bt_mesh_model_op {
  *
  *  @brief Composition data vendor model entry with callback functions.
  *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- *
  *  @param _company   Company ID.
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
@@ -396,9 +369,6 @@ struct bt_mesh_model_op {
 /**
  *
  *  @brief Composition data vendor model entry with callback functions and metadata.
- *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
  *
  *  @param _company   Company ID.
  *  @param _id        Model ID.
@@ -426,9 +396,6 @@ struct bt_mesh_model_op {
 /**
  *  @brief Composition data SIG model entry.
  *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- *
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
  *  @param _pub       Model publish parameters.
@@ -440,9 +407,6 @@ struct bt_mesh_model_op {
 /**
  *  @brief Composition data vendor model entry.
  *
- * This macro uses compound literal feature of C99 standard and thus is available only from C,
- * not C++.
- *
  *  @param _company   Company ID.
  *  @param _id        Model ID.
  *  @param _op        Array of model opcode handlers.
@@ -451,7 +415,6 @@ struct bt_mesh_model_op {
  */
 #define BT_MESH_MODEL_VND(_company, _id, _op, _pub, _user_data)                \
 	BT_MESH_MODEL_VND_CB(_company, _id, _op, _pub, _user_data, NULL)
-#endif /* !defined(__cplusplus) || defined(__DOXYGEN__) */
 
 /**
  *  @brief Encode transmission count & interval steps.

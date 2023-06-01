@@ -7,22 +7,13 @@
 #ifndef ZEPHYR_INCLUDE_LOGGING_LOG_MULTIDOMAIN_HELPER_H_
 #define ZEPHYR_INCLUDE_LOGGING_LOG_MULTIDOMAIN_HELPER_H_
 
-/**
- * @brief Logger multidomain backend helpers
- *
- * This module aims to provide baseline for links and backends and simplify
+/* This module aims to provide baseline for links and backends and simplify
  * the implementation. It is not core part of logging in similar way as
  * log_output module is just a helper for log message formatting. Links and
  * backends can be implemented without this helper.
- *
- * @defgroup log_backend_multidomain Logger multidomain backend helpers
- * @ingroup log_backend
- * @{
  */
 
-/**
- * @name Multidomain message IDs
- * @anchor LOG_MULTIDOMAIN_HELPER_MESSAGE_IDS
+/**@defgroup LOG_MULTIDOMAIN_HALPER_MESSAGE_IDS IDs of message.
  * @{
  */
 
@@ -55,9 +46,7 @@
 
 /**@} */
 
-/**
- * @name Multidomain status flags
- * @anchor LOG_MULTIDOMAIN_STATUS
+/**@defgroup LOG_MULTIDOMAIN_STATUS.
  * @{
  */
 
@@ -244,7 +233,5 @@ void log_multidomain_backend_on_error(struct log_multidomain_backend *backend, i
  * @param err Error code.
  */
 void log_multidomain_backend_on_started(struct log_multidomain_backend *backend, int err);
-
-/** @} */
 
 #endif /* ZEPHYR_INCLUDE_LOGGING_LOG_MULTIDOMAIN_HELPER_H_ */

@@ -15,7 +15,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/cache.h>
 #include <zephyr/arch/arm/aarch32/cortex_a_r/cmsis.h>
-#include <zephyr/sys/barrier.h>
 
 /* Cache Type Register */
 #define	CTR_DMINLINE_SHIFT	16
@@ -52,9 +51,9 @@ void arch_dcache_enable(void)
 
 	val = __get_SCTLR();
 	val |= SCTLR_C_Msk;
-	barrier_dsync_fence_full();
+	__DSB();
 	__set_SCTLR(val);
-	barrier_isync_fence_full();
+	__ISB();
 }
 
 void arch_dcache_disable(void)
@@ -63,9 +62,9 @@ void arch_dcache_disable(void)
 
 	val = __get_SCTLR();
 	val &= ~SCTLR_C_Msk;
-	barrier_dsync_fence_full();
+	__DSB();
 	__set_SCTLR(val);
-	barrier_isync_fence_full();
+	__ISB();
 
 	arch_dcache_flush_and_invd_all();
 }
@@ -169,13 +168,13 @@ void arch_icache_enable(void)
 {
 	arch_icache_invd_all();
 	__set_SCTLR(__get_SCTLR() | SCTLR_I_Msk);
-	barrier_isync_fence_full();
+	__ISB();
 }
 
 void arch_icache_disable(void)
 {
 	__set_SCTLR(__get_SCTLR() & ~SCTLR_I_Msk);
-	barrier_isync_fence_full();
+	__ISB();
 }
 
 int arch_icache_flush_all(void)

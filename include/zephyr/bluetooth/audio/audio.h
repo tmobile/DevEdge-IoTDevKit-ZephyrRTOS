@@ -180,7 +180,9 @@ enum bt_audio_metadata_type {
 /** @brief Codec configuration structure */
 struct bt_codec_data {
 	struct bt_data data;
-	uint8_t value[CONFIG_BT_CODEC_MAX_DATA_LEN];
+#if defined(CONFIG_BT_CODEC_MAX_DATA_LEN)
+	uint8_t  value[CONFIG_BT_CODEC_MAX_DATA_LEN];
+#endif /* CONFIG_BT_CODEC_MAX_DATA_LEN */
 };
 
 /**

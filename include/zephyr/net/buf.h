@@ -14,7 +14,6 @@
 #include <zephyr/types.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
 extern "C" {

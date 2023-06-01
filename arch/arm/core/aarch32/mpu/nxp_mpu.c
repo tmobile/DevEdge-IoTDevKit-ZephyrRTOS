@@ -11,7 +11,6 @@
 #include "arm_core_mpu_dev.h"
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/math_extras.h>
-#include <zephyr/sys/barrier.h>
 #include <zephyr/linker/linker-defs.h>
 
 #define LOG_LEVEL CONFIG_MPU_LOG_LEVEL
@@ -399,8 +398,8 @@ void arm_core_mpu_enable(void)
 	SYSMPU->CESR |= SYSMPU_CESR_VLD_MASK;
 
 	/* Make sure that all the registers are set before proceeding */
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 /**
@@ -409,7 +408,7 @@ void arm_core_mpu_enable(void)
 void arm_core_mpu_disable(void)
 {
 	/* Force any outstanding transfers to complete before disabling MPU */
-	barrier_dmem_fence_full();
+	__DMB();
 
 	/* Disable MPU */
 	SYSMPU->CESR &= ~SYSMPU_CESR_VLD_MASK;

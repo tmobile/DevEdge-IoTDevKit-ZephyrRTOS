@@ -5,7 +5,6 @@
  */
 #include <ctype.h>
 #include <zephyr/device.h>
-#include <zephyr/sys/iterable_sections.h>
 #include <stdlib.h>
 #include "shell_utils.h"
 #include "shell_wildcard.h"

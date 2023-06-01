@@ -377,7 +377,7 @@ static int rs9116w_mgmt_disconnect(const struct device *dev)
 
 	return 0;
 }
-
+/* DaR TODO
 static int rs9116w_mgmt_status(const struct device *dev, status_result_cb_t cb)
 {
 	struct rs9116w_device *rs9116w_dev = dev->data;
@@ -410,7 +410,7 @@ static int rs9116w_mgmt_status(const struct device *dev, status_result_cb_t cb)
 	}
 
 	res.rssi = -(int8_t)rssi;
-	res.ap_mode = false; /*For now */
+	res.ap_mode = false; 
 	res.connected = winfo.wlan_state;
 	if (res.connected) {
 		res.ssid = winfo.ssid;
@@ -436,7 +436,7 @@ static int rs9116w_mgmt_status(const struct device *dev, status_result_cb_t cb)
 	cb(rs9116w_dev->net_iface, 0, &res);
 	return 0;
 }
-
+*/
 /* called after device init fcn */
 static void rs9116w_iface_init(struct net_if *iface)
 {
@@ -561,7 +561,7 @@ static const struct net_wifi_mgmt_offload rs9116w_api = {
 	.scan = rs9116w_mgmt_scan,
 	.connect = rs9116w_mgmt_connect,
 	.disconnect = rs9116w_mgmt_disconnect,
-	.status = rs9116w_mgmt_status,
+	/* .status = rs9116w_mgmt_status, DaR TODO */
 };
 
 #ifdef CONFIG_PM_DEVICE

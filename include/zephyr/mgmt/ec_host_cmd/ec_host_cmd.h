@@ -15,18 +15,16 @@
  */
 
 #include <stdint.h>
-#include <zephyr/kernel.h>
 #include <zephyr/mgmt/ec_host_cmd/backend.h>
 #include <zephyr/sys/__assert.h>
-#include <zephyr/sys/iterable_sections.h>
 
 struct ec_host_cmd {
 	struct ec_host_cmd_rx_ctx rx_ctx;
 	struct ec_host_cmd_tx_buf tx;
 	struct ec_host_cmd_backend *backend;
-#ifdef CONFIG_EC_HOST_CMD_DEDICATED_THREAD
-	struct k_thread thread;
-#endif /* CONFIG_EC_HOST_CMD_DEDICATED_THREAD */
+	struct k_thread *thread;
+	k_thread_stack_t *stack;
+	k_tid_t thread_id;
 };
 
 /**
@@ -247,20 +245,6 @@ enum ec_host_cmd_status {
 int ec_host_cmd_init(struct ec_host_cmd_backend *backend);
 
 /**
- * @brief Send the host command response
- *
- * This routine sends the host command response. It should be used to send IN_PROGRESS status or
- * if the host command handler doesn't return e.g. reboot command.
- *
- * @param[in] status        Host command status to be sent.
- * @param[in] args          Pointer of a structure passed to the handler.
- *
- * @retval 0 if successful.
- */
-int ec_host_cmd_send_response(enum ec_host_cmd_status status,
-		const struct ec_host_cmd_handler_args *args);
-
-/**
  * @brief Get the main ec host command structure
  *
  * This routine returns a pointer to the main host command structure.
@@ -270,17 +254,6 @@ int ec_host_cmd_send_response(enum ec_host_cmd_status status,
  * @retval A pointer to the main host command structure
  */
 const struct ec_host_cmd *ec_host_cmd_get_hc(void);
-
-#ifndef CONFIG_EC_HOST_CMD_DEDICATED_THREAD
-/**
- * @brief The thread function for Host Command subsystem
- *
- * This routine calls the Host Command thread entry function. If
- * @kconfig{CONFIG_EC_HOST_CMD_DEDICATED_THREAD} is not defined, a new thread is not created,
- * and this function has to be called by application code. It doesn't return.
- */
-FUNC_NORETURN void ec_host_cmd_task(void);
-#endif
 
 /**
  * @}

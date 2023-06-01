@@ -13,7 +13,6 @@
 #include <zephyr/init.h>
 #include <zephyr/linker/sections.h>
 #include <zephyr/sys/device_mmio.h>
-#include <zephyr/sys/iterable_sections.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/toolchain.h>
 
@@ -265,7 +264,7 @@ typedef int16_t device_handle_t;
  * If an enabled devicetree node has the given compatible and a device object
  * was created from it, this returns a pointer to that device.
  *
- * If there are no such devices, this will fail at compile time.
+ * If there no such devices, this will fail at compile time.
  *
  * If there are multiple, this returns an arbitrary one.
  *

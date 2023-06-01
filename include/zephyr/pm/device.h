@@ -10,7 +10,6 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/atomic.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
 extern "C" {

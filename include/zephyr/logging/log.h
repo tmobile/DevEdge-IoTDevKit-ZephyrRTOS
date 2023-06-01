@@ -9,7 +9,6 @@
 
 #include <zephyr/logging/log_instance.h>
 #include <zephyr/logging/log_core.h>
-#include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
 extern "C" {

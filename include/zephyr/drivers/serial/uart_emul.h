@@ -12,7 +12,6 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SERIAL_UART_EMUL_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SERIAL_UART_EMUL_H_
 
-#include <zephyr/device.h>
 #include <zephyr/types.h>
 
 #ifdef __cplusplus

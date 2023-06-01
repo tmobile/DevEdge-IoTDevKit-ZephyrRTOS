@@ -5,13 +5,11 @@ if PICOLIBC
 
 config PICOLIBC_USE_MODULE
 	bool "Picolibc as module"
-	default y if "$(ZEPHYR_TOOLCHAIN_VARIANT)" != "zephyr"
+	default y
 	depends on ZEPHYR_PICOLIBC_MODULE
 	depends on !GLIBCXX_LIBCPP
 	help
-	  Use picolibc module instead of picolibc included with toolchain.
-	  This is enabled by default for toolchains other than the Zephyr
-	  SDK.
+	  Use picolibc module instead of picolibc included with toolchain
 
 config PICOLIBC_HEAP_SIZE
 	int "[DEPRECATED] Picolibc heap size (bytes)"

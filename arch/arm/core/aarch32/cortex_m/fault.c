@@ -17,7 +17,6 @@
 #include <inttypes.h>
 #include <zephyr/exc_handle.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/barrier.h>
 LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
 
 #if defined(CONFIG_PRINTK) || defined(CONFIG_LOG)
@@ -711,14 +710,14 @@ static inline bool z_arm_is_synchronous_svc(z_arch_esf_t *esf)
 	uint16_t fault_insn = *(ret_addr - 1);
 #else
 	SCB->CCR |= SCB_CCR_BFHFNMIGN_Msk;
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 
 	uint16_t fault_insn = *(ret_addr - 1);
 
 	SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 #endif /* ARMV6_M_ARMV8_M_BASELINE && !ARMV8_M_BASELINE */
 
 	if (((fault_insn & 0xff00) == _SVC_OPCODE) &&

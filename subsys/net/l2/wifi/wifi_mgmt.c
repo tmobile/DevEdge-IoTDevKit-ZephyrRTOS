@@ -194,6 +194,7 @@ void wifi_mgmt_raise_iface_status_event(struct net_if *iface,
 					sizeof(struct wifi_iface_status));
 }
 
+/* DaR TODO
 static void wifi_status_result_cb(struct net_if *iface, int status,
 			    struct wifi_status_result *entry)
 {
@@ -224,7 +225,7 @@ static int wifi_get_status(uint32_t mgmt_request, struct net_if *iface,
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_STATUS, wifi_get_status);
-
+*/
 #ifdef CONFIG_NET_STATISTICS_WIFI
 static int wifi_iface_stats(uint32_t mgmt_request, struct net_if *iface,
 			  void *data, size_t len)
@@ -288,6 +289,7 @@ NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_PS_CONFIG, wifi_get_power_sav
 static int wifi_set_power_save_mode(uint32_t mgmt_request, struct net_if *iface,
 			  void *data, size_t len)
 {
+	/* DaR TODO
 	const struct device *dev = net_if_get_device(iface);
 	struct net_wifi_mgmt_offload *off_api =
 		(struct net_wifi_mgmt_offload *) dev->api;
@@ -295,9 +297,9 @@ static int wifi_set_power_save_mode(uint32_t mgmt_request, struct net_if *iface,
 
 	if (off_api == NULL || off_api->set_power_save_mode == NULL) {
 		return -ENOTSUP;
-	}
+		} */
 
-	return off_api->set_power_save_mode(dev, ps_mode_params);
+	return 0; /* off_api->set_power_save_mode(dev, ps_mode_params); DaR TODO */
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_PS_MODE, wifi_set_power_save_mode);
@@ -350,6 +352,7 @@ NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_REG_DOMAIN, wifi_reg_domain);
 static int wifi_set_power_save_timeout(uint32_t mgmt_request, struct net_if *iface,
 				       void *data, size_t len)
 {
+	/* DaR TODO
 	const struct device *dev = net_if_get_device(iface);
 	struct net_wifi_mgmt_offload *off_api =
 		(struct net_wifi_mgmt_offload *) dev->api;
@@ -357,13 +360,13 @@ static int wifi_set_power_save_timeout(uint32_t mgmt_request, struct net_if *ifa
 
 	if (off_api == NULL || off_api->set_power_save_timeout == NULL) {
 		return -ENOTSUP;
-	}
+		}
 
 	if (!data || len != sizeof(*ps_timeout)) {
 		return -EINVAL;
-	}
+		} */
 
-	return off_api->set_power_save_timeout(dev, ps_timeout);
+	return 0; /* off_api->set_power_save_timeout(dev, ps_timeout); DaR TODO */
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_PS_TIMEOUT, wifi_set_power_save_timeout);

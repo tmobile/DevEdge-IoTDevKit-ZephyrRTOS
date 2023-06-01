@@ -12,7 +12,6 @@
 #define LOG_LEVEL CONFIG_MPU_LOG_LEVEL
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/math_extras.h>
-#include <zephyr/sys/barrier.h>
 
 /**
  * @brief internal structure holding information of
@@ -80,21 +79,21 @@ static inline void mpu_clear_region(uint32_t rnr)
 static inline void mpu_set_mair0(uint32_t mair0)
 {
 	write_mair0(mair0);
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 static inline void mpu_set_rnr(uint32_t rnr)
 {
 	write_prselr(rnr);
-	barrier_dsync_fence_full();
+	__DSB();
 }
 
 static inline void mpu_set_rbar(uint32_t rbar)
 {
 	write_prbar(rbar);
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 static inline uint32_t mpu_get_rbar(void)
@@ -105,8 +104,8 @@ static inline uint32_t mpu_get_rbar(void)
 static inline void mpu_set_rlar(uint32_t rlar)
 {
 	write_prlar(rlar);
-	barrier_dsync_fence_full();
-	barrier_isync_fence_full();
+	__DSB();
+	__ISB();
 }
 
 static inline uint32_t mpu_get_rlar(void)
