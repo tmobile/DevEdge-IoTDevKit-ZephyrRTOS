@@ -581,7 +581,6 @@ static inline void mcr20a_rx(const struct device *dev, uint8_t len)
 		goto out;
 	}
 
-	/* TODO: ieee802154_handle_ack() expects an ACK package. */
 	if (ieee802154_handle_ack(mcr20a->iface, pkt) == NET_OK) {
 		LOG_DBG("ACK packet handled");
 		goto out;
