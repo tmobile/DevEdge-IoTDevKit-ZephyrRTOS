@@ -17,7 +17,6 @@
 #include <adsp_imr_layout.h>
 #include <zephyr/drivers/mm/mm_drv_intel_adsp_mtl_tlb.h>
 #include <zephyr/drivers/timer/system_timer.h>
-#include <mem_window.h>
 
 #define LPSRAM_MAGIC_VALUE      0x13579BDF
 #define LPSCTL_BATTR_MASK       GENMASK(16, 12)
@@ -331,8 +330,6 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 			imr_layout->imr_state.header.imr_restore_vector = NULL;
 			imr_layout->imr_state.header.imr_ram_storage = NULL;
 			sys_clock_idle_exit();
-			mem_window_idle_exit();
-			soc_mp_on_d3_exit();
 		}
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 		soc_cpus_active[cpu] = true;
