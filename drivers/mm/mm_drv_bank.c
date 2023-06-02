@@ -15,6 +15,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys/__assert.h>
 #include <zephyr/drivers/mm/mm_drv_bank.h>
 #include <zephyr/sys/mem_stats.h>
 
@@ -29,9 +30,7 @@ uint32_t sys_mm_drv_bank_page_mapped(struct mem_drv_bank *bank)
 {
 	bank->unmapped_pages--;
 	bank->mapped_pages++;
-	if (bank->mapped_pages > bank->max_mapped_pages) {
-		bank->max_mapped_pages = bank->mapped_pages;
-	}
+	__ASSERT_NO_MSG(bank->mapped_pages <= bank->max_mapped_pages);
 	return bank->mapped_pages;
 }
 
@@ -39,6 +38,7 @@ uint32_t sys_mm_drv_bank_page_unmapped(struct mem_drv_bank *bank)
 {
 	bank->unmapped_pages++;
 	bank->mapped_pages--;
+	__ASSERT_NO_MSG(bank->unmapped_pages <= bank->max_mapped_pages);
 	return bank->unmapped_pages;
 }
 

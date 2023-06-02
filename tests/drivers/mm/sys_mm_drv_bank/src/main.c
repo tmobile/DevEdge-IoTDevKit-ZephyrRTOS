@@ -39,17 +39,10 @@ ZTEST(sys_mm_bank_api, test_sys_mm_drv_bank)
 	/* Verify that the initialization routine works as expected. */
 	/* It set mapped state for all pages                         */
 	sys_mm_drv_bank_init(&bank_data, BANK_PAGES);
-	expected.free_bytes = EXPECTED(0);
-	expected.allocated_bytes = EXPECTED(BANK_PAGES);
-	expected.max_allocated_bytes = EXPECTED(BANK_PAGES);
-	sys_mm_drv_bank_stats_get(&bank_data, &stats);
-	test_stats("MM Bank Init Error", &stats, &expected);
-
 	/* Now unmap all pages */
 	for (index = 0; index < BANK_PAGES; index++) {
 		sys_mm_drv_bank_page_unmapped(&bank_data);
 	}
-	sys_mm_drv_bank_stats_reset_max(&bank_data);
 
 	expected.free_bytes = EXPECTED(BANK_PAGES);
 	expected.allocated_bytes = EXPECTED(0);
