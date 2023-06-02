@@ -456,7 +456,7 @@ static bool test_wait_for_ack(struct ieee802154_pkt_test *t)
 		goto out;
 	}
 
-	ack_required = ieee802154_prepare_for_ack(iface, tx_pkt, tx_pkt->frags);
+	ack_required = ieee802154_prepare_for_ack(ctx, tx_pkt, tx_pkt->frags);
 	if (!ack_required) {
 		NET_ERR("*** Expected AR flag to be set\n");
 		goto release_tx_pkt;
@@ -481,7 +481,7 @@ static bool test_wait_for_ack(struct ieee802154_pkt_test *t)
 
 	pkt_hexdump(net_pkt_data(ack_pkt), net_pkt_get_len(ack_pkt));
 
-	if (ieee802154_handle_ack(iface, ack_pkt) != NET_OK) {
+	if (ieee802154_radio_handle_ack(iface, ack_pkt) != NET_OK) {
 		NET_ERR("*** Ack frame was not handled.\n");
 		goto release_ack_pkt;
 	}
