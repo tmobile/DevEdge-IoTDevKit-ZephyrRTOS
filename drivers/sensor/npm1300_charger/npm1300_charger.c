@@ -253,14 +253,15 @@ int npm1300_charger_sample_fetch(const struct device *dev, enum sensor_channel c
 		return ret;
 	}
 
-	/* Read vbus status */
+	/* Read vbus status, and set SW current limit on new vbus detection */
+	last_vbus = (data->vbus_stat & 1U) != 0U;
 	ret = mfd_npm1300_reg_read(config->mfd, VBUS_BASE, VBUS_OFFSET_STATUS, &data->vbus_stat);
 	if (ret != 0) {
 		return ret;
 	}
 
-	return ret;
-}
+	if (!last_vbus && ((data->vbus_stat & 1U) != 0U)) {
+		ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_TASK_UPDATE, 1U);
 
 static int set_ntc_thresholds(const struct npm1300_charger_config *const config)
 {
@@ -297,11 +298,6 @@ int npm1300_charger_init(const struct device *dev)
 	/* Configure thermistor */
 	ret = mfd_npm1300_reg_write(config->mfd, ADC_BASE, ADC_OFFSET_NTCR_SEL,
 				    config->thermistor_idx + 1U);
-	if (ret != 0) {
-		return ret;
-	}
-
-	ret = set_ntc_thresholds(config);
 	if (ret != 0) {
 		return ret;
 	}
@@ -364,7 +360,7 @@ int npm1300_charger_init(const struct device *dev)
 	if (ret == -EINVAL) {
 		return ret;
 	}
-	ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_ILIMSTARTUP, idx);
+	ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_ILIM, idx);
 	if (ret != 0) {
 		return ret;
 	}
@@ -383,12 +379,6 @@ int npm1300_charger_init(const struct device *dev)
 
 	/* Trigger temperature measurement */
 	ret = mfd_npm1300_reg_write(config->mfd, ADC_BASE, ADC_OFFSET_TASK_TEMP, 1U);
-	if (ret != 0) {
-		return ret;
-	}
-
-	/* Enable automatic temperature measurements during charging */
-	ret = mfd_npm1300_reg_write(config->mfd, ADC_BASE, ADC_OFFSET_TASK_AUTO, 1U);
 	if (ret != 0) {
 		return ret;
 	}
