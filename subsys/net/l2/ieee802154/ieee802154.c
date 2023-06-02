@@ -96,23 +96,18 @@ static inline void ieee802154_acknowledge(struct net_if *iface, struct ieee80215
 	return;
 }
 
-inline bool ieee802154_prepare_for_ack(struct net_if *iface, struct net_pkt *pkt,
+inline bool ieee802154_prepare_for_ack(struct ieee802154_context *ctx, struct net_pkt *pkt,
 				       struct net_buf *frag)
 {
-	bool ack_required = ieee802154_is_ar_flag_set(frag);
+	/* TODO: Only execute when the driver does not handle ACK itself. */
+	if (ieee802154_is_ar_flag_set(frag)) {
+		struct ieee802154_fcf_seq *fs;
 
-	if (ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_TX_RX_ACK) {
-		return ack_required;
-	}
-
-	if (ack_required) {
-		struct ieee802154_fcf_seq *fs = (struct ieee802154_fcf_seq *)frag->data;
-		struct ieee802154_context *ctx = net_if_l2_data(iface);
+		fs = (struct ieee802154_fcf_seq *)frag->data;
 
 		ctx->ack_seq = fs->sequence;
-		if (k_sem_count_get(&ctx->ack_lock) == 1U) {
-			k_sem_take(&ctx->ack_lock, K_NO_WAIT);
-		}
+		ctx->ack_received = false;
+		k_sem_init(&ctx->ack_lock, 0, K_SEM_MAX_LIMIT);
 
 		return true;
 	}
@@ -120,13 +115,17 @@ inline bool ieee802154_prepare_for_ack(struct net_if *iface, struct net_pkt *pkt
 	return false;
 }
 
-enum net_verdict ieee802154_handle_ack(struct net_if *iface, struct net_pkt *pkt)
+enum net_verdict ieee802154_radio_handle_ack(struct net_if *iface, struct net_pkt *pkt)
 {
 	struct ieee802154_context *ctx = net_if_l2_data(iface);
 
-	if (ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_TX_RX_ACK) {
-		__ASSERT_NO_MSG(ctx->ack_seq == 0U);
-		/* TODO: Release packet in L2 as we're taking ownership. */
+	/* TODO: Only execute when the driver does not handle ACK itself. */
+
+	/* TODO: ACK/Retransmission has nothing to do with CSMA/CA - this
+	 * is about retransmission.
+	 */
+	if (IS_ENABLED(CONFIG_NET_L2_IEEE802154_RADIO_CSMA_CA) &&
+	    ieee802154_get_hw_capabilities(iface) & IEEE802154_HW_CSMA) {
 		return NET_OK;
 	}
 
@@ -135,11 +134,11 @@ enum net_verdict ieee802154_handle_ack(struct net_if *iface, struct net_pkt *pkt
 		struct ieee802154_fcf_seq *fs;
 
 		fs = ieee802154_validate_fc_seq(net_pkt_data(pkt), NULL, &len);
-		if (!fs || fs->fc.frame_type != IEEE802154_FRAME_TYPE_ACK ||
-		    fs->sequence != ctx->ack_seq) {
+		if (!fs || fs->sequence != ctx->ack_seq) {
 			return NET_CONTINUE;
 		}
 
+		ctx->ack_received = true;
 		k_sem_give(&ctx->ack_lock);
 
 		/* TODO: Release packet in L2 as we're taking ownership. */
@@ -152,75 +151,48 @@ enum net_verdict ieee802154_handle_ack(struct net_if *iface, struct net_pkt *pkt
 inline int ieee802154_wait_for_ack(struct net_if *iface, bool ack_required)
 {
 	struct ieee802154_context *ctx = net_if_l2_data(iface);
-	int ret;
 
-	if (!ack_required ||
-	    (ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_TX_RX_ACK)) {
-		__ASSERT_NO_MSG(ctx->ack_seq == 0U);
+	if (!ack_required || (ieee802154_get_hw_capabilities(iface) & IEEE802154_HW_TX_RX_ACK)) {
 		return 0;
 	}
 
-	ret = k_sem_take(&ctx->ack_lock, K_MSEC(10));
-	if (ret == 0) {
-		/* no-op */
-	} else if (ret == -EAGAIN) {
-		ret = -ETIME;
-	} else {
-		NET_ERR("Error while waiting for ACK.");
-		ret = -EFAULT;
+	if (k_sem_take(&ctx->ack_lock, K_MSEC(10)) == 0) {
+		/* We reinit the semaphore in case ieee802154_handle_ack()
+		 * got called multiple times.
+		 */
+		k_sem_init(&ctx->ack_lock, 0, K_SEM_MAX_LIMIT);
 	}
 
 	ctx->ack_seq = 0U;
-	return ret;
+
+	return ctx->ack_received ? 0 : -ETIME;
 }
 
 int ieee802154_radio_send(struct net_if *iface, struct net_pkt *pkt, struct net_buf *frag)
 {
-	uint8_t remaining_attempts = CONFIG_NET_L2_IEEE802154_RADIO_TX_RETRIES + 1;
-	bool hw_csma, ack_required;
+	struct ieee802154_context *ctx = net_if_l2_data(iface);
+
+	bool ack_required;
 	int ret;
 
 	NET_DBG("frag %p", frag);
 
-	if (ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_RETRANSMISSION) {
-		/* A driver that claims retransmission capability must also be able
-		 * to wait for ACK frames otherwise it could not decide whether or
-		 * not retransmission is required in a standard conforming way.
-		 */
-		__ASSERT_NO_MSG(ieee802154_radio_get_hw_capabilities(iface) &
-				IEEE802154_HW_TX_RX_ACK);
-		remaining_attempts = 1;
-	}
-
-	hw_csma = IS_ENABLED(CONFIG_NET_L2_IEEE802154_RADIO_CSMA_CA) &&
-		  ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_CSMA;
-
-	/* Media access (CSMA, ALOHA, ...) and retransmission, see section 6.7.4.4. */
-	while (remaining_attempts) {
-		if (!hw_csma) {
-			ret = ieee802154_wait_for_clear_channel(iface);
-			if (ret != 0) {
-				NET_WARN("Clear channel assessment failed: dropping fragment %p on "
-					 "interface %p.",
-					 frag, iface);
-				return ret;
-			}
+	/* See section 6.7.4.4 - Retransmissions. */
+	for (uint8_t remaining_attempts = CONFIG_NET_L2_IEEE802154_RADIO_TX_RETRIES + 1;
+	     remaining_attempts > 0; remaining_attempts--) {
+		ret = ieee802154_wait_for_clear_channel(iface);
+		if (ret != 0) {
+			NET_WARN("Clear channel assessment failed: dropping fragment %p on "
+				 "interface %p.",
+				 frag, iface);
+			return ret;
 		}
 
-		/* No-op in case the driver has IEEE802154_HW_TX_RX_ACK capability. */
-		ack_required = ieee802154_prepare_for_ack(iface, pkt, frag);
+		ack_required = ieee802154_prepare_for_ack(ctx, pkt, frag);
 
-		/* TX including:
-		 *  - CSMA/CA in case the driver has IEEE802154_HW_CSMA capability,
-		 *  - waiting for ACK in case the driver has IEEE802154_HW_TX_RX_ACK capability,
-		 *  - retransmission on ACK timeout in case the driver has
-		 *    IEEE802154_HW_RETRANSMISSION capability.
-		 */
-		ret = ieee802154_radio_tx(
-			iface, hw_csma ? IEEE802154_TX_MODE_CSMA_CA : IEEE802154_TX_MODE_DIRECT,
-			pkt, frag);
+		ret = ieee802154_tx(iface, IEEE802154_TX_MODE_DIRECT, pkt, frag);
 		if (ret) {
-			/* Transmission failure. */
+			/* Unknown transmission failure. */
 			return ret;
 		}
 
@@ -234,20 +206,17 @@ int ieee802154_radio_send(struct net_if *iface, struct net_pkt *pkt, struct net_
 		}
 
 
-		/* No-op in case the driver has IEEE802154_HW_TX_RX_ACK capability. */
 		ret = ieee802154_wait_for_ack(iface, ack_required);
 		if (ret == 0) {
 			/* ACK received - transmission is successful. */
 			return 0;
 		}
-
-		remaining_attempts--;
 	}
 
 	return -EIO;
 }
 
-static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool has_pan_id,
+static inline void swap_and_set_pkt_ll_addr(struct net_linkaddr *addr, bool comp,
 					    enum ieee802154_addressing_mode mode,
 					    struct ieee802154_address_field *ll)
 {
