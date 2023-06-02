@@ -17,6 +17,7 @@
 
 #include <adsp_shim.h>
 #include <adsp_clk.h>
+#include <adsp_imr_layout.h>
 #include <cavs-idc.h>
 #include "soc.h"
 
@@ -46,6 +47,11 @@ LOG_MODULE_REGISTER(soc);
 #define L3_INTERRUPT_MASK       (1<<L3_INTERRUPT_NUMBER)
 
 #define ALL_USED_INT_LEVELS_MASK (L2_INTERRUPT_MASK | L3_INTERRUPT_MASK)
+
+/*
+ * @biref FW entry point called by ROM during normal boot flow
+ */
+extern void rom_entry(void);
 
 struct core_state {
 	uint32_t intenable;
@@ -81,7 +87,16 @@ __weak void pm_state_set(enum pm_state state, uint8_t substate_id)
 		soc_cpus_active[cpu] = false;
 		sys_cache_data_flush_and_invd_all();
 		if (cpu == 0) {
-			uint32_t ebb = EBB_BANKS_IN_SEGMENT;
+			uint32_t hpsram_mask[HPSRAM_SEGMENTS];
+
+			struct imr_header hdr = {
+				.adsp_imr_magic = ADSP_IMR_MAGIC_VALUE,
+				.imr_restore_vector = rom_entry,
+			};
+			struct imr_layout *imr_layout =
+			  arch_xtensa_uncached_ptr((struct imr_layout *)L3_MEM_BASE_ADDR);
+			imr_layout->imr_state.header = hdr;
+
 			/* turn off all HPSRAM banks - get a full bitmap */
 			uint32_t hpsram_mask = (1 << ebb) - 1;
 			/* do power down - this function won't return */
