@@ -98,86 +98,24 @@ enum ieee802154_channel {
 };
 
 enum ieee802154_hw_caps {
-
-	/*
-	 * PHY capabilities
-	 *
-	 * The following capabilities describe features of the underlying radio
-	 * hardware (PHY/L1).
-	 *
-	 * Note: A device driver must support the mandatory channel pages,
-	 * frequency bands and channels of at least one IEEE 802.15.4 PHY.
-	 */
-
-	/**
-	 * 2.4Ghz radio supported
-	 *
-	 * TODO: Replace with channel page attribute.
-	 */
-	IEEE802154_HW_2_4_GHZ = BIT(0),
-
-	/**
-	 * Sub-GHz radio supported
-	 *
-	 * TODO: Replace with channel page attribute.
-	 */
-	IEEE802154_HW_SUB_GHZ = BIT(1),
-
-	/** Energy detection (ED) supported (optional) */
-	IEEE802154_HW_ENERGY_SCAN = BIT(2),
-
-
-	/*
-	 * MAC offloading capabilities (optional)
-	 *
-	 * The following MAC/L2 features may optionally be offloaded to
-	 * specialized hardware or proprietary driver firmware ("hard MAC").
-	 *
-	 * L2 implementations will have to provide a "soft MAC" fallback for
-	 * these features in case the driver does not support them natively.
-	 *
-	 * Note: Some of these offloading capabilities may be mandatory in
-	 * practice to stay within timing requirements of certain IEEE 802.15.4
-	 * protocols, e.g. CPUs may not be fast enough to send ACKs within the
-	 * required delays in the 2.4 GHz band without hard MAC support.
-	 */
-
-	/** Frame checksum verification supported */
-	IEEE802154_HW_FCS = BIT(3),
-
-	/** Filtering of PAN ID, extended and short address supported */
-	IEEE802154_HW_FILTER = BIT(4),
-
-	/** Promiscuous mode supported */
-	IEEE802154_HW_PROMISC = BIT(5),
-
-	/** CSMA-CA procedure supported on TX */
-	IEEE802154_HW_CSMA = BIT(6),
-
-	/** Waits for ACK on TX if AR bit is set in TX pkt */
-	IEEE802154_HW_TX_RX_ACK = BIT(7),
-
-	/** Supports retransmission on TX ACK timeout */
-	IEEE802154_HW_RETRANSMISSION = BIT(8),
-
-	/** Sends ACK on RX if AR bit is set in RX pkt */
-	IEEE802154_HW_RX_TX_ACK = BIT(9),
-
-	/** TX at specified time supported */
-	IEEE802154_HW_TXTIME = BIT(10),
-
-	/** TX directly from sleep supported */
-	IEEE802154_HW_SLEEP_TO_TX = BIT(11),
-
-	/** Timed RX window scheduling supported */
-	IEEE802154_HW_RXTIME = BIT(12),
-
-	/** TX security supported (key management, encryption and authentication) */
-	IEEE802154_HW_TX_SEC = BIT(13),
-
-	/* Note: Update also IEEE802154_HW_CAPS_BITS_COMMON_COUNT when changing
-	 * the ieee802154_hw_caps type.
-	 */
+	IEEE802154_HW_FCS = BIT(0),            /* Frame Check-Sum supported */
+	IEEE802154_HW_PROMISC = BIT(1),        /* Promiscuous mode supported */
+	IEEE802154_HW_FILTER = BIT(2),         /* Filter PAN ID, long/short addr */
+	IEEE802154_HW_CSMA = BIT(3),           /* Executes CSMA-CA procedure on TX */
+	IEEE802154_HW_RETRANSMISSION = BIT(4), /* Handles retransmission on TX ACK timeout */
+	IEEE802154_HW_TX_RX_ACK = BIT(5),      /* Waits for ACK on TX if AR bit is set in TX pkt */
+	IEEE802154_HW_RX_TX_ACK = BIT(6),      /* Sends ACK on RX if AR bit is set in RX pkt */
+	IEEE802154_HW_ENERGY_SCAN = BIT(7),    /* Energy scan supported */
+	IEEE802154_HW_TXTIME = BIT(8),         /* TX at specified time supported */
+	IEEE802154_HW_SLEEP_TO_TX = BIT(9),    /* TX directly from sleep supported */
+	IEEE802154_HW_TX_SEC = BIT(10),        /* TX security handling supported */
+	IEEE802154_HW_RXTIME = BIT(11),        /* RX at specified time supported */
+	IEEE802154_HW_2_4_GHZ = BIT(12),       /* 2.4Ghz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
+	IEEE802154_HW_SUB_GHZ = BIT(13),       /* Sub-GHz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
 };
 
 /** @brief Number of bits used by ieee802154_hw_caps type. */

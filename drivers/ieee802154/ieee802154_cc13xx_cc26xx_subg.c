@@ -570,11 +570,41 @@ static int ieee802154_cc13xx_cc26xx_subg_tx(const struct device *dev,
 		goto out;
 	}
 
-	events = RF_runCmd(drv_data->rf_handle, (RF_Op *)&drv_data->cmd_prop_tx_adv,
-			   RF_PriorityNormal, cmd_prop_tx_adv_callback, RF_EventLastCmdDone);
-	if ((events & RF_EventLastCmdDone) == 0) {
-		LOG_DBG("Failed to run command (%" PRIx64 ")", events);
-		ret = -EIO;
+	do {
+		/* Reset command status */
+		drv_data->cmd_prop_cs.status = IDLE;
+		drv_data->cmd_prop_tx_adv.status = IDLE;
+
+		reason = RF_runCmd(drv_data->rf_handle,
+				   (RF_Op *)&drv_data->cmd_prop_cs,
+				   RF_PriorityNormal, cmd_prop_tx_adv_callback,
+				   RF_EventLastCmdDone);
+		if ((reason & RF_EventLastCmdDone) == 0) {
+			LOG_DBG("Failed to run command (%" PRIx64 ")", reason);
+			r = -EIO;
+			goto out;
+		}
+
+		if (drv_data->cmd_prop_cs.status != PROP_DONE_IDLE) {
+			LOG_DBG("Channel access failure (0x%x)",
+				drv_data->cmd_prop_cs.status);
+			/* Collision Avoidance is a WIP
+			 * Currently, we just wait a random amount of us in the
+			 * range [0,256) but k_busy_wait() is fairly inaccurate in
+			 * practice. Future revisions may attempt to use the RAdio
+			 * Timer (RAT) to measure this somewhat more precisely.
+			 */
+			k_busy_wait(sys_rand32_get() & 0xff);
+			continue;
+		}
+
+		if (drv_data->cmd_prop_tx_adv.status != PROP_DONE_OK) {
+			LOG_DBG("Transmit failed (0x%x)",
+				drv_data->cmd_prop_tx_adv.status);
+			continue;
+		}
+
+		r = 0;
 		goto out;
 	}
 
@@ -639,6 +669,11 @@ static void ieee802154_cc13xx_cc26xx_subg_rx_done(
 							rssi == CC13XX_CC26XX_INVALID_RSSI
 								? IEEE802154_MAC_RSSI_DBM_UNDEFINED
 								: rssi);
+
+			if (ieee802154_handle_ack(drv_data->iface, pkt) == NET_OK) {
+				net_pkt_unref(pkt);
+				continue;
+			}
 
 			if (net_recv_data(drv_data->iface, pkt)) {
 				LOG_WRN("Packet dropped");
