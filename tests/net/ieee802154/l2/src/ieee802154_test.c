@@ -456,7 +456,7 @@ static bool test_wait_for_ack(struct ieee802154_pkt_test *t)
 		goto out;
 	}
 
-	ack_required = ieee802154_prepare_for_ack(ctx, tx_pkt, tx_pkt->frags);
+	ack_required = ieee802154_prepare_for_ack(iface, tx_pkt, tx_pkt->frags);
 	if (!ack_required) {
 		NET_ERR("*** Expected AR flag to be set\n");
 		goto release_tx_pkt;
