@@ -359,7 +359,7 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	struct ieee802154_fcf_seq *fs;
 	struct ieee802154_mpdu mpdu;
 	bool is_broadcast;
-	size_t ll_hdr_len;
+	size_t hdr_len;
 
 	/* The IEEE 802.15.4 stack assumes that drivers provide a single-fragment package. */
 	__ASSERT_NO_MSG(pkt->buffer && pkt->buffer->frags == NULL);
@@ -433,10 +433,10 @@ static enum net_verdict ieee802154_recv(struct net_if *iface, struct net_pkt *pk
 	 * packet handling as it will mangle the package header to comply with upper
 	 * network layers' (POSIX) requirement to represent network addresses in big endian.
 	 */
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), !fs->fc.pan_id_comp,
-				 fs->fc.src_addr_mode, mpdu.mhr.src_addr);
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_src(pkt), fs->fc.pan_id_comp, fs->fc.src_addr_mode,
+				 mpdu.mhr.src_addr);
 
-	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), true, fs->fc.dst_addr_mode,
+	swap_and_set_pkt_ll_addr(net_pkt_lladdr_dst(pkt), false, fs->fc.dst_addr_mode,
 				 mpdu.mhr.dst_addr);
 
 	net_pkt_set_ll_proto_type(pkt, ETH_P_IEEE802154);
