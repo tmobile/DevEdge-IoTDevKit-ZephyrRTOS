@@ -611,6 +611,11 @@ static void ieee802154_cc13xx_cc26xx_subg_rx_done(
 								? IEEE802154_MAC_RSSI_DBM_UNDEFINED
 								: rssi);
 
+			if (ieee802154_handle_ack(drv_data->iface, pkt) == NET_OK) {
+				net_pkt_unref(pkt);
+				continue;
+			}
+
 			if (net_recv_data(drv_data->iface, pkt)) {
 				LOG_WRN("Packet dropped");
 				net_pkt_unref(pkt);
