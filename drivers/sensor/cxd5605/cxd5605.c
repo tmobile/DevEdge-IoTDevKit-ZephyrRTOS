@@ -30,6 +30,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/pm/device.h>
+#include <time.h>
 
 #include "cxd5605.h"
 #include "cxd5605_lib.h"
@@ -327,7 +328,8 @@ static int cxd5605_attr_get(const struct device *dev,
 {
 	struct cxd5605_data *drv_data = dev->data;
 
-	if (chan == (enum sensor_channel)GNSS_CHANNEL_TIME) {
+	if (chan == (enum sensor_channel)GNSS_CHANNEL_TIME &&
+			attr == (enum sensor_attribute)GNSS_ATTRIBUTE_TIME) {
 		val->val1 = (int)((drv_data->pvt.time.gnss_hour * 10000) +
 				(drv_data->pvt.time.gnss_minute * 100) +
 				(drv_data->pvt.time.gnss_second));
@@ -346,6 +348,18 @@ static int cxd5605_attr_get(const struct device *dev,
 	if (chan == (enum sensor_channel)GNSS_CHANNEL_TIME &&
 			attr == (enum sensor_attribute)GNSS_ATTRIBUTE_YEAR) {
 		val->val1 = (int)drv_data->pvt.time.gnss_year;
+		val->val2 = 0;
+	}
+	if (chan == (enum sensor_channel)GNSS_CHANNEL_TIME &&
+			attr == (enum sensor_attribute)GNSS_ATTRIBUTE_UTC) {
+		struct tm new_time;
+		new_time.tm_sec = drv_data->pvt.time.gnss_second;
+		new_time.tm_min = drv_data->pvt.time.gnss_minute;
+		new_time.tm_hour = drv_data->pvt.time.gnss_hour;
+		new_time.tm_mon= drv_data->pvt.time.gnss_month;
+		new_time.tm_year = drv_data->pvt.time.gnss_year;
+		new_time.tm_isdst = -1;
+		val->val1 = (int)mktime(&new_time);
 		val->val2 = 0;
 	}
 
