@@ -241,23 +241,20 @@ enum ieee802154_tx_mode {
 	IEEE802154_TX_MODE_CCA,
 
 	/**
-	 * Perform full CSMA/CA procedure before packet transmission.
-	 *
-	 * @note requires IEEE802154_HW_CSMA capability.
+	 * Perform full CSMA CA procedure before packet transmission.
+	 * Requires IEEE802154_HW_CSMA capability.
 	 */
 	IEEE802154_TX_MODE_CSMA_CA,
 
 	/**
 	 * Transmit packet in the future, at specified time, no CCA.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME capability.
+	 * Requires IEEE802154_HW_TXTIME capability.
 	 */
 	IEEE802154_TX_MODE_TXTIME,
 
 	/**
 	 * Transmit packet in the future, perform CCA before transmission.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME capability.
+	 * Requires IEEE802154_HW_TXTIME capability.
 	 */
 	IEEE802154_TX_MODE_TXTIME_CCA,
 
@@ -288,6 +285,7 @@ enum ieee802154_config_type {
 	 *  provided with ``IEEE802154_CONFIG_ACK_FPB`` config and FPB address
 	 *  matching mode specified. Otherwise, Frame Pending bit should be set
 	 *  to ``1`` (see section 6.7.3).
+	 *  Requires IEEE802154_HW_TX_RX_ACK capability.
 	 */
 	IEEE802154_CONFIG_AUTO_ACK_FPB,
 
@@ -320,10 +318,9 @@ enum ieee802154_config_type {
 	 */
 	IEEE802154_CONFIG_FRAME_COUNTER_IF_LARGER,
 
-	/** Configure a radio reception window. This can be used for any
-	 *  scheduled reception, e.g.: Zigbee GP device, CSL, TSCH, etc.
-	 *
-	 *  @note requires IEEE802154_HW_RXTIME capability.
+	/** Configure a radio reception slot. This can be used for any scheduled reception, e.g.:
+	 *  Zigbee GP device, CSL, TSCH, etc.
+	 *  Requires IEEE802154_HW_RXTIME capability.
 	 */
 	IEEE802154_CONFIG_RX_SLOT,
 
@@ -572,24 +569,7 @@ struct ieee802154_radio_api {
 	 */
 	int (*set_channel)(const struct device *dev, uint16_t channel);
 
-	/**
-	 * @brief Set/Unset PAN ID, extended or short address filters.
-	 *
-	 * @note requires IEEE802154_HW_FILTER capability.
-	 *
-	 * @param dev pointer to radio device
-	 * @param set true to set the filter, false to remove it
-	 * @param type the type of entity to be added/removed from the filter
-	 * list (a PAN ID or a source/destination address)
-	 * @param filter the entity to be added/removed from the filter list
-	 *
-	 * @retval 0 The filter was successfully added/removed.
-	 * @retval -EINVAL The given filter entity or filter entity type
-	 * was not valid.
-	 * @retval -ENOTSUP Setting/removing this filter or filter type
-	 * is not supported by this driver.
-	 * @retval -EIO Error while setting/removing the filter.
-	 */
+	/** Set/Unset filters. Requires IEEE802154_HW_FILTER capability. */
 	int (*filter)(const struct device *dev,
 		      bool set,
 		      enum ieee802154_filter_type type,
@@ -707,73 +687,30 @@ struct ieee802154_radio_api {
 			 const struct ieee802154_config *config);
 
 	/**
-	 * @brief Get the available amount of Sub-GHz channels.
-	 *
-	 * TODO: Replace with a combination of channel page and channel
-	 * attributes.
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return number of available channels in the sub-gigahertz band
+	 * Get the available amount of Sub-GHz channels
+	 * TODO: Replace with a combination of channel page and channel attributes.
 	 */
 	uint16_t (*get_subg_channel_count)(const struct device *dev);
 
-	/**
-	 * @brief Run an energy detection scan.
-	 *
-	 * @note requires IEEE802154_HW_ENERGY_SCAN capability
-	 *
-	 * @note The radio channel must be set prior to calling this function.
-	 *
-	 * @param dev pointer to radio device
-	 * @param duration duration of energy scan in ms
-	 * @param done_cb function called when the energy scan has finished
-	 *
-	 * @retval 0 the energy detection scan was successfully scheduled
-	 *
-	 * @retval -EBUSY the energy detection scan could not be scheduled at
-	 * this time
-	 * @retval -EALREADY a previous energy detection scan has not finished
-	 * yet.
-	 * @retval -ENOTSUP This driver does not support energy scans.
+	/** Run an energy detection scan.
+	 *  Note: channel must be set prior to request this function.
+	 *  duration parameter is in ms.
+	 *  Requires IEEE802154_HW_ENERGY_SCAN capability.
 	 */
 	int (*ed_scan)(const struct device *dev,
 		       uint16_t duration,
 		       energy_scan_done_cb_t done_cb);
 
-	/**
-	 * @brief Get the current time in nanoseconds relative to the network
-	 * subsystem's local uptime clock as represented by this network
-	 * interface.
-	 *
-	 * See @ref net_time_t for semantic details.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME
-	 * capabilities.
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return nanoseconds relative to the network subsystem's local clock
+	/** Get the current radio time in microseconds
+	 *  Requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME capabilities.
 	 */
-	net_time_t (*get_time)(const struct device *dev);
+	uint64_t (*get_time)(const struct device *dev);
 
-	/**
-	 * @brief Get the current estimated worst case accuracy (maximum ±
-	 * deviation from the nominal frequency) of the network subsystem's
-	 * local clock used to calculate tolerances and guard times when
-	 * scheduling delayed receive or transmit radio operations.
-	 *
-	 * The deviation is given in units of PPM (parts per million).
-	 *
-	 * @note requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME
-	 * capabilities.
-	 *
-	 * @note Implementations may estimate this value based on current
-	 * operating conditions (e.g. temperature).
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return current estimated clock accuracy in PPM
+	/** Get the current accuracy, in units of ± ppm, of the clock used for
+	 *  scheduling delayed receive or transmit radio operations.
+	 *  Note: Implementations may optimize this value based on operational
+	 *  conditions (i.e.: temperature).
+	 *  Requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME capabilities.
 	 */
 	uint8_t (*get_sch_acc)(const struct device *dev);
 
