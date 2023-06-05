@@ -4685,20 +4685,10 @@ bool net_if_is_wifi(struct net_if *iface)
 		return net_off_is_wifi_offloaded(iface);
 	}
 #if defined(CONFIG_NET_L2_ETHERNET)
-	return net_if_l2(iface) == &NET_L2_GET_NAME(ETHERNET) &&
-		net_eth_type_is_wifi(iface);
-#endif
+	return net_eth_type_is_wifi(iface);
+#else
 	return false;
-}
-
-struct net_if *net_if_get_first_wifi(void)
-{
-	STRUCT_SECTION_FOREACH(net_if, iface) {
-		if (net_if_is_wifi(iface)) {
-			return iface;
-		}
-	}
-	return NULL;
+#endif
 }
 
 void net_if_init(void)
