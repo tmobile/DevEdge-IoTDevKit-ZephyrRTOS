@@ -384,13 +384,9 @@ FUNC_NORETURN static void ec_host_cmd_thread(void *hc_handle, void *arg2, void *
 		/* Wait until RX messages is received on host interface */
 		k_sem_take(&hc->rx_ready, K_FOREVER);
 
-		ec_host_cmd_log_request(rx->buf);
-
-		/* Check status of the rx data, that has been verified in
-		 * ec_host_cmd_send_received.
-		 */
-		if (hc->rx_status != EC_HOST_CMD_SUCCESS) {
-			ec_host_cmd_send_response(hc->rx_status, &args);
+		status = verify_rx(rx);
+		if (status != EC_HOST_CMD_SUCCESS) {
+			ec_host_cmd_send_response(status, &args);
 			continue;
 		}
 
