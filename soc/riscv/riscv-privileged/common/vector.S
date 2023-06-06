@@ -26,19 +26,6 @@ SECTION_FUNC(vectors, __start)
 	.option norvc;
 
 #if defined(CONFIG_RISCV_VECTORED_MODE)
-#if defined(CONFIG_RISCV_HAS_CLIC)
-
-	/*
-	 * CLIC vectored mode
-	 *
-	 * CLIC vectored mode uses mtvec exclusively for exception handling and
-	 * mtvec.base must be aligned to 64 bytes (this is done using
-	 * CONFIG_ARCH_SW_ISR_TABLE_ALIGN)
-	 */
-	la t0, _isr_wrapper
-	addi t0, t0, 0x03 /* Enable CLIC vectored mode by setting LSB */
-	csrw mtvec, t0
-
 	/*
 	 * CLIC vectored mode has a similar concept to CLINT vectored mode,
 	 * where an interrupt vector table is used for specific interrupts.
@@ -76,6 +63,8 @@ SECTION_FUNC(vectors, __start)
 
 #else /* !CONFIG_RISCV_VECTORED_MODE */
 
+/* DIRECT_MODE */
+#else
 	/*
 	 * CLINT direct mode
 	 *
