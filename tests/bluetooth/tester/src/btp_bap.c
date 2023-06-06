@@ -56,10 +56,6 @@ struct audio_stream {
 	size_t len_to_send;
 	struct k_work_delayable audio_clock_work;
 	struct k_work_delayable audio_send_work;
-	uint8_t cig_id;
-	uint8_t cis_id;
-	struct bt_bap_unicast_group **cig;
-	bool already_sent;
 };
 
 #define MAX_STREAMS_COUNT MAX(CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT, \
@@ -98,7 +94,17 @@ static void audio_send_timeout(struct k_work *work);
 K_THREAD_STACK_DEFINE(iso_data_thread_stack_area, ISO_DATA_THREAD_STACK_SIZE);
 static struct k_work_q iso_data_work_q;
 
-static void print_codec_cfg(const struct bt_audio_codec_cfg *codec_cfg)
+RING_BUF_DECLARE(audio_ring_buf, CONFIG_BT_ISO_TX_MTU);
+static void audio_clock_timeout(struct k_work *work);
+static void audio_send_timeout(struct k_work *work);
+
+#define ISO_DATA_THREAD_STACK_SIZE 512
+#define ISO_DATA_THREAD_PRIORITY -7
+K_THREAD_STACK_DEFINE(iso_data_thread_stack_area, ISO_DATA_THREAD_STACK_SIZE);
+static struct k_work_q iso_data_work_q;
+
+
+static void print_codec(const struct bt_codec *codec)
 {
 	LOG_DBG("codec_cfg 0x%02x cid 0x%04x vid 0x%04x count %zu", codec_cfg->id, codec_cfg->cid,
 		codec_cfg->vid, codec_cfg->data_count);
@@ -598,12 +604,7 @@ static void stream_started(struct bt_bap_stream *stream)
 
 	LOG_DBG("Started stream %p", stream);
 
-	err = bt_bap_ep_get_info(stream->ep, &info);
-	if (err) {
-		LOG_ERR("Could not get EP info for stream %p", stream);
-	}
-
-	if (info.dir == BT_AUDIO_DIR_SINK) {
+	if (stream->dir == BT_AUDIO_DIR_SINK) {
 		/* Schedule first TX ISO data at seq_num 1 instead of 0 to ensure
 		 * we are in sync with the controller at start of streaming.
 		 */
@@ -619,8 +620,8 @@ static void stream_started(struct bt_bap_stream *stream)
 					  K_USEC(a_stream->stream.qos->interval));
 	}
 
-	btp_send_ascs_ase_state_changed_ev(stream->conn, a_stream->ase_id,
-					   stream->ep->status.state);
+	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
+					     BT_ASCS_START_OP, BTP_STATUS_SUCCESS);
 }
 
 static void stream_stopped(struct bt_bap_stream *stream, uint8_t reason)
@@ -629,7 +630,7 @@ static void stream_stopped(struct bt_bap_stream *stream, uint8_t reason)
 
 	LOG_DBG("Stopped stream %p with reason 0x%02X", stream, reason);
 
-	if (stream->ep->dir == BT_AUDIO_DIR_SINK) {
+	if (stream->dir == BT_AUDIO_DIR_SINK) {
 		/* Stop send timer */
 		k_work_cancel_delayable(&a_stream->audio_clock_work);
 		k_work_cancel_delayable(&a_stream->audio_send_work);
@@ -727,7 +728,7 @@ static void btp_send_pac_codec_found_ev(struct bt_conn *conn,
 	codec_cap_get_val(codec_cap, BT_AUDIO_CODEC_LC3_FRAME_LEN, &data);
 	memcpy(&ev.octets_per_frame, data->data.data, sizeof(ev.octets_per_frame));
 
-	codec_cap_get_val(codec_cap, BT_AUDIO_CODEC_LC3_CHAN_COUNT, &data);
+	bt_codec_get_val(codec, BT_CODEC_LC3_CHAN_COUNT, &data);
 	memcpy(&ev.channel_counts, data->data.data, sizeof(ev.channel_counts));
 
 	tester_event(BTP_SERVICE_ID_BAP, BTP_BAP_EV_CODEC_CAP_FOUND, &ev, sizeof(ev));
@@ -783,10 +784,6 @@ static void enable_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rs
 static void start_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rsp_code,
 		     enum bt_bap_ascs_reason reason)
 {
-	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
-
-	/* Callback called on Receiver Start Ready notification from ASE Control Point */
-
 	LOG_DBG("stream %p start operation rsp_code %u reason %u", stream, rsp_code, reason);
 	a_stream->already_sent = false;
 
@@ -1013,7 +1010,7 @@ static void audio_send_timeout(struct k_work *work)
 				 BT_ISO_TIMESTAMP_NONE);
 	if (err != 0) {
 		LOG_ERR("Failed to send audio data to stream: ase_id %d dir seq %d %d err %d",
-			stream->ase_id, stream->stream.ep->dir, stream->last_req_seq_num, err);
+			stream->ase_id, stream->stream.dir, stream->last_req_seq_num, err);
 		net_buf_unref(buf);
 	}
 
@@ -1243,7 +1240,7 @@ static int client_create_unicast_group(struct audio_connection *audio_conn, uint
 	}
 
 	param.params = pair_params;
-	param.params_count = cis_cnt;
+	param.params_count = MAX(sink_cnt, src_cnt);
 	param.packing = BT_ISO_PACKING_SEQUENTIAL;
 
 	LOG_DBG("Creating unicast group");
@@ -1407,20 +1404,15 @@ static uint8_t ascs_configure_qos(const void *cmd, uint16_t cmd_len,
 
 	audio_conn = &connections[bt_conn_index(conn)];
 
-	if (cigs[cp->cig_id] != NULL) {
-		err = bt_bap_unicast_group_delete(cigs[cp->cig_id]);
+	if (audio_conn->unicast_group != NULL) {
+		err = bt_bap_unicast_group_delete(audio_conn->unicast_group);
 		if (err != 0) {
 			LOG_DBG("Failed to delete the unicast group, err %d", err);
 			bt_conn_unref(conn);
 
 			return BTP_STATUS_FAILED;
 		}
-		cigs[cp->cig_id] = NULL;
-	}
-
-	err = client_add_ase_to_cis(audio_conn, cp->ase_id, cp->cis_id, cp->cig_id);
-	if (err != 0) {
-		return BTP_STATUS_FAILED;
+		audio_conn->unicast_group = NULL;
 	}
 
 	qos = &audio_conn->qos;
@@ -1545,22 +1537,11 @@ static uint8_t ascs_receiver_start_ready(const void *cmd, uint16_t cmd_len,
 	LOG_DBG("Starting stream %p, ep %u, dir %u", &stream->stream, cp->ase_id,
 		stream->stream.ep->dir);
 
-	while (true) {
-		err = bt_bap_stream_start(&stream->stream);
-		if (err == -EBUSY) {
-			/* TODO: How to determine if a controller is ready again after
-			 * bt_bap_stream_start? In AC 6(i) tests the PTS sends Receiver Start Ready
-			 * only after all CISes are established.
-			 */
-			k_sleep(K_MSEC(1000));
-			continue;
-		} else if (err != 0) {
-			LOG_DBG("Could not start stream: %d", err);
-			return BTP_STATUS_FAILED;
-		}
-
-		break;
-	};
+	err = bt_bap_stream_start(&stream->stream);
+	if (err != 0) {
+		LOG_DBG("Could not start stream: %d", err);
+		return BTP_STATUS_FAILED;
+	}
 
 	return BTP_STATUS_SUCCESS;
 }
