@@ -62,8 +62,8 @@ struct npm1300_charger_data {
 #define ADC_OFFSET_IBAT_EN   0x24U
 
 /* nPM1300 VBUS register offsets */
-#define VBUS_OFFSET_ILIMSTARTUP 0x02U
-#define VBUS_OFFSET_STATUS      0x07U
+#define VBUS_OFFSET_ILIMSTARTUP	0x02U
+#define VBUS_OFFSET_STATUS	0x07U
 
 /* Ibat status */
 #define IBAT_STAT_DISCHARGE      0x04U
@@ -253,36 +253,13 @@ int npm1300_charger_sample_fetch(const struct device *dev, enum sensor_channel c
 		return ret;
 	}
 
-	/* Read vbus status, and set SW current limit on new vbus detection */
-	last_vbus = (data->vbus_stat & 1U) != 0U;
+	/* Read vbus status */
 	ret = mfd_npm1300_reg_read(config->mfd, VBUS_BASE, VBUS_OFFSET_STATUS, &data->vbus_stat);
 	if (ret != 0) {
 		return ret;
 	}
 
-	if (!last_vbus && ((data->vbus_stat & 1U) != 0U)) {
-		ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_TASK_UPDATE, 1U);
-
-static int set_ntc_thresholds(const struct npm1300_charger_config *const config)
-{
-	for (uint8_t idx = 0U; idx < 4U; idx++) {
-		if (config->temp_thresholds[idx] < INT32_MAX) {
-			uint32_t res = calc_ntc_res(config, config->temp_thresholds[idx]);
-
-			/* Ref: Datasheet Figure 14: Equation for battery temperature */
-			uint16_t code = (1024 * res) / (res + config->thermistor_ohms);
-
-			int ret = mfd_npm1300_reg_write2(
-				config->mfd, CHGR_BASE, CHGR_OFFSET_NTC_TEMPS + (idx * 2U),
-				code >> NTCTEMP_MSB_SHIFT, code & NTCTEMP_LSB_MASK);
-
-			if (ret != 0) {
-				return ret;
-			}
-		}
-	}
-
-	return 0;
+	return ret;
 }
 
 int npm1300_charger_init(const struct device *dev)
@@ -360,7 +337,7 @@ int npm1300_charger_init(const struct device *dev)
 	if (ret == -EINVAL) {
 		return ret;
 	}
-	ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_ILIM, idx);
+	ret = mfd_npm1300_reg_write(config->mfd, VBUS_BASE, VBUS_OFFSET_ILIMSTARTUP, idx);
 	if (ret != 0) {
 		return ret;
 	}
