@@ -306,15 +306,11 @@ static inline const char *wifi_link_mode_txt(enum wifi_link_mode link_mode)
 	}
 }
 
-/** Wi-Fi scanning types. */
 enum wifi_scan_type {
-	/** Active scanning (default). */
 	WIFI_SCAN_TYPE_ACTIVE = 0,
-	/** Passive scanning. */
 	WIFI_SCAN_TYPE_PASSIVE,
 };
 
-/** Wi-Fi power save states. */
 enum wifi_ps {
 	/** Power save disabled. */
 	WIFI_PS_DISABLED = 0,

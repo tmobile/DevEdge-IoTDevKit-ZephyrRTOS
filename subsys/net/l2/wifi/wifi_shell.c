@@ -458,6 +458,7 @@ static int cmd_wifi_disconnect(const struct shell *sh, size_t argc,
 static int cmd_wifi_scan(const struct shell *sh, size_t argc, char *argv[])
 {
 	struct net_if *iface = net_if_get_first_wifi();
+	struct wifi_scan_params params = { 0 };
 
 	context.sh = sh;
 

@@ -100,8 +100,9 @@ static int wifi_scan(uint32_t mgmt_request, struct net_if *iface,
 		     void *data, size_t len)
 {
 	const struct device *dev = net_if_get_device(iface);
+	struct net_wifi_mgmt_offload *off_api =
+		(struct net_wifi_mgmt_offload *) dev->api;
 	struct wifi_scan_params *params = data;
-	const struct wifi_mgmt_ops *const wifi_mgmt_api = get_wifi_api(iface);
 
 	if (wifi_mgmt_api == NULL || wifi_mgmt_api->scan == NULL) {
 		return -ENOTSUP;
@@ -113,7 +114,7 @@ static int wifi_scan(uint32_t mgmt_request, struct net_if *iface,
 #endif
 	}
 
-	return wifi_mgmt_api->scan(dev, params, scan_result_cb);
+	return off_api->scan(dev, params, scan_result_cb);
 }
 
 NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_SCAN, wifi_scan);
