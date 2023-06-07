@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-if (NOT CMAKE_HOST_UNIX OR CMAKE_HOST_APPLE)
-  message(FATAL_ERROR "The POSIX architecture only works on Linux. If on Windows or macOS "
-          "consider using a virtual machine to run a Linux guest.")
-endif()
-
 # This native_simulator library is used to pass options to the
 # native_simulator runner build. Currently the following are used:
 #  INTERFACE_COMPILE_OPTIONS:
@@ -19,12 +14,6 @@ endif()
 #      For ex. target_sources(native_simulator INTERFACE silly.c)
 #      Note that these are built with the host libC and the include directories
 #      the runner is built with.
-#  Note: target_link_libraries() cannot be used on this library at this point.
-#        target_link_libraries() updates INTERFACE_LINK_LIBRARIES but wrapping it with extra
-#        information. This means we cannot directly pass it to the native_simulator runner build.
-#        Check https://cmake.org/cmake/help/latest/prop_tgt/INTERFACE_LINK_LIBRARIES.html for more
-#        info.
-#        We use target_link_options() instead
 add_library(native_simulator INTERFACE)
 
 if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/${CMAKE_HOST_SYSTEM_NAME}.${CMAKE_HOST_SYSTEM_PROCESSOR}.cmake)
@@ -55,10 +44,49 @@ if (CONFIG_NATIVE_APPLICATION)
   zephyr_compile_options(
     -include ${ZEPHYR_BASE}/arch/posix/include/posix_cheats.h
   )
+elseif (CONFIG_NATIVE_LIBRARY)
+  zephyr_compile_options(
+    -fvisibility=hidden
+  )
+
+  # While doing the partial linking of the native library, some symbols will be missing
+  # which are provided by the native simulator runner
+  zephyr_ld_options(
+    -Wl,--unresolved-symbols=ignore-all
+  )
+
+  if (NOT CONFIG_EXTERNAL_LIBC)
+    # Get the *compiler* include path, that is where the *compiler* provided headers are (not the
+    # default libC ones). This includes basic headers like stdint.h, stddef.h or float.h
+    # We expect something like
+    #  /usr/lib/gcc/x86_64-linux-gnu/12/include or /usr/lib/llvm-14/lib/clang/14.0.0/include
+    execute_process(
+      COMMAND ${CMAKE_C_COMPILER} --print-file-name=include/stddef.h
+      OUTPUT_VARIABLE _OUTPUT
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    get_filename_component(COMPILER_OWN_INCLUDE_PATH "${_OUTPUT}" DIRECTORY)
+
+    # Do not use the C library from this compiler/host,
+    # but still use the basic compiler headers
+    # -fno-builtin to avoid the compiler using builtin replacements for std library functions
+    zephyr_compile_options(
+      -nostdinc
+      -isystem ${COMPILER_OWN_INCLUDE_PATH}
+      $<TARGET_PROPERTY:compiler,freestanding>
+      -fno-builtin
+    )
+  endif()
 endif()
 
-# @Intent: Obtain compiler specific flags for no freestanding compilation
-zephyr_compile_options($<TARGET_PROPERTY:compiler,hosted>)
+if(CONFIG_EXTERNAL_LIBC)
+  # @Intent: Obtain compiler specific flags for no freestanding compilation
+  zephyr_compile_options($<TARGET_PROPERTY:compiler,hosted>)
+endif()
+
+if(CONFIG_EXTERNAL_LIBCPP)
+  target_link_options(native_simulator INTERFACE "-lstdc++")
+endif()
 
 zephyr_include_directories(${BOARD_DIR})
 
