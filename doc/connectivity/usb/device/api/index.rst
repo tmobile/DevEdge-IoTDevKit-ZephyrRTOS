@@ -9,4 +9,3 @@ USB device support APIs
    usb_dc.rst
    usb_device.rst
    usb_device_hid.rst
-   usb_device_bos.rst
