@@ -194,6 +194,7 @@ include/zephyr/drivers/fuel_gauge.h merge=ours
 include/zephyr/drivers/fuel_gauge/act81461.h merge=ours
 include/zephyr/drivers/modem/murata-1sc.h merge=ours
 include/zephyr/drivers/modem/sms.h merge=ours
+include/zephyr/drivers/regulator/act8161.h merge=ours
 include/zephyr/drivers/sensor/cxd5605.h merge=ours
 include/zephyr/drivers/sensor/gnss.h merge=ours
 include/zephyr/drivers/sensor/lis2dw12.h merge=ours

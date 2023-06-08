@@ -1379,18 +1379,20 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 				      REGULATOR_ERROR_OVER_CURRENT)) {
 				return -EINVAL;
 			}
-			uint8_t msk = 0;
+			{
+				uint8_t msk = 0;
 
-			if (flags & REGULATOR_ERROR_OVER_VOLTAGE) {
-				msk |= OV_INT_MSK;
+				if (flags & REGULATOR_ERROR_OVER_VOLTAGE) {
+					msk |= OV_INT_MSK;
+				}
+				if (flags & REGULATOR_ERROR_UNDER_VOLTAGE) {
+					msk |= PWR_GOOD_INT_MSK;
+				}
+				if (flags & REGULATOR_ERROR_OVER_CURRENT) {
+					msk |= ILIM_INT_MSK;
+				}
+				ret = i2c_reg_update_byte_dt(&cconfig->i2c, reg, msk, val);
 			}
-			if (flags & REGULATOR_ERROR_UNDER_VOLTAGE) {
-				msk |= PWR_GOOD_INT_MSK;
-			}
-			if (flags & REGULATOR_ERROR_OVER_CURRENT) {
-				msk |= ILIM_INT_MSK;
-			}
-			ret = i2c_reg_update_byte_dt(&cconfig->i2c, reg, msk, val);
 			break;
 		case ACT81461_SOURCE_BUCK1:
 		case ACT81461_SOURCE_BUCK2:
@@ -1409,12 +1411,14 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 			if (flags & ~REGULATOR_ERROR_OVER_CURRENT) {
 				return -EINVAL;
 			}
-			uint8_t msk = 0;
+			{
+				uint8_t msk = 0;
 
-			if (flags & REGULATOR_ERROR_OVER_CURRENT) {
-				msk |= ILIM_INT_MSK;
+				if (flags & REGULATOR_ERROR_OVER_CURRENT) {
+					msk |= ILIM_INT_MSK;
+				}
+				ret = i2c_reg_update_byte_dt(&cconfig->i2c, reg, msk, val);
 			}
-			ret = i2c_reg_update_byte_dt(&cconfig->i2c, reg, msk, val);
 			break;
 		case ACT81461_SOURCE_BOOST:
 			reg = INT_MSK_REG_BOOST;
