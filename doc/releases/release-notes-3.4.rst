@@ -173,8 +173,17 @@ Changes in this release
   has been replaced with an enum to indicate what function is used, see
   :c:struct:`fs_mgmt_file_access` for the new structure definition.
 
+* Iterable sections API is now available at
+  :zephyr_file:`zephyr/sys/iterable_sections.h`. LD linker snippets are
+  available at :zephyr_file:`zephyr/linker/iterable_sections.h`.
+
+* Cache API functions are now fully inlined by compilers.
+
 Removed APIs in this release
 ============================
+
+* Pinmux API has been removed. Pin control needs to be used as its replacement,
+  refer to :ref:`pinctrl-guide` for more details.
 
 Deprecated in this release
 ==========================
@@ -233,6 +242,10 @@ New APIs in this release
   :c:func:`rtc_set_calibration` and :c:func:`rtc_get_calibration` are enabled with
   :kconfig:option:`CONFIG_RTC_CALIBRATION`.
 
+* Introduced :ref:`auxdisplay_api` for auxiliary (alphanumeric-based) displays.
+
+* Introduced :ref:`barriers_api` for barrier operations.
+
 Kernel
 ******
 
@@ -254,11 +267,25 @@ Architectures
 
 * ARM64
   * Removed absolute symbol :c:macro:`___callee_saved_t_SIZEOF`
+  * Enabled FPU and FPU_SHARING for v8r aarch64
+  * Fixed the STACK_INIT logic during the reset
+  * Introduced and enabled safe exception stack
+  * Fixed possible deadlock on SMP with FPU sharing
+  * Added ISBs after SCTLR Modifications
 
 * NIOS2
   * Removed absolute symbol :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`
 
 * RISC-V
+
+  * Added :kconfig:option:`CONFIG_PMP_NO_TOR`, :kconfig:option:`CONFIG_PMP_NO_NA4`, and
+    :kconfig:option:`CONFIG_PMP_NO_NAPOT` to allow disabling unsupported PMP range modes.
+  * Removed unused symbols: :c:macro:`_thread_offset_to_tp`,
+    :c:macro:`_thread_offset_to_priv_stack_start`, :c:macro:`_thread_offset_to_user_sp`.
+  * Added support for setting PMP granularity with :kconfig:option:`CONFIG_PMP_GRANULARITY`.
+  * Switched from accessing CSRs from inline assembly to using the :c:func:`csr_read` helper
+    function.
+  * Enabled single-threading support.
 
 * SPARC
   * Removed absolute symbol :c:macro:`_K_THREAD_NO_FLOAT_SIZEOF`
@@ -303,6 +330,9 @@ Boards & SoC Support
 
 * Added support for these ARM64 boards:
 
+  * PHYTEC phyCORE-AM62x A53
+  * MIMX93 EVK A53 (SOF)
+
 * Added support for these RISC-V boards:
 
 * Added support for these X86 boards:
@@ -317,10 +347,13 @@ Boards & SoC Support
     ``nrf9160dk_nrf9160`` and ``nrf9160dk_nrf52840``. To build for an
     older revision of the nRF9160 DK without external flash, specify that
     older board revision when building.
-
-  * Enabled external_flash_pins_routing switch in ``nrf9160dk_nrf52840`` by default.
+  * ``nrf9160dk_nrf52840``: Enabled external_flash_pins_routing switch by default.
+  * ``nrf9160dk_nrf9160``: Changed the order of buttons and switches on the GPIO
+    expander to match the order when using GPIO directly on the nRF9160 SoC.
 
 * Made these changes for ARM64 boards:
+
+  * FVP revc_2xaemv8a / aemv8r: Added ethernet, PHY and MDIO nodes
 
 * Made these changes for RISC-V boards:
 
@@ -331,8 +364,6 @@ Boards & SoC Support
 * Removed support for these ARC boards:
 
 * Removed support for these ARM boards:
-
-* Removed support for these ARM64 boards:
 
 * Removed support for these RISC-V boards:
 
@@ -390,8 +421,69 @@ Build system and infrastructure
   To use it, enable :kconfig:option:`CONFIG_CHECK_INIT_PRIORITIES`, see
   :ref:`check_init_priorities.py` for more details.
 
+* Added a new option to disable tracking of macro expansion when compiling,
+  :kconfig:option:`CONFIG_COMPILER_TRACK_MACRO_EXPANSION`. This option may be
+  disabled to reduce compiler verbosity when errors occur during macro
+  expansions, e.g. in device definition macros.
+
+* Twister now supports loading test configurations from alternative root
+  folder/s by using ``--alt-config-root``. When a test is found, Twister will
+  check if a test configuration file exist in any of the alternative test
+  configuration root folders. For example, given
+  ``$test_root/tests/foo/testcase.yaml``, Twister will use
+  ``$alt_config_root/tests/foo/testcase.yaml`` if it exists.
+
+* Twister now uses native YAML lists for fields that were previously defined
+  using space-separated strings. For example:
+
+  .. code-block:: yaml
+
+     platform_allow: foo bar
+
+  can now be written as:
+
+  .. code-block:: yaml
+
+     platform_allow:
+       - foo
+       - bar
+
+  This applies to the following properties:
+
+    - ``arch_exclude``
+    - ``arch_allow``
+    - ``depends_on``
+    - ``extra_args``
+    - ``extra_sections``
+    - ``platform_exclude``
+    - ``platform_allow``
+    - ``tags``
+    - ``toolchain_exclude``
+    - ``toolchain_allow``
+
+  Note that the old behavior is kept as deprecated. The
+  :zephyr_file:`scripts/utils/twister_to_list.py` script can be used to
+  automatically migrate Twister configuration files.
+
 Drivers and Sensors
 *******************
+
+* Device model
+
+  * Devices that do not require an initialization routine can now pass ``NULL``
+    to the ``DEVICE_*_DEFINE()`` macros.
+
+* Auxiliary display
+
+  * New auxiliary display (auxdisplay) peripheral has been added, this allows
+    for interfacing with simple alphanumeric displays that do not feature
+    graphic capabilities. This peripheral is marked as unstable.
+
+  * HD44780 driver added.
+
+  * Noritake Itron driver added.
+
+  * Grove LCD driver added (ported from existing sample).
 
 * ADC
 
@@ -501,15 +593,25 @@ Drivers and Sensors
   * Retained memory (retained_mem) driver has been added with backends for
     Nordic nRF GPREGRET, and uninitialised RAM.
 
-Trusted Firmware-M
-******************
 * Pin control
+
+  * Added support for Infineon CAT1
+  * Added support for TI K3
+  * Added support for ARC emdsp
 
 * PWM
 
 * Power domain
 
 * Regulators
+
+  * The regulator API can now be built without thread-safe reference counting
+    by using :kconfig:option:`CONFIG_REGULATOR_THREAD_SAFE_REFCNT`. This
+    feature can be useful in applications that do not enable
+    :kconfig:option:`CONFIG_MULTITHREADING`.
+  * Added support for ADP5360 PMIC
+  * Added support for nPM1300 PMIC
+  * Added support for Raspberry Pi Pico core supply regulator
 
 * Reset
 
@@ -565,6 +667,10 @@ Libraries / Subsystems
 * IPC
 
   * :c:func:`ipc_service_close_instance` now only acts on bounded endpoints.
+  * ICMSG: removed race condition during bonding.
+  * ICMSG: removed internal API for clearing shared memory.
+  * ICMSG: added mutual exclusion access to SHMEM.
+  * Fixed CONFIG_OPENAMP_WITH_DCACHE.
 
 * Management
 
@@ -612,6 +718,12 @@ Libraries / Subsystems
 
   * Added policy that every ``sqe`` will generate a ``cqe`` (previously an RTIO_SQE_TRANSACTION
     entry would only trigger a ``cqe`` on the last ``sqe`` in the transaction.
+
+* Power management
+
+  * Added a new policy event API that can be used to register expected events
+    that will wake the system up in the future. This can be used to influence
+    the system on which low power states can be used.
 
 HALs
 ****

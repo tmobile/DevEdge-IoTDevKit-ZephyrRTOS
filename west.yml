@@ -70,7 +70,7 @@ manifest:
       groups:
         - hal
     - name: hal_espressif
-      revision: 8e5da13712012d2cc480f7abc699235352153e05
+      revision: abe299333411cb37a1cb1dd0aa2ea35c27382604
       path: modules/hal/espressif
       west-commands: west/west-commands.yml
       groups:
@@ -194,7 +194,7 @@ manifest:
       groups:
         - crypto
     - name: mcuboot
-      revision: 6902abba270c0fbcbe8ee3bb56fe39bc9acc2774
+      revision: a6aef32619455cb1697c42d66db489c1608f8410
       path: bootloader/mcuboot
     - name: mipi-sys-t
       path: modules/debug/mipi-sys-t
@@ -220,7 +220,7 @@ manifest:
       path: modules/lib/openthread
     - name: picolibc
       path: modules/lib/picolibc
-      revision: 93b5d5f2ad44867b60267417cd6d6250dbf68983
+      revision: d07c38ff051386f8e09a143ea0a6c1d6d66dd1d8
     - name: segger
       revision: 4bfaf28a11c3e5ec29badac744fab6d2f342749e
       path: modules/debug/segger
@@ -277,7 +277,7 @@ manifest:
       path: modules/lib/zcbor
     - name: zscilib
       path: modules/lib/zscilib
-      revision: 0035be5e6a45e4ab89755b176d305d7a877fc79c
+      revision: 34c3432e81085bb717e4871d21ca419ae0058ec5
     - name: thrift
       path: modules/lib/thrift
       revision: 10023645a0e6cb7ce23fcd7fd3dbac9f18df6234
