@@ -20,6 +20,13 @@ config SENSOR_INIT_PRIORITY
 	help
 	  Sensor initialization priority.
 
+config SENSOR_ASYNC_API
+	bool "Async Sensor API"
+	select RTIO
+	select RTIO_SYS_MEM_BLOCKS
+	help
+	  Enables the asynchronous sensor API by leveraging the RTIO subsystem.
+
 config SENSOR_SHELL
 	bool "Sensor shell"
 	depends on SHELL
@@ -266,8 +273,6 @@ source "drivers/sensor/stm32_temp/Kconfig"
 source "drivers/sensor/stm32_vbat/Kconfig"
 
 source "drivers/sensor/stts751/Kconfig"
-
-source "drivers/sensor/sx9328/Kconfig"
 
 source "drivers/sensor/sx9500/Kconfig"
 
