@@ -41,6 +41,8 @@ app=tests/bsim/bluetooth/host/gatt/notify compile
 app=tests/bsim/bluetooth/host/gatt/notify_multiple compile
 app=tests/bsim/bluetooth/host/gatt/settings compile
 app=tests/bsim/bluetooth/host/gatt/settings conf_file=prj_2.conf compile
+app=tests/bsim/bluetooth/host/gatt/ccc_store compile
+app=tests/bsim/bluetooth/host/gatt/ccc_store conf_file=prj_2.conf compile
 
 app=tests/bsim/bluetooth/host/l2cap/general compile
 app=tests/bsim/bluetooth/host/l2cap/userdata compile
@@ -60,5 +62,7 @@ app=tests/bsim/bluetooth/host/privacy/device compile
 
 app=tests/bsim/bluetooth/host/security/bond_overwrite_allowed compile
 app=tests/bsim/bluetooth/host/security/bond_overwrite_denied compile
+app=tests/bsim/bluetooth/host/security/ccc_update compile
+app=tests/bsim/bluetooth/host/security/ccc_update conf_file=prj_2.conf compile
 
 wait_for_background_jobs

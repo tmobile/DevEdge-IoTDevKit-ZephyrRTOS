@@ -69,11 +69,25 @@ static const struct bt_data ad[] = {
 	BT_DATA(BT_DATA_SVC_DATA16, unicast_server_addata, ARRAY_SIZE(unicast_server_addata)),
 };
 
+#define AUDIO_DATA_TIMEOUT_US 1000000UL /* Send data every 1 second */
+#define SDU_INTERVAL_US       10000UL   /* 10 ms SDU interval */
+
 static uint16_t get_and_incr_seq_num(const struct bt_bap_stream *stream)
 {
 	for (size_t i = 0U; i < configured_source_stream_count; i++) {
 		if (stream == &source_streams[i].stream) {
-			return source_streams[i].seq_num++;
+			uint16_t seq_num;
+
+			seq_num = source_streams[i].seq_num;
+
+			if (IS_ENABLED(CONFIG_LIBLC3)) {
+				source_streams[i].seq_num++;
+			} else {
+				source_streams[i].seq_num += (AUDIO_DATA_TIMEOUT_US /
+							      SDU_INTERVAL_US);
+			}
+
+			return seq_num;
 		}
 	}
 
@@ -214,7 +228,11 @@ static void audio_timer_timeout(struct k_work *work)
 		}
 	}
 
-	k_work_schedule(&audio_send_work, K_MSEC(1000U));
+#if defined(CONFIG_LIBLC3)
+	k_work_schedule(&audio_send_work, K_USEC(MAX_FRAME_DURATION_US));
+#else
+	k_work_schedule(&audio_send_work, K_USEC(AUDIO_DATA_TIMEOUT_US));
+#endif
 }
 
 static enum bt_audio_dir stream_dir(const struct bt_bap_stream *stream)
@@ -545,7 +563,9 @@ static void stream_recv(struct bt_bap_stream *stream,
 			const struct bt_iso_recv_info *info,
 			struct net_buf *buf)
 {
-	printk("Incoming audio on stream %p len %u\n", stream, buf->len);
+	if (info->flags & BT_ISO_FLAGS_VALID) {
+		printk("Incoming audio on stream %p len %u\n", stream, buf->len);
+	}
 }
 
 #endif
@@ -782,7 +802,10 @@ int main(void)
 
 		printk("Advertising successfully started\n");
 
-		k_work_init_delayable(&audio_send_work, audio_timer_timeout);
+		if (CONFIG_BT_ASCS_ASE_SRC_COUNT > 0) {
+			/* Start send timer */
+			k_work_init_delayable(&audio_send_work, audio_timer_timeout);
+		}
 
 		err = k_sem_take(&sem_disconnected, K_FOREVER);
 		if (err != 0) {

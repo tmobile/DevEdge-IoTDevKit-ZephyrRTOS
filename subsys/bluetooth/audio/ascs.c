@@ -132,8 +132,14 @@ static void ase_status_changed(struct bt_bap_ep *ep, uint8_t old_state, uint8_t 
 
 	if (conn != NULL) {
 		struct bt_conn_info conn_info;
+		int err;
 
-		bt_conn_get_info(conn, &conn_info);
+		err = bt_conn_get_info(conn, &conn_info);
+		if (err != 0) {
+			LOG_ERR("Failed to get conn %p info: %d", (void *)conn, err);
+
+			return;
+		}
 
 		if (conn_info.state == BT_CONN_STATE_CONNECTED) {
 			const uint8_t att_ntf_header_size = 3; /* opcode (1) + handle (2) */
@@ -430,10 +436,7 @@ void ascs_ep_set_state(struct bt_bap_ep *ep, uint8_t state)
 
 			ep->receiver_ready = false;
 
-			if (ep->iso == NULL ||
-			    ep->iso->chan.state == BT_ISO_STATE_DISCONNECTED) {
-				ascs_ep_set_state(ep, BT_BAP_EP_STATE_IDLE);
-			} else {
+			if (bt_bap_stream_can_disconnect(stream)) {
 				/* Either the client or the server may disconnect the
 				 * CISes when entering the releasing state.
 				 */
@@ -443,6 +446,8 @@ void ascs_ep_set_state(struct bt_bap_ep *ep, uint8_t state)
 					LOG_ERR("Failed to disconnect stream %p: %d",
 						stream, err);
 				}
+			} else {
+				ascs_ep_set_state(ep, BT_BAP_EP_STATE_IDLE);
 			}
 
 			break;
@@ -885,7 +890,7 @@ static void ascs_cp_rsp_add(uint8_t id, uint8_t code, uint8_t reason)
 	 */
 	case BT_BAP_ASCS_RSP_CODE_NOT_SUPPORTED:
 	case BT_BAP_ASCS_RSP_CODE_INVALID_LENGTH:
-		rsp->num_ase = 0xff;
+		rsp->num_ase = BT_ASCS_UNSUPP_OR_LENGTH_ERR_NUM_ASE;
 		break;
 	default:
 		rsp->num_ase++;
@@ -2474,9 +2479,7 @@ static void ase_stop(struct bt_ascs_ase *ase)
 	 * for that ASE by following the Connected Isochronous Stream Terminate
 	 * procedure defined in Volume 3, Part C, Section 9.3.15.
 	 */
-	if (ep->iso != NULL &&
-	    ep->iso->chan.state != BT_ISO_STATE_DISCONNECTED &&
-	    ep->iso->chan.state != BT_ISO_STATE_DISCONNECTING) {
+	if (bt_bap_stream_can_disconnect(stream)) {
 		err = ascs_disconnect_stream(stream);
 		if (err < 0) {
 			LOG_ERR("Failed to disconnect stream %p: %d", stream, err);

@@ -58,11 +58,24 @@ static K_SEM_DEFINE(sem_stream_qos, 0, ARRAY_SIZE(sinks) + ARRAY_SIZE(sources));
 static K_SEM_DEFINE(sem_stream_enabled, 0, 1);
 static K_SEM_DEFINE(sem_stream_started, 0, 1);
 
+#define AUDIO_DATA_TIMEOUT_US 1000000UL /* Send data every 1 second */
+
 static uint16_t get_and_incr_seq_num(const struct bt_bap_stream *stream)
 {
 	for (size_t i = 0U; i < configured_sink_stream_count; i++) {
 		if (stream->ep == sinks[i].ep) {
-			return sinks[i].seq_num++;
+			uint16_t seq_num;
+
+			seq_num = sinks[i].seq_num;
+
+			if (IS_ENABLED(CONFIG_LIBLC3)) {
+				sinks[i].seq_num++;
+			} else {
+				sinks[i].seq_num += (AUDIO_DATA_TIMEOUT_US /
+						     codec_configuration.qos.interval);
+			}
+
+			return seq_num;
 		}
 	}
 
@@ -322,7 +335,7 @@ static void audio_timer_timeout(struct k_work *work)
 		}
 	}
 
-	k_work_schedule(&audio_send_work, K_MSEC(1000));
+	k_work_schedule(&audio_send_work, K_USEC(AUDIO_DATA_TIMEOUT_US));
 
 	len_to_send++;
 	if (len_to_send > codec_configuration.qos.sdu) {
@@ -535,7 +548,9 @@ static void stream_recv(struct bt_bap_stream *stream,
 			const struct bt_iso_recv_info *info,
 			struct net_buf *buf)
 {
-	printk("Incoming audio on stream %p len %u\n", stream, buf->len);
+	if (info->flags & BT_ISO_FLAGS_VALID) {
+		printk("Incoming audio on stream %p len %u\n", stream, buf->len);
+	}
 }
 
 static struct bt_bap_stream_ops stream_ops = {
@@ -1101,8 +1116,10 @@ int main(void)
 		}
 		printk("Streams started\n");
 
-		/* Start send timer */
-		k_work_schedule(&audio_send_work, K_MSEC(0));
+		if (CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0) {
+			/* Start send timer */
+			k_work_schedule(&audio_send_work, K_MSEC(0));
+		}
 
 		/* Wait for disconnect */
 		err = k_sem_take(&sem_disconnected, K_FOREVER);

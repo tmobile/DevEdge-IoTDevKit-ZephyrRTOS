@@ -24,7 +24,10 @@ typedef uint8_t isoal_status_t;
 #define ISOAL_STATUS_ERR_PDU_EMIT         ((isoal_status_t) 0x20) /* PDU emission */
 #define ISOAL_STATUS_ERR_UNSPECIFIED      ((isoal_status_t) 0x80) /* Unspecified error */
 
-#define BT_ROLE_BROADCAST (BT_CONN_ROLE_PERIPHERAL + 1)
+#define ISOAL_ROLE_CENTRAL                (BT_CONN_ROLE_CENTRAL)
+#define ISOAL_ROLE_PERIPHERAL             (BT_CONN_ROLE_PERIPHERAL)
+#define ISOAL_ROLE_BROADCAST_SOURCE       (BT_CONN_ROLE_PERIPHERAL + 1U)
+#define ISOAL_ROLE_BROADCAST_SINK         (BT_CONN_ROLE_PERIPHERAL + 2U)
 
 /** Handle to a registered ISO Sub-System sink */
 typedef uint8_t  isoal_sink_handle_t;
@@ -247,25 +250,18 @@ typedef isoal_status_t (*isoal_sink_sdu_write_cb)(
 	const size_t consume_len
 );
 
-
-struct isoal_sink_config {
-	enum isoal_mode mode;
-	/* TODO add SDU and PDU max length etc. */
-};
-
 struct isoal_sink_session {
 	isoal_sink_sdu_alloc_cb  sdu_alloc;
 	isoal_sink_sdu_emit_cb   sdu_emit;
 	isoal_sink_sdu_write_cb  sdu_write;
-	struct isoal_sink_config param;
 	isoal_sdu_cnt_t          sn;
 	uint16_t                 handle;
+	uint16_t                 iso_interval;
 	uint8_t                  pdus_per_sdu;
 	uint8_t                  framed;
 	uint8_t                  burst_number;
 	uint32_t                 sdu_interval;
-	uint32_t                 latency_unframed;
-	uint32_t                 latency_framed;
+	uint32_t                 sdu_sync_const;
 };
 
 struct isoal_sdu_production {
@@ -282,7 +278,10 @@ struct isoal_sdu_production {
 	/* Assumes that isoal_pdu_cnt_t is a uint64_t bit field */
 	uint64_t prev_pdu_is_end:1;
 	uint64_t prev_pdu_is_padding:1;
+	/* Indicates that only padding PDUs have been received for this SDU */
+	uint64_t only_padding:1;
 	uint64_t sdu_allocated:1;
+	uint64_t initialized:1;
 	enum {
 		ISOAL_START,
 		ISOAL_CONTINUE,
@@ -363,18 +362,12 @@ typedef isoal_status_t (*isoal_source_pdu_emit_cb)(
 	const uint16_t handle
 );
 
-struct isoal_source_config {
-	enum isoal_mode mode;
-	/* TODO add SDU and PDU max length etc. */
-};
-
 struct isoal_source_session {
 	isoal_source_pdu_alloc_cb   pdu_alloc;
 	isoal_source_pdu_write_cb   pdu_write;
 	isoal_source_pdu_emit_cb    pdu_emit;
 	isoal_source_pdu_release_cb pdu_release;
 
-	struct isoal_source_config param;
 	isoal_sdu_cnt_t            sn;
 	uint16_t                   last_input_sn;
 	uint32_t                   last_input_time_stamp;
@@ -442,8 +435,6 @@ isoal_status_t isoal_sink_create(uint16_t handle,
 				 isoal_sink_sdu_write_cb  sdu_write,
 				 isoal_sink_handle_t *hdl);
 
-struct isoal_sink_config *isoal_get_sink_param_ref(isoal_sink_handle_t hdl);
-
 void isoal_sink_enable(isoal_sink_handle_t hdl);
 
 void isoal_sink_disable(isoal_sink_handle_t hdl);
@@ -479,8 +470,6 @@ isoal_status_t isoal_source_create(uint16_t handle,
 				   isoal_source_pdu_emit_cb pdu_emit,
 				   isoal_source_pdu_release_cb pdu_release,
 				   isoal_source_handle_t *hdl);
-
-struct isoal_source_config *isoal_get_source_param_ref(isoal_source_handle_t hdl);
 
 void isoal_source_enable(isoal_source_handle_t hdl);
 

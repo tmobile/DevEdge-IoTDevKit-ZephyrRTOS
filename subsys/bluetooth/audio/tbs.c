@@ -1178,8 +1178,12 @@ static void notify_app(struct bt_conn *conn, uint16_t len,
 		break;
 	case BT_TBS_CALL_OPCODE_TERMINATE:
 		if (tbs_cbs->terminate_call != NULL) {
-			const struct tbs_service_inst *inst =
-				lookup_inst_by_call_index(ccp->terminate.call_index);
+			const struct tbs_service_inst *inst = lookup_inst_by_call_index(call_index);
+
+			if (inst == NULL) {
+				LOG_DBG("Could not find instance by call index 0x%02X", call_index);
+				break;
+			}
 
 			tbs_cbs->terminate_call(conn, call_index,
 						inst->terminate_reason.reason);
@@ -2126,7 +2130,7 @@ int bt_tbs_remote_incoming(uint8_t bearer_index, const char *to,
 
 	if (friendly_name) {
 		inst->friendly_name.call_index = call->index;
-		(void)strcpy(inst->friendly_name.uri, friendly_name);
+		utf8_lcpy(inst->friendly_name.uri, friendly_name, sizeof(inst->friendly_name.uri));
 		friend_name_ind_len = strlen(from) + 1;
 
 		bt_gatt_notify_uuid(NULL, BT_UUID_TBS_FRIENDLY_NAME,
@@ -2156,7 +2160,8 @@ int bt_tbs_remote_incoming(uint8_t bearer_index, const char *to,
 
 		if (friendly_name) {
 			gtbs_inst.friendly_name.call_index = call->index;
-			(void)strcpy(gtbs_inst.friendly_name.uri, friendly_name);
+			utf8_lcpy(inst->friendly_name.uri, friendly_name,
+				  sizeof(inst->friendly_name.uri));
 			friend_name_ind_len = strlen(from) + 1;
 
 			bt_gatt_notify_uuid(NULL, BT_UUID_TBS_FRIENDLY_NAME,

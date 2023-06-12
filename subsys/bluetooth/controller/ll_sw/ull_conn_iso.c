@@ -97,8 +97,8 @@ struct ll_conn_iso_group *ll_conn_iso_group_acquire(void)
 
 void ll_conn_iso_group_release(struct ll_conn_iso_group *cig)
 {
-	cig->cig_id  = 0xFF;
-	cig->started = 0U;
+	cig->cig_id = 0xFF;
+	cig->state  = CIG_STATE_NO_CIG;
 	cig->lll.num_cis = 0U;
 
 	mem_release(cig, &cig_free);
@@ -253,6 +253,21 @@ struct ll_conn_iso_stream *ll_conn_iso_stream_get_by_group(struct ll_conn_iso_gr
 			if (handle_iter) {
 				(*handle_iter) = handle;
 			}
+			return cis;
+		}
+	}
+
+	return NULL;
+}
+
+struct ll_conn_iso_stream *ll_conn_iso_stream_get_by_id(uint8_t cis_id)
+{
+	struct ll_conn_iso_stream *cis;
+	uint16_t handle;
+
+	for (handle = LL_CIS_HANDLE_BASE; handle <= LL_CIS_HANDLE_LAST; handle++) {
+		cis = ll_conn_iso_stream_get(handle);
+		if (cis->group && (cis->cis_id == cis_id)) {
 			return cis;
 		}
 	}
@@ -609,8 +624,8 @@ static int init_reset(void)
 
 	for (handle = 0; handle < CONFIG_BT_CTLR_CONN_ISO_GROUPS; handle++) {
 		cig = ll_conn_iso_group_get(handle);
-		cig->cig_id  = 0xFF;
-		cig->started = 0;
+		cig->cig_id = 0xFF;
+		cig->state  = CIG_STATE_NO_CIG;
 		cig->lll.num_cis = 0;
 	}
 
@@ -829,7 +844,7 @@ void ull_conn_iso_start(struct ll_conn *conn, uint16_t cis_handle,
 	 * running. If so, we just return with updated offset and
 	 * validated handle.
 	 */
-	if (cig->started) {
+	if (cig->state == CIG_STATE_ACTIVE) {
 		/* We're done */
 		return;
 	}
@@ -984,7 +999,7 @@ void ull_conn_iso_start(struct ll_conn *conn, uint16_t cis_handle,
 	LL_ASSERT((ticker_status == TICKER_STATUS_SUCCESS) ||
 		  (ticker_status == TICKER_STATUS_BUSY));
 
-	cig->started = 1;
+	cig->state = CIG_STATE_ACTIVE;
 }
 
 static void ticker_update_cig_op_cb(uint32_t status, void *param)
@@ -1075,12 +1090,13 @@ static void cis_disabled_cb(void *param)
 
 			if (IS_PERIPHERAL(cig)) {
 				/* Remove data path and ISOAL sink/source associated with this
-				 * CIS for both directions.
+				 * CIS for both directions. Disable them one at a time to make sure
+				 * both are removed, even if only one is set.
 				 */
 				ll_remove_iso_path(cis->lll.handle,
-						   BT_HCI_DATAPATH_DIR_CTLR_TO_HOST);
+						   BIT(BT_HCI_DATAPATH_DIR_HOST_TO_CTLR));
 				ll_remove_iso_path(cis->lll.handle,
-						   BT_HCI_DATAPATH_DIR_HOST_TO_CTLR);
+						   BIT(BT_HCI_DATAPATH_DIR_CTLR_TO_HOST));
 
 				ll_conn_iso_stream_release(cis);
 
@@ -1163,11 +1179,11 @@ static void cis_disabled_cb(void *param)
 		}
 	}
 
-	if (cig->started && !active_cises) {
+	if ((cig->state == CIG_STATE_ACTIVE) && !active_cises) {
 		/* This was the last active CIS of the CIG. Initiate CIG teardown by
 		 * stopping ticker.
 		 */
-		cig->started = 0;
+		cig->state = CIG_STATE_INACTIVE;
 
 		ticker_status = ticker_stop(TICKER_INSTANCE_ID_CTLR,
 					    TICKER_USER_ID_ULL_HIGH,

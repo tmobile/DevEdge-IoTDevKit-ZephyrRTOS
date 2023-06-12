@@ -221,9 +221,10 @@ static void set_sm_state(uint8_t sm_state)
 
 	/* Suspend socket after Event callback */
 	if (event == LWM2M_RD_CLIENT_EVENT_QUEUE_MODE_RX_OFF) {
-		if (IS_ENABLED(CONFIG_LWM2M_RD_CLIENT_SUSPEND_SOCKET_AT_IDLE)) {
+		if (IS_ENABLED(CONFIG_LWM2M_RD_CLIENT_SUSPEND_SOCKET_AT_IDLE) ||
+		    IS_ENABLED(CONFIG_LWM2M_RD_CLIENT_STOP_POLLING_AT_IDLE)) {
 			lwm2m_socket_suspend(client.ctx);
-		} else {
+		} else if (IS_ENABLED(CONFIG_LWM2M_RD_CLIENT_CLOSE_SOCKET_AT_IDLE)) {
 			lwm2m_close_socket(client.ctx);
 		}
 	}
@@ -1219,6 +1220,7 @@ static void sm_do_network_error(void)
 
 #if defined(CONFIG_LWM2M_RD_CLIENT_SUPPORT_BOOTSTRAP)
 	if (client.ctx->bootstrap_mode) {
+		lwm2m_engine_context_close(client.ctx);
 		set_sm_state(ENGINE_DO_BOOTSTRAP_REG);
 		return;
 	}
@@ -1226,6 +1228,7 @@ static void sm_do_network_error(void)
 
 	if (!client.last_update || (k_uptime_get() - client.last_update) / 1000 > client.lifetime) {
 		/* do full registration as there is no active registration or lifetime exceeded */
+		lwm2m_engine_context_close(client.ctx);
 		set_sm_state(ENGINE_DO_REGISTRATION);
 		return;
 	}
