@@ -360,6 +360,12 @@ int npm1300_charger_init(const struct device *dev)
 		return ret;
 	}
 
+	/* Enable automatic temperature measurements during charging */
+	ret = mfd_npm1300_reg_write(config->mfd, ADC_BASE, ADC_OFFSET_TASK_AUTO, 1U);
+	if (ret != 0) {
+		return ret;
+	}
+
 	/* Enable charging if configured */
 	if (config->charging_enable) {
 		ret = mfd_npm1300_reg_write(config->mfd, CHGR_BASE, CHGR_OFFSET_EN_SET, 1U);
