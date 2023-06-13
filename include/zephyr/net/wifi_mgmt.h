@@ -430,29 +430,10 @@ typedef void (*scan_result_cb_t)(struct net_if *iface, int status,
 typedef void (*raw_scan_result_cb_t)(struct net_if *iface, int status,
 				     struct wifi_raw_scan_result *entry);
 #endif /* CONFIG_WIFI_MGMT_RAW_SCAN_RESULTS */
-
-/** Wi-Fi management API */
 struct wifi_mgmt_ops {
-	/** Scan for Wi-Fi networks
-	 *
-	 * @param dev Pointer to the device structure for the driver instance.
-	 * @param params Scan parameters
-	 * @param cb Callback to be called for each result
-	 *           cb parameter is the cb that should be called for each
-	 *           result by the driver. The wifi mgmt part will take care of
-	 *           raising the necessary event etc.
-	 *
-	 * @return 0 if ok, < 0 if error
-	 */
-	int (*scan)(const struct device *dev,
-		    struct wifi_scan_params *params,
-		    scan_result_cb_t cb);
-	/** Connect to a Wi-Fi network
-	 *
-	 * @param dev Pointer to the device structure for the driver instance.
-	 * @param params Connect parameters
-	 *
-	 * @return 0 if ok, < 0 if error
+	/* cb parameter is the cb that should be called for each
+	 * result by the driver. The wifi mgmt part will take care of
+	 * raising the necessary event etc...
 	 */
 	int (*scan)(const struct device *dev,
 		    struct wifi_scan_params *params,
@@ -534,7 +515,6 @@ struct wifi_mgmt_ops {
 	int (*reg_domain)(const struct device *dev, struct wifi_reg_domain *reg_domain);
 };
 
-/** Wi-Fi management offload API */
 struct net_wifi_mgmt_offload {
 	/**
 	 * Mandatory to get in first position.
@@ -542,14 +522,11 @@ struct net_wifi_mgmt_offload {
 	 * net_if_api structure. So we make current structure pointer
 	 * that can be casted to a net_if_api structure pointer.
 	 */
-#if defined(CONFIG_WIFI_USE_NATIVE_NETWORKING) || defined(__DOXYGEN__)
-	/** Ethernet API */
+#ifdef CONFIG_WIFI_USE_NATIVE_NETWORKING
 	struct ethernet_api wifi_iface;
 #else
-	/** Offloaded network device API */
 	struct offloaded_if_api wifi_iface;
 #endif
-	/** Wi-Fi management API */
 	const struct wifi_mgmt_ops *const wifi_mgmt_api;
 };
 
