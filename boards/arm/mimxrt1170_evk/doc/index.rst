@@ -104,19 +104,19 @@ RT1170 EVKB (`mimxrt1170_evkb_cm7/cm4`)
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | CAN       | on-chip    | flexcan                             | Supported (M7)  | Supported (M7)  |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
-| SPI       | on-chip    | spi                                 | Supported (M7)  | Supported       |
+| SPI       | on-chip    | spi                                 | Supported (M7)  | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
-| I2C       | on-chip    | i2c                                 | Supported       | Supported       |
+| I2C       | on-chip    | i2c                                 | Supported       | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | PWM       | on-chip    | pwm                                 | Supported       | Supported       |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
-| ADC       | on-chip    | adc                                 | Supported (M7)  | Supported (M7)  |
+| ADC       | on-chip    | adc                                 | Supported (M7)  | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | UART      | on-chip    | serial port-polling;                | Supported       | Supported       |
 |           |            | serial port-interrupt;              |                 |                 |
 |           |            | serial port-async                   |                 |                 |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
-| DMA       | on-chip    | dma                                 | Supported       | Supported       |
+| DMA       | on-chip    | dma                                 | Supported       | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | GPT       | on-chip    | gpt                                 | Supported       | Supported       |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
@@ -130,10 +130,7 @@ RT1170 EVKB (`mimxrt1170_evkb_cm7/cm4`)
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | HWINFO    | on-chip    | Unique device serial number         | Supported (M7)  | Supported (M7)  |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
-| DISPLAY   | on-chip    | eLCDIF; MIPI-DSI. Tested with       | Supported (M7)  | Supported (M7)  |
-|           |            | :ref:`rk055hdmipi4m`,               |                 |                 |
-|           |            | :ref:`rk055hdmipi4ma0`,             |                 |                 |
-|           |            | and :ref:`g1120b0mipi` shields      |                 |                 |
+| DISPLAY   | on-chip    | display                             | Supported (M7)  | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | ACMP      | on-chip    | analog comparator                   | Supported       | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+

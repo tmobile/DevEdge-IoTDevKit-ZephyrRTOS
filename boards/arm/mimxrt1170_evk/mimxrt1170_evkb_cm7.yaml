@@ -15,15 +15,9 @@ toolchain:
 ram: 65536
 flash: 65536
 supported:
-  - adc
   - counter
   - can
-  - dma
   - gpio
   - hwinfo
-  - i2c
-  - kscan:touch
-  - mipi_dsi
-  - spi
   - usb_device
   - watchdog
