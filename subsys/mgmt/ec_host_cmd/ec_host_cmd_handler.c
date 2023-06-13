@@ -228,6 +228,48 @@ int ec_host_cmd_send_response(enum ec_host_cmd_status status,
 	return hc->backend->api->send(hc->backend);
 }
 
+void ec_host_cmd_rx_notify(void)
+{
+	struct ec_host_cmd *hc = &ec_host_cmd;
+
+	k_sem_give(&hc->rx_ready);
+}
+
+static void ec_host_cmd_log_request(const uint8_t *rx_buf)
+{
+	static uint16_t prev_cmd;
+	const struct ec_host_cmd_request_header *const rx_header =
+		(const struct ec_host_cmd_request_header *const)rx_buf;
+
+	if (IS_ENABLED(CONFIG_EC_HOST_CMD_LOG_DBG_BUFFERS)) {
+		if (rx_header->data_len) {
+			const uint8_t *rx_data = rx_buf + RX_HEADER_SIZE;
+			static const char dbg_fmt[] = "HC 0x%04x.%d:";
+			/* Use sizeof because "%04x" needs 4 bytes for command id, and
+			 * %d needs 2 bytes for version, so no additional buffer is required.
+			 */
+			char dbg_raw[sizeof(dbg_fmt)];
+
+			snprintf(dbg_raw, sizeof(dbg_raw), dbg_fmt, rx_header->cmd_id,
+				 rx_header->cmd_ver);
+			LOG_HEXDUMP_DBG(rx_data, rx_header->data_len, dbg_raw);
+
+			return;
+		}
+	}
+
+	/* In normal output mode, skip printing repeats of the same command
+	 * that occur in rapid succession - such as flash commands during
+	 * software sync.
+	 */
+	if (rx_header->cmd_id != prev_cmd) {
+		prev_cmd = rx_header->cmd_id;
+		LOG_INF("HC 0x%04x", rx_header->cmd_id);
+	} else {
+		LOG_DBG("HC 0x%04x", rx_header->cmd_id);
+	}
+}
+
 FUNC_NORETURN static void ec_host_cmd_thread(void *hc_handle, void *arg2, void *arg3)
 {
 	ARG_UNUSED(arg2);
@@ -247,7 +289,7 @@ FUNC_NORETURN static void ec_host_cmd_thread(void *hc_handle, void *arg2, void *
 
 	while (1) {
 		/* Wait until RX messages is received on host interface */
-		k_sem_take(&rx->handler_owns, K_FOREVER);
+		k_sem_take(&hc->rx_ready, K_FOREVER);
 
 		status = verify_rx(rx);
 		if (status != EC_HOST_CMD_SUCCESS) {
@@ -312,7 +354,7 @@ int ec_host_cmd_init(struct ec_host_cmd_backend *backend)
 	hc->backend = backend;
 
 	/* Allow writing to rx buff at startup */
-	k_sem_init(&hc->rx_ctx.handler_owns, 0, 1);
+	k_sem_init(&hc->rx_ready, 0, 1);
 
 	handler_tx_buf = hc->tx.buf;
 	handler_rx_buf = hc->rx_ctx.buf;
