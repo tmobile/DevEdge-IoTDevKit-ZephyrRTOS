@@ -6,7 +6,6 @@
 #ifndef ZEPHYR_SOC_INTEL_ADSP_MEMORY_H_
 #define ZEPHYR_SOC_INTEL_ADSP_MEMORY_H_
 
-
 #include <zephyr/devicetree.h>
 #include <adsp-vectors.h>
 
@@ -29,9 +28,6 @@
 /* div_round_up, but zephyr version is not defined for assembler where this is also used */
 #define HPSRAM_SEGMENTS (HPSRAM_EBB_COUNT + EBB_SEG_SIZE - 1) / EBB_SEG_SIZE
 #define HPSRAM_MEMMASK(idx) ((1ULL << (HPSRAM_EBB_COUNT - EBB_SEG_SIZE * idx)) - 1)
-
-/* L3 region (IMR), located in host memory */
-#define L3_MEM_BASE_ADDR (DT_REG_ADDR(DT_NODELABEL(imr1)))
 
 /* The rimage tool produces two blob addresses we need to find: one is
  * our bootloader code block which starts at its entry point, the
