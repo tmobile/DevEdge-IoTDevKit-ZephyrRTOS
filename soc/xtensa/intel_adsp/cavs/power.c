@@ -88,15 +88,6 @@ __weak void pm_state_set(enum pm_state state, uint8_t substate_id)
 		sys_cache_data_flush_and_invd_all();
 		if (cpu == 0) {
 			uint32_t hpsram_mask[HPSRAM_SEGMENTS];
-
-			struct imr_header hdr = {
-				.adsp_imr_magic = ADSP_IMR_MAGIC_VALUE,
-				.imr_restore_vector = rom_entry,
-			};
-			struct imr_layout *imr_layout =
-			  arch_xtensa_uncached_ptr((struct imr_layout *)L3_MEM_BASE_ADDR);
-			imr_layout->imr_state.header = hdr;
-
 			/* turn off all HPSRAM banks - get a full bitmap */
 			for (int i = 0; i < HPSRAM_SEGMENTS; i++)
 				hpsram_mask[i] = HPSRAM_MEMMASK(i);
