@@ -254,6 +254,10 @@ void ec_host_cmd_rx_notify(void)
 
 	hc->rx_status = verify_rx(rx);
 
+	if (!hc->rx_status && hc->user_cb) {
+		hc->user_cb(rx, hc->user_data);
+	}
+
 	k_sem_give(&hc->rx_ready);
 }
 
