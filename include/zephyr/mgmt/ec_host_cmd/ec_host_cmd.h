@@ -89,14 +89,6 @@ struct ec_host_cmd {
 	 * when data in rx_ctx are ready. The handler takes rx_ready to read data in rx_ctx.
 	 */
 	struct k_sem rx_ready;
-	/** Status of the rx data checked in the ec_host_cmd_send_received function. */
-	enum ec_host_cmd_status rx_status;
-	/**
-	 * User callback after receiving a command. It is called by the ec_host_cmd_send_received
-	 * function.
-	 */
-	ec_host_cmd_user_cb_t user_cb;
-	void *user_data;
 #ifdef CONFIG_EC_HOST_CMD_DEDICATED_THREAD
 	struct k_thread thread;
 #endif /* CONFIG_EC_HOST_CMD_DEDICATED_THREAD */
@@ -290,16 +282,6 @@ int ec_host_cmd_send_response(enum ec_host_cmd_status status,
  * after copying data to the rx buffer and setting the length.
  */
 void ec_host_cmd_rx_notify(void);
-
-/**
- * @brief Install a user callback for receiving a host command
- *
- * It allows installing a custom procedure needed by a user after receiving a command.
- *
- * @param[in] cb          A callback to be installed.
- * @param[in] user_data   User data to be passed to the callback.
- */
-void ec_host_cmd_set_user_cb(ec_host_cmd_user_cb_t cb, void *user_data);
 
 /**
  * @brief Get the main ec host command structure

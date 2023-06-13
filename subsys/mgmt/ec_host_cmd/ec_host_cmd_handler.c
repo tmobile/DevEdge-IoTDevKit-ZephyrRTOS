@@ -247,6 +247,13 @@ int ec_host_cmd_send_response(enum ec_host_cmd_status status,
 	return hc->backend->api->send(hc->backend);
 }
 
+void ec_host_cmd_rx_notify(void)
+{
+	struct ec_host_cmd *hc = &ec_host_cmd;
+
+	k_sem_give(&hc->rx_ready);
+}
+
 static void ec_host_cmd_log_request(const uint8_t *rx_buf)
 {
 	static uint16_t prev_cmd;
