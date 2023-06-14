@@ -784,8 +784,8 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 #define Z_DEVICE_EXTRA_DEPS(...)                                            \
 	FOR_EACH_NONEMPTY_TERM(IDENTITY, (,), __VA_ARGS__)
 
-/** @brief Linker section were device dependencies are placed. */
-#define Z_DEVICE_DEPS_SECTION                                               \
+/** @brief Linker section were device handles are placed. */
+#define Z_DEVICE_HANDLES_SECTION                                               \
 	__attribute__((__section__(".__device_deps_pass1")))
 
 #ifdef __cplusplus
