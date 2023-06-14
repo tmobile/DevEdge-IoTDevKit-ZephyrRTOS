@@ -397,7 +397,7 @@ struct device {
 	 * dedicated API, such as device_required_handles_get(). Only available
 	 * if @kconfig{CONFIG_DEVICE_DEPS} is enabled.
 	 */
-	Z_DEVICE_DEPS_CONST device_handle_t *handles;
+	Z_DEVICE_DEPS_CONST device_handle_t *deps;
 
 #if defined(CONFIG_PM_DEVICE) || defined(__DOXYGEN__)
 	/**
@@ -883,7 +883,7 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 		.api = (api_),                                                 \
 		.state = (state_),                                             \
 		.data = (data_),                                               \
-		IF_ENABLED(CONFIG_DEVICE_DEPS, (.deps = (deps_),)) /**/        \
+		.deps = (deps_),                                               \
 		IF_ENABLED(CONFIG_PM_DEVICE, (.pm = (pm_),)) /**/              \
 	}
 
