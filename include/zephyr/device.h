@@ -398,7 +398,7 @@ struct device {
 	 * if @kconfig{CONFIG_DEVICE_DEPS} is enabled.
 	 */
 	Z_DEVICE_DEPS_CONST device_handle_t *deps;
-
+#endif /* CONFIG_DEVICE_DEPS */
 #if defined(CONFIG_PM_DEVICE) || defined(__DOXYGEN__)
 	/**
 	 * Reference to the device PM resources (only available if
@@ -849,17 +849,6 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 #endif /* CONFIG_DEVICE_DEPS */
 
 /**
- * @brief Init sub-priority of the device
- *
- * The sub-priority is defined by the devicetree ordinal, which ensures that
- * multiple drivers running at the same priority level run in an order that
- * respects the devicetree dependencies.
- */
-#define Z_DEVICE_INIT_SUB_PRIO(node_id)                                        \
-	COND_CODE_1(DT_NODE_EXISTS(node_id),                                   \
-		    (DT_DEP_ORD_STR_SORTABLE(node_id)), (0))
-
-/**
  * @brief Maximum device name length.
  *
  * The maximum length is set so that device_get_binding() can be used from
@@ -894,7 +883,7 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 		.api = (api_),                                                 \
 		.state = (state_),                                             \
 		.data = (data_),                                               \
-		.deps = (deps_),                                               \
+		IF_ENABLED(CONFIG_DEVICE_DEPS, (.deps = (deps_),)) /**/        \
 		IF_ENABLED(CONFIG_PM_DEVICE, (.pm = (pm_),)) /**/              \
 	}
 
@@ -975,7 +964,8 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 			level, prio, api, state, ...)                          \
 	Z_DEVICE_NAME_CHECK(name);                                             \
                                                                                \
-	Z_DEVICE_DEPS_DEFINE(node_id, dev_id, __VA_ARGS__);                    \
+	IF_ENABLED(CONFIG_DEVICE_DEPS,                                         \
+		   (Z_DEVICE_DEPS_DEFINE(node_id, dev_id, __VA_ARGS__);))      \
                                                                                \
 	Z_DEVICE_BASE_DEFINE(node_id, dev_id, name, pm, data, config, level,   \
 			     prio, api, state, Z_DEVICE_DEPS_NAME(dev_id));    \
