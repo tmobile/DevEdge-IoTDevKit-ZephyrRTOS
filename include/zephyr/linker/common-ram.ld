@@ -42,7 +42,7 @@
 	ITERABLE_SECTION_RAM(pm_device_slots, 4)
 #endif
 
-#if defined(CONFIG_HAS_DYNAMIC_DEVICE_HANDLES)
+#if defined(CONFIG_DEVICE_DEPS_DYNAMIC)
 	SECTION_DATA_PROLOGUE(device_deps,,)
 	{
 #include "device-deps.ld"
