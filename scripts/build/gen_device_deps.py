@@ -98,12 +98,12 @@ def c_handle_comment(dev, handles):
 def c_handle_array(dev, handles, dynamic_deps, extra_support_handles=0):
     handles = [
         *[str(d.handle) for d in handles["depends"]],
-        'Z_DEVICE_DEPS_SEP',
+        'Z_DEVICE_HANDLE_SEP',
         *[str(d.handle) for d in handles["injected"]],
-        'Z_DEVICE_DEPS_SEP',
+        'Z_DEVICE_HANDLE_SEP',
         *[str(d.handle) for d in handles["supports"]],
         *(extra_support_handles * ['DEVICE_HANDLE_NULL']),
-        'Z_DEVICE_DEPS_ENDS',
+        'Z_DEVICE_HANDLE_ENDS',
     ]
     ctype = (
         '{:s}Z_DECL_ALIGN(device_handle_t) '
