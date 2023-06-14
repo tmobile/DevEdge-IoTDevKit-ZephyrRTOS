@@ -912,9 +912,9 @@ zephyr_get_include_directories_for_lang(C
   STRIP_PREFIX # Don't use a -I prefix
   )
 
-if(CONFIG_DEVICE_DEPS)
+if(CONFIG_HAS_DTS)
   if(CONFIG_DEVICE_DEPS_DYNAMIC)
-    set(dynamic_deps --dynamic-deps)
+    set(dynamic_handles --dynamic-handles)
   endif()
 
   if(CONFIG_PM_DEVICE_POWER_DOMAIN_DYNAMIC)
