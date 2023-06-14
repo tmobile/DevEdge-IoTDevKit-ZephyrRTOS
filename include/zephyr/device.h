@@ -398,7 +398,7 @@ struct device {
 	 * if @kconfig{CONFIG_DEVICE_DEPS} is enabled.
 	 */
 	Z_DEVICE_DEPS_CONST device_handle_t *deps;
-
+#endif /* CONFIG_DEVICE_DEPS */
 #if defined(CONFIG_PM_DEVICE) || defined(__DOXYGEN__)
 	/**
 	 * Reference to the device PM resources (only available if
@@ -883,7 +883,7 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 		.api = (api_),                                                 \
 		.state = (state_),                                             \
 		.data = (data_),                                               \
-		.deps = (deps_),                                               \
+		IF_ENABLED(CONFIG_DEVICE_DEPS, (.deps = (deps_),)) /**/        \
 		IF_ENABLED(CONFIG_PM_DEVICE, (.pm = (pm_),)) /**/              \
 	}
 
@@ -961,7 +961,8 @@ static inline bool z_impl_device_is_ready(const struct device *dev)
 			level, prio, api, state, ...)                          \
 	Z_DEVICE_NAME_CHECK(name);                                             \
                                                                                \
-	Z_DEVICE_DEPS_DEFINE(node_id, dev_id, __VA_ARGS__);                    \
+	IF_ENABLED(CONFIG_DEVICE_DEPS,                                         \
+		   (Z_DEVICE_DEPS_DEFINE(node_id, dev_id, __VA_ARGS__);))      \
                                                                                \
 	Z_DEVICE_BASE_DEFINE(node_id, dev_id, name, pm, data, config, level,   \
 			     prio, api, state, Z_DEVICE_DEPS_NAME(dev_id));    \

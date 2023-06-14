@@ -76,6 +76,7 @@ GEN_ABSOLUTE_SYM(__z_interrupt_stack_SIZEOF, sizeof(z_interrupt_stacks[0]));
 #ifdef CONFIG_DEVICE_DEPS
 GEN_ABSOLUTE_SYM(_DEVICE_STRUCT_HANDLES_OFFSET,
 		 offsetof(struct device, deps));
+#endif
 
 #ifdef CONFIG_PM_DEVICE
 GEN_ABSOLUTE_SYM(_DEVICE_STRUCT_PM_OFFSET,
