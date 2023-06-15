@@ -1244,6 +1244,9 @@ USB
   * Added USB Mass Storage class and CDC ECM class implementations for the new
     device support.
 
+Devicetree
+**********
+
 Libraries / Subsystems
 **********************
 
