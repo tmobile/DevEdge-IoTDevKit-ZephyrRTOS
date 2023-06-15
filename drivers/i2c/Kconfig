@@ -40,6 +40,11 @@ config I2C_CALLBACK
 	help
 	  API and implementations of i2c_transfer_cb.
 
+config I2C_RTIO
+	bool "I2C RTIO API"
+	help
+	  API and implementations of I2C for RTIO
+
 # Include these first so that any properties (e.g. defaults) below can be
 # overridden (by defining symbols in multiple locations)
 source "drivers/i2c/Kconfig.b91"
@@ -57,6 +62,7 @@ source "drivers/i2c/Kconfig.sbcon"
 source "drivers/i2c/Kconfig.sifive"
 source "drivers/i2c/Kconfig.stm32"
 source "drivers/i2c/Kconfig.sam0"
+source "drivers/i2c/Kconfig.sam_twihs"
 source "drivers/i2c/Kconfig.litex"
 source "drivers/i2c/Kconfig.lpc11u6x"
 source "drivers/i2c/Kconfig.npcx"
