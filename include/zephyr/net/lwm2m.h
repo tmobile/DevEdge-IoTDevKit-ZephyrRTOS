@@ -2238,7 +2238,7 @@ enum lwm2m_security_mode_e {
 /**
  * @brief Read security mode from selected security object instance.
  *
- * This data is only valid if RD client is running.
+ * This data is valid only if RD client is running.
  *
  * @param ctx Pointer to client context.
  * @return int Positive values are @ref lwm2m_security_mode_e, negative error codes otherwise.
@@ -2248,8 +2248,8 @@ int lwm2m_security_mode(struct lwm2m_ctx *ctx);
 /**
  * @brief Set default socket options for DTLS connections.
  *
- * Engine calls this when @ref lwm2m_ctx::set_socketoptions is not overwritten.
- * You may call this from overwritten callback to set extra options after or
+ * The engine calls this when @ref lwm2m_ctx::set_socketoptions is not overwritten.
+ * You can call this from the overwritten callback to set extra options after or
  * before defaults.
  *
  * @param ctx Client context
