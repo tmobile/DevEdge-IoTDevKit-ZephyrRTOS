@@ -530,6 +530,7 @@ Boards & SoC Support
   * NXP MIMXRT1062 FMURT6
   * PHYTEC PhyBOARD Polis (NXP i.MX8M Mini)
   * PHYTEC PhyBOARD Pollux (NXP i.MX8M Plus)
+  * Raspberry Pi Pico W
   * Raytac MDBT50Q-DB-33
   * Raytac MDBT50Q-DB-40
   * Seeed Studio Wio Terminal
