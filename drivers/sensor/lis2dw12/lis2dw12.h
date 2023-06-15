@@ -58,11 +58,6 @@
 #define LIS2DW12_SHIFT_PM1		4
 #define LIS2DW12_SHIFT_PMOTHER		2
 
-/* shift value for 12 bit resolution */
-#define LIS2DW12_SHIFT_TEMP 4
-/* Temperature 12 bit scale factor */
-#define LIS2DW12_TEMP_SCALE_FACTOR 0.0625
-
 /**
  * struct lis2dw12_device_config - lis2dw12 hw configuration
  * @bus_name: Pointer to bus master identifier.
@@ -124,32 +119,10 @@ struct lis2dw12_data {
 	const struct sensor_trigger *tap_trig;
 	sensor_trigger_handler_t double_tap_handler;
 	const struct sensor_trigger *double_tap_trig;
-#ifdef CONFIG_LIS2DW12_TAP_3D
-	sensor_trigger_handler_t tap_handler_x;
-	const struct sensor_trigger *tap_trig_x;
-	sensor_trigger_handler_t tap_handler_y;
-	const struct sensor_trigger *tap_trig_y;
-	sensor_trigger_handler_t tap_handler_z;
-	const struct sensor_trigger *tap_trig_z;
-	sensor_trigger_handler_t double_tap_handler_x;
-	const struct sensor_trigger *double_tap_trig_x;
-	sensor_trigger_handler_t double_tap_handler_y;
-	const struct sensor_trigger *double_tap_trig_y;
-	sensor_trigger_handler_t double_tap_handler_z;
-	const struct sensor_trigger *double_tap_trig_z;
-#endif
 #endif /* CONFIG_LIS2DW12_TAP */
 #ifdef CONFIG_LIS2DW12_THRESHOLD
 	sensor_trigger_handler_t threshold_handler;
 	const struct sensor_trigger *threshold_trig;
-#ifdef CONFIG_LIS2DW12_THRESHOLD_3D
-	sensor_trigger_handler_t threshold_handler_x;
-	const struct sensor_trigger *threshold_trig_x;
-	sensor_trigger_handler_t threshold_handler_y;
-	const struct sensor_trigger *threshold_trig_y;
-	sensor_trigger_handler_t threshold_handler_z;
-	const struct sensor_trigger *threshold_trig_z;
-#endif /* CONFIG_LIS2DW12_THRESHOLD_3D */
 #endif /* CONFIG_LIS2DW12_THRESHOLD */
 #ifdef CONFIG_LIS2DW12_FREEFALL
 	sensor_trigger_handler_t freefall_handler;
