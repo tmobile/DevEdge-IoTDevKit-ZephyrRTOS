@@ -512,8 +512,8 @@ Boards & SoC Support
 
 * Added support for these ARC boards:
 
-  * DesignWare ARC HS4x/HS4xD Development Kit (HSDK4xD) - ARCv2 HS47D, SMP 4 cores
-  * nsim_hs3x_hostlink - simulation (nSIM-based) platform with hostlink UART
+  * DesignWare ARC HS4x/HS4xD Development Kit
+  * DesignWare ARC nSIM and HAPS FPGA
 
 * Added support for these ARM boards:
 
@@ -530,7 +530,6 @@ Boards & SoC Support
   * NXP MIMXRT1062 FMURT6
   * PHYTEC PhyBOARD Polis (NXP i.MX8M Mini)
   * PHYTEC PhyBOARD Pollux (NXP i.MX8M Plus)
-  * Raspberry Pi Pico W
   * Raytac MDBT50Q-DB-33
   * Raytac MDBT50Q-DB-40
   * Seeed Studio Wio Terminal
