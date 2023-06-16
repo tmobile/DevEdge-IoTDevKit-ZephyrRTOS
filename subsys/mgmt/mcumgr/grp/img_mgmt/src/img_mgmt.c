@@ -114,6 +114,20 @@ void img_mgmt_release_lock(void)
 #endif
 }
 
+void img_mgmt_take_lock(void)
+{
+#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
+	k_mutex_lock(&img_mgmt_mutex, K_FOREVER);
+#endif
+}
+
+void img_mgmt_release_lock(void)
+{
+#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
+	k_mutex_unlock(&img_mgmt_mutex);
+#endif
+}
+
 /**
  * Finds the TLVs in the specified image slot, if any.
  */
