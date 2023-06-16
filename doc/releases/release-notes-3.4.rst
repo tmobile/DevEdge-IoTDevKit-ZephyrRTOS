@@ -512,8 +512,8 @@ Boards & SoC Support
 
 * Added support for these ARC boards:
 
-  * DesignWare ARC HS4x/HS4xD Development Kit
-  * DesignWare ARC nSIM and HAPS FPGA
+  * DesignWare ARC HS4x/HS4xD Development Kit (HSDK4xD) - ARCv2 HS47D, SMP 4 cores
+  * nsim_hs3x_hostlink - simulation (nSIM-based) platform with hostlink UART
 
 * Added support for these ARM boards:
 
@@ -562,7 +562,7 @@ Boards & SoC Support
 
 * Made these changes for ARC boards:
 
-  * Added ARC MWDT toolchain support for qemu_arc_hs
+  * Added ARC MWDT toolchain support inforto qemu_arc_hs
   * Improved emsdp platform support:
 
     * Added DFSS driver support
