@@ -11,7 +11,7 @@ Major enhancements with this release include:
 
 * Input subsystem: handles input events from various types of input devices and
   distributes them to other threads in the application.
-* Barrier API: add architecture agnostic API for data memory barriers.
+* Barrier API: added architecture agnostic API for data memory barriers.
 * USB Device support:
 
   * USB device controller API (UDC API) and nRF USBD controller driver.
