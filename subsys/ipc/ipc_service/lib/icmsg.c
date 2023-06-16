@@ -20,9 +20,9 @@ enum rx_buffer_state {
 	RX_BUFFER_STATE_HELD
 };
 
-enum tx_buffer_state {
-	TX_BUFFER_STATE_UNUSED,
-	TX_BUFFER_STATE_RESERVED
+enum send_buffer_state {
+	SEND_BUFFER_STATE_UNUSED,
+	SEND_BUFFER_STATE_RESERVED
 };
 
 static const uint8_t magic[] = {0x45, 0x6d, 0x31, 0x6c, 0x31, 0x4b,
@@ -75,8 +75,8 @@ static bool is_endpoint_ready(struct icmsg_data_t *dev_data)
 
 static bool is_tx_buffer_reserved(struct icmsg_data_t *dev_data)
 {
-	return atomic_get(&dev_data->tx_buffer_state) ==
-			TX_BUFFER_STATE_RESERVED;
+	return atomic_get(&dev_data->send_buffer_state) ==
+			SEND_BUFFER_STATE_RESERVED;
 }
 
 static int reserve_tx_buffer_if_unused(struct icmsg_data_t *dev_data)
@@ -89,16 +89,16 @@ static int reserve_tx_buffer_if_unused(struct icmsg_data_t *dev_data)
 	}
 #endif
 
-	bool was_unused = atomic_cas(&dev_data->tx_buffer_state,
-				  TX_BUFFER_STATE_UNUSED, TX_BUFFER_STATE_RESERVED);
+	bool was_unused = atomic_cas(&dev_data->send_buffer_state,
+				  SEND_BUFFER_STATE_UNUSED, SEND_BUFFER_STATE_RESERVED);
 
 	return was_unused ? 0 : -EALREADY;
 }
 
 static int release_tx_buffer(struct icmsg_data_t *dev_data)
 {
-	bool was_reserved = atomic_cas(&dev_data->tx_buffer_state,
-					TX_BUFFER_STATE_RESERVED, TX_BUFFER_STATE_UNUSED);
+	bool was_reserved = atomic_cas(&dev_data->send_buffer_state,
+					SEND_BUFFER_STATE_RESERVED, SEND_BUFFER_STATE_UNUSED);
 
 	if (!was_reserved) {
 		return -EALREADY;
