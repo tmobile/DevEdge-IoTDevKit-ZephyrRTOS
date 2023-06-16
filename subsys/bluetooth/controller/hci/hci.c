@@ -17,10 +17,9 @@
 
 #include <zephyr/drivers/bluetooth/hci_driver.h>
 
-#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/hci_types.h>
 #include <zephyr/bluetooth/hci_vs.h>
 #include <zephyr/bluetooth/buf.h>
-#include <zephyr/bluetooth/bluetooth.h>
 
 #include "../host/hci_ecc.h"
 
@@ -3515,8 +3514,9 @@ static void le_set_ext_adv_enable(struct net_buf *buf, struct net_buf **evt)
 			return;
 		}
 
-		/* FIXME: Implement disable of all advertising sets */
-		*evt = cmd_complete_status(BT_HCI_ERR_UNSUPP_FEATURE_PARAM_VAL);
+		status = ll_adv_disable_all();
+
+		*evt = cmd_complete_status(status);
 
 		return;
 	}
