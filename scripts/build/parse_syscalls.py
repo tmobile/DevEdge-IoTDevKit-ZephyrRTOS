@@ -102,6 +102,8 @@ def analyze_headers(include_dir, scan_dir, file_list):
                                                    'common.h'))):
                     continue
 
+                path = PurePath(os.path.normpath(path)).as_posix()
+
                 if path not in syscall_files:
                     if include_dir and base_path in include_dir:
                         syscall_files[path] = {"emit" : True}
