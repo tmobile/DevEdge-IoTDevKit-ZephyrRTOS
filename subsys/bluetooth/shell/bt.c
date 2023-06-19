@@ -361,8 +361,13 @@ bool passes_scan_filter(const struct bt_le_scan_recv_info *info, const struct ne
 
 	if (scan_filter.addr_set) {
 		char le_addr[BT_ADDR_LE_STR_LEN] = {0};
+		int err;
 
-		bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
+		err = bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
+		if (err != 0) {
+			shell_error(ctx_shell, "Failed to convert addr to string: %d", err);
+			return false;
+		}
 
 		if (!is_substring(scan_filter.addr, le_addr)) {
 			return false;
@@ -403,7 +408,6 @@ static void scan_recv(const struct bt_le_scan_recv_info *info, struct net_buf_si
 	(void)memset(name, 0, sizeof(name));
 
 	bt_data_parse(buf, data_cb, name);
-	bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
 
 	shell_print(ctx_shell, "%s%s, AD evt type %u, RSSI %i %s "
 		    "C:%u S:%u D:%d SR:%u E:%u Prim: %s, Secn: %s, "
