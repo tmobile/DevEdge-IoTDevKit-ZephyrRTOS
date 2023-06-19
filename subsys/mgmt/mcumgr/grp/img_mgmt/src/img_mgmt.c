@@ -480,7 +480,9 @@ img_mgmt_upload(struct smp_streamer *ctxt)
 	bool data_match = false;
 #endif
 
-#if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK)
+#if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK) ||	\
+defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS) ||		\
+defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 	enum mgmt_cb_return status;
 #endif
 
