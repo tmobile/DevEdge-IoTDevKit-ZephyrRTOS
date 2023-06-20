@@ -156,6 +156,7 @@ add_subdirectory_ifdef(CONFIG_RPI_PICO_TEMP rpi_pico_temp)
 add_subdirectory_ifdef(CONFIG_XMC4XXX_TEMP xmc4xxx_temp)
 add_subdirectory_ifdef(CONFIG_TMD2620 tmd2620)
 add_subdirectory_ifdef(CONFIG_S11059 s11059)
+add_subdirectory_ifdef(CONFIG_TSL2540 tsl2540)
 
 zephyr_library()
 zephyr_library_property(ALLOW_EMPTY TRUE)
