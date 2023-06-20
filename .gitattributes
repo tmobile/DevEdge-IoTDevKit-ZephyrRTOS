@@ -187,7 +187,6 @@ dts/bindings/sensor/ti,tmp108.yaml merge=ours
 dts/bindings/serial/silabs,gecko-leuart.yaml merge=ours
 dts/bindings/timer/silabs,gecko-letimer.yaml merge=ours
 dts/bindings/wifi/silabs,rs9116w.yaml merge=ours
-include/drivers/sensor/tsl2540.h merge=ours
 include/zephyr/drivers/bluetooth/rs9116w.h merge=ours
 include/zephyr/drivers/fuel_gauge.h merge=ours
 include/zephyr/drivers/fuel_gauge/act81461.h merge=ours

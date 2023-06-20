@@ -5,8 +5,9 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/bluetooth/buf.h>
 #include <zephyr/sys/byteorder.h>
+
+#include <zephyr/bluetooth/addr.h>
 #include <zephyr/bluetooth/iso.h>
 
 #include "util/util.h"
@@ -49,7 +50,7 @@
 #include "ll.h"
 #include "ll_feat.h"
 
-#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/hci_types.h>
 
 #include "hal/debug.h"
 
