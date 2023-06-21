@@ -22,6 +22,6 @@ config FUEL_GAUGE_INIT_PRIORITY
 source "drivers/fuel_gauge/max17048/Kconfig"
 
 source "drivers/fuel_gauge/sbs_gauge/Kconfig"
-source "drivers/fuel_gauge/Kconfig.act81461"
+source "drivers/fuel_gauge/act81461/Kconfig"
 
 endif # FUEL_GAUGE
