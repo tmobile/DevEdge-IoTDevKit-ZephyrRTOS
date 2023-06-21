@@ -2619,7 +2619,7 @@ USB:
     - subsys/usb/
     - tests/subsys/usb/
     - tests/drivers/udc/
-    - doc/connectivity/usb/
+    - doc/services/usb/
   labels:
     - "area: USB"
 
@@ -2636,7 +2636,7 @@ USB-C:
     - include/zephyr/usb_c/
     - samples/subsys/usb_c/
     - subsys/usb/usb_c/
-    - doc/connectivity/usb/pd/
+    - doc/connectivity/usb_c/
   labels:
     - "area: USB-C"
 
