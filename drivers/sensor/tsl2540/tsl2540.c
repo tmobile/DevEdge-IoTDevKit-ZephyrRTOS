@@ -63,7 +63,7 @@ static int tsl2540_sample_fetch(const struct device *dev, enum sensor_channel ch
 			     &((const struct tsl2540_config *)dev->config)->i2c_spec,
 			     TSL2540_REG_VIS_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
 		if (ret) {
-			LOG_ERR("Could not fetch ambient light (visible)");
+			LOG_ERR("Could not fetch ambient light (visible): error %d", ret);
 		} else {
 			data->count_vis = sys_le16_to_cpu(le16_buffer);
 		}
@@ -75,7 +75,7 @@ static int tsl2540_sample_fetch(const struct device *dev, enum sensor_channel ch
 			     &((const struct tsl2540_config *)dev->config)->i2c_spec,
 			     TSL2540_REG_IR_LOW, (uint8_t *)&le16_buffer, sizeof(le16_buffer));
 		if (ret) {
-			LOG_ERR("Could not fetch ambient light (IR)");
+			LOG_ERR("Could not fetch ambient light (IR): error %d", ret);
 		} else {
 			data->count_ir = sys_le16_to_cpu(le16_buffer);
 		}
