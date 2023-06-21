@@ -1869,11 +1869,12 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 #if defined(CONFIG_NET_IPV6_DAD)
 		if (!net_if_flag_is_set(iface, NET_IF_IPV6_NO_ND)) {
 			k_mutex_lock(&lock, K_FOREVER);
-			sys_slist_find_and_remove(&active_dad_timers,
-						  &ipv6->unicast[found].dad_node);
+			sys_slist_find_and_remove(&active_dad_timers, &ipv6->unicast[i].dad_node);
 			k_mutex_unlock(&lock);
 		}
 #endif
+
+		ipv6->unicast[i].is_used = false;
 
 		ipv6->unicast[found].is_used = false;
 
