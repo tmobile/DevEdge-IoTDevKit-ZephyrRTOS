@@ -1018,7 +1018,7 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 {
 	enum bt_audio_location location = BT_AUDIO_LOCATION_PROHIBITED;
 	const struct named_lc3_preset *named_preset;
-	struct shell_stream *uni_stream;
+	struct unicast_stream *uni_stream;
 	struct bt_bap_stream *bap_stream;
 	struct bt_bap_ep *ep = NULL;
 	unsigned long index;
@@ -1125,7 +1125,7 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 		}
 	}
 
-	uni_stream = shell_stream_from_bap_stream(bap_stream);
+	uni_stream = CONTAINER_OF(bap_stream, struct unicast_stream, stream);
 	copy_unicast_stream_preset(uni_stream, named_preset);
 
 	/* If location has been modifed, we update the location in the codec configuration */
@@ -1146,14 +1146,13 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	}
 
 	if (bap_stream->ep == ep) {
-		err = bt_bap_stream_reconfig(bap_stream, &uni_stream->codec_cfg);
+		err = bt_bap_stream_reconfig(bap_stream, &uni_stream->codec);
 		if (err != 0) {
 			shell_error(sh, "Unable reconfig stream: %d", err);
 			return -ENOEXEC;
 		}
 	} else {
-		err = bt_bap_stream_config(default_conn, bap_stream, ep,
-					   &uni_stream->codec_cfg);
+		err = bt_bap_stream_config(default_conn, bap_stream, ep, &uni_stream->codec);
 		if (err != 0) {
 			shell_error(sh, "Unable to config stream: %d", err);
 			return err;
