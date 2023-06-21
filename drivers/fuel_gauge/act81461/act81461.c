@@ -20,7 +20,7 @@
 #include <zephyr/drivers/fuel_gauge/act81461.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
-#include "charger_act81461.h"
+#include "act81461.h"
 
 struct act81461_gauge_config {
 	const struct gpio_dt_spec alert_gpio;
