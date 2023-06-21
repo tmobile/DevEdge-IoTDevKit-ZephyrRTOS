@@ -352,6 +352,8 @@ static void lc3_audio_send_data(struct k_work *work)
 		shell_info(ctx_shell, "[%zu]: stream %p : TX LC3: %zu (seq_num %u)",
 			   sh_stream->lc3_sdu_cnt, bap_stream, tx_sdu_len, sh_stream->seq_num);
 	}
+	lc3_sdu_cnt++;
+}
 
 	sh_stream->lc3_sdu_cnt++;
 	sh_stream->seq_num++;
