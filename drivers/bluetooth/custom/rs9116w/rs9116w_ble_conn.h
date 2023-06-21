@@ -148,19 +148,6 @@ struct bt_conn {
 	atomic_t ref;
 };
 
-struct bt_hci_evt_le_enh_conn_complete {
-	uint8_t status;
-	uint16_t handle;
-	uint8_t role;
-	bt_addr_le_t peer_addr;
-	bt_addr_t local_rpa;
-	bt_addr_t peer_rpa;
-	uint16_t interval;
-	uint16_t latency;
-	uint16_t supv_timeout;
-	uint8_t clock_accuracy;
-} __packed;
-
 #define BT_HCI_ROLE_MASTER                      0x00
 #define BT_HCI_ROLE_SLAVE                       0x01
 
