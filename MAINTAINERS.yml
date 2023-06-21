@@ -2012,11 +2012,14 @@ Twister:
     - hakehuang
     - gopiotr
     - golowanow
+    - gchwier
   files:
     - scripts/twister
     - scripts/pylib/twister/
     - scripts/tests/twister/
     - doc/develop/test/twister.rst
+    - scripts/pylib/pytest-twister-harness/
+    - doc/develop/test/pytest.rst
   labels:
     - "area: Twister"
 
