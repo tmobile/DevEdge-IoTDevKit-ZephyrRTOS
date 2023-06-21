@@ -104,7 +104,15 @@ test_i2c_bmm150: bmm150@d {
 	status = "okay";
 };
 
-test_i2c_hmc5883l: hmc5883l@e {
+test_i2c_ht16k33: ht16k33@f {
+	compatible = "holtek,ht16k33";
+	reg = <0xf>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	irq-gpios = <&test_gpio 0 0>;
+};
+
+test_i2c_hmc5883l: hmc5883l@10 {
 	compatible = "honeywell,hmc5883l";
 	reg = <0xe>;
 	int-gpios = <&test_gpio 0 0>;
