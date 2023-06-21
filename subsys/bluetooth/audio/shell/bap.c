@@ -207,6 +207,15 @@ static void clear_lc3_sine_data(struct bt_bap_stream *bap_stream)
 	(void)k_work_cancel_delayable(&sh_stream->audio_send_work);
 }
 
+static void clear_lc3_sine_data(void)
+{
+	lc3_start_time = 0;
+	lc3_sdu_cnt = 0;
+	txing_stream = NULL;
+
+	(void)k_work_cancel(&audio_send_work);
+}
+
 /**
  * Use the math lib to generate a sine-wave using 16 bit samples into a buffer.
  *
@@ -1858,7 +1867,9 @@ static void stream_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 	printk("Stream %p stopped with reason 0x%02X\n", stream, reason);
 
 #if defined(CONFIG_LIBLC3)
-	clear_lc3_sine_data(stream);
+	if (stream == default_stream) {
+		clear_lc3_sine_data();
+	}
 #endif /* CONFIG_LIBLC3 */
 }
 
@@ -1905,7 +1916,9 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 
 #if defined(CONFIG_LIBLC3)
 	/* stop sending */
-	clear_lc3_sine_data(stream);
+	if (stream == default_stream) {
+		clear_lc3_sine_data();
+	}
 #endif /* CONFIG_LIBLC3 */
 }
 #endif /* CONFIG_BT_BAP_UNICAST */
@@ -2632,44 +2645,7 @@ static int cmd_start_sine(const struct shell *sh, size_t argc, char *argv[])
 
 static int cmd_stop_sine(const struct shell *sh, size_t argc, char *argv[])
 {
-	bool stop_all = false;
-
-	if (argc > 1) {
-		if (strcmp(argv[1], "all") == 0) {
-			stop_all = true;
-		} else {
-			shell_help(sh);
-
-			return SHELL_CMD_HELP_PRINTED;
-		}
-	}
-
-	if (stop_all) {
-		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
-			struct bt_bap_stream *bap_stream = &unicast_streams[i].stream.bap_stream;
-
-			if (unicast_streams[i].tx_active) {
-				clear_lc3_sine_data(bap_stream);
-				shell_print(sh, "Stopped transmitting on stream %p", bap_stream);
-			}
-		}
-
-		for (size_t i = 0U; i < ARRAY_SIZE(broadcast_source_streams); i++) {
-			struct bt_bap_stream *bap_stream =
-				&broadcast_source_streams[i].stream.bap_stream;
-			if (unicast_streams[i].tx_active) {
-				clear_lc3_sine_data(bap_stream);
-				shell_print(sh, "Stopped transmitting on stream %p", bap_stream);
-			}
-		}
-	} else {
-		struct shell_stream *sh_stream = shell_stream_from_bap_stream(default_stream);
-
-		if (sh_stream->tx_active) {
-			clear_lc3_sine_data(default_stream);
-			shell_print(sh, "Stopped transmitting on stream %p", default_stream);
-		}
-	}
+	clear_lc3_sine_data();
 
 	return 0;
 }
