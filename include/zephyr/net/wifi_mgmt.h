@@ -283,16 +283,13 @@ struct wifi_ps_params {
 	enum wifi_ps_wakeup_mode wakeup_mode;
 	/** Wi-Fi power save mode */
 	enum wifi_ps_mode mode;
-	/** Wi-Fi power save timeout
-	 *
-	 * This is the time out to wait after sending a TX packet
+	/* This is the time out to wait after sending a TX packet
 	 * before going back to power save (in ms) to receive any replies
 	 * from the AP. Zero means this feature is disabled.
 	 *
 	 * It's a tradeoff between power consumption and latency.
 	 */
 	unsigned int timeout_ms;
-	/** Wi-Fi power save type */
 	enum ps_param_type type;
 	/** Wi-Fi power save fail reason */
 	enum wifi_config_ps_param_fail_reason fail_reason;
