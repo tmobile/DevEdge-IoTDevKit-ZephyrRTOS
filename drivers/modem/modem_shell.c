@@ -164,7 +164,7 @@ static void uart_mux_cb(const struct device *uart, const struct device *dev,
 			int dlci_address, void *user_data)
 {
 	struct modem_shell_user_data *data = user_data;
-	const struct shell *shell = data->shell;
+	const struct shell *sh = data->sh;
 	int *count = data->user_data;
 	const char *ch = "?";
 
@@ -240,7 +240,7 @@ static int cmd_modem_info(const struct shell *shell, size_t argc, char *argv[])
 	struct modem_shell_user_data user_data;
 	int count = 0;
 
-	user_data.shell = shell;
+	user_data.sh = sh;
 	user_data.user_data = &count;
 
 	uart_mux_foreach(uart_mux_cb, &user_data);
