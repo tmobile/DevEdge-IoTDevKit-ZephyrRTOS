@@ -225,17 +225,42 @@ static int smp_handle_single_payload(struct smp_streamer *cbuf, const struct smp
 	}
 
 	if (handler_fn) {
+		bool ok;
+
 		*handler_found = true;
-		zcbor_map_start_encode(cbuf->writer->zs,
-				       CONFIG_MCUMGR_SMP_CBOR_MAX_MAIN_MAP_ENTRIES);
+		ok = zcbor_map_start_encode(cbuf->writer->zs,
+					    CONFIG_MCUMGR_SMP_CBOR_MAX_MAIN_MAP_ENTRIES);
+
+		MGMT_CTXT_SET_RC_RSN(cbuf, NULL);
+
+		if (!ok) {
+			return MGMT_ERR_EMSGSIZE;
+		}
 
 #if defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 		cmd_recv.group = req_hdr->nh_group;
 		cmd_recv.id = req_hdr->nh_id;
 		cmd_recv.err = MGMT_ERR_EOK;
 
-		(void)mgmt_callback_notify(MGMT_EVT_OP_CMD_RECV, &cmd_recv, sizeof(cmd_recv),
-					   &ret_rc, &ret_group);
+		/* Send request to application to check if handler should run or not. */
+		status = mgmt_callback_notify(MGMT_EVT_OP_CMD_RECV, &cmd_recv, sizeof(cmd_recv),
+					      &ret_rc, &ret_group);
+
+		/* Skip running the command if a handler reported an error and return that
+		 * instead.
+		 */
+		if (status != MGMT_CB_OK) {
+			if (status == MGMT_CB_ERROR_RC) {
+				rc = ret_rc;
+			} else {
+				ok = smp_add_cmd_ret(cbuf->writer->zs, ret_group,
+						     (uint16_t)ret_rc);
+
+				rc = (ok ? MGMT_ERR_EOK : MGMT_ERR_EMSGSIZE);
+			}
+
+			goto end;
+		}
 #endif
 
 		MGMT_CTXT_SET_RC_RSN(cbuf, NULL);
