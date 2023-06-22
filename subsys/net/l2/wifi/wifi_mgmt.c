@@ -344,7 +344,7 @@ static int wifi_set_power_save_mode(uint32_t mgmt_request, struct net_if *iface,
 	}
 
 	if (twt_params->operation == WIFI_TWT_TEARDOWN) {
-		return wifi_mgmt_api->set_twt(dev, twt_params);
+		return off_api->set_twt(dev, twt_params);
 	}
 
 	if (net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS, iface, &info,
