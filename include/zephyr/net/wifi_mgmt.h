@@ -222,10 +222,15 @@ struct wifi_ps_params {
 
 struct wifi_ps_mode_params {
 	enum wifi_ps_mode mode;
-};
-
-struct wifi_ps_timeout_params {
-	int timeout_ms;
+	/* This is the time out to wait after sending a TX packet
+	 * before going back to power save (in ms) to receive any replies
+	 * from the AP. Zero means this feature is disabled.
+	 *
+	 * It's a tradeoff between power consumption and latency.
+	 */
+	unsigned int timeout_ms;
+	enum ps_param_type type;
+	enum wifi_config_ps_param_fail_reason fail_reason;
 };
 
 struct wifi_twt_params {
