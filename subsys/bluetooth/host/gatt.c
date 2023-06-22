@@ -2072,7 +2072,8 @@ static struct bt_conn *bt_gatt_ccc_cfg_conn_lookup(const struct bt_gatt_ccc_cfg 
 			return conn;
 		}
 
-		bt_conn_unref(conn);
+	if (conn && bt_gatt_ccc_cfg_is_matching_conn(conn, cfg)) {
+		return conn;
 	}
 
 	return NULL;
