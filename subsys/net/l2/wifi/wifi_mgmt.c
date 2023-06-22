@@ -299,14 +299,12 @@ static int wifi_set_power_save_mode(uint32_t mgmt_request, struct net_if *iface,
 		return -ENOTSUP;
 	}
 
-	return off_api->set_power_save_mode(dev, ps_mode_params);
-}
+	if (twt_params->operation == WIFI_TWT_TEARDOWN) {
+		return off_api->set_twt(dev, twt_params);
+	}
 
-NET_MGMT_REGISTER_REQUEST_HANDLER(NET_REQUEST_WIFI_PS_MODE, wifi_set_power_save_mode);
-
-#ifdef CONFIG_WIFI_MGMT_TWT_CHECK_IP
-	if ((!net_if_ipv4_get_global_addr(iface, NET_ADDR_PREFERRED)) &&
-	    (!net_if_ipv6_get_global_addr(NET_ADDR_PREFERRED, &iface))) {
+	if (net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS, iface, &info,
+			sizeof(struct wifi_iface_status))) {
 		twt_params->fail_reason =
 			WIFI_TWT_FAIL_IP_NOT_ASSIGNED;
 		goto fail;
