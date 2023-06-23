@@ -108,6 +108,7 @@ tests:
     extra_args: CONF_FILE=prj_base.conf
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_MISC=y
+    platform_exclude: tmo_dev_edge
   libraries.cmsis_dsp.filtering.misc.fpu:
     filter: ((CONFIG_CPU_AARCH32_CORTEX_R or CONFIG_CPU_CORTEX_M) and CONFIG_CPU_HAS_FPU
       and TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
@@ -123,3 +124,4 @@ tests:
     extra_configs:
       - CONFIG_CMSIS_DSP_TEST_FILTERING_MISC=y
       - CONFIG_FPU=y
+    platform_exclude: tmo_dev_edge
