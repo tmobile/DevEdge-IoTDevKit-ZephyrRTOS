@@ -170,6 +170,12 @@ static int init(const struct device *dev)
 
 	result = gpio_pin_configure_dt(&cfg->rst_gpio, GPIO_OUTPUT_HIGH);
 
+	cxd5605_setup_interrupts(dev);
+	/* setup shim callbacks */
+	cxd5605_lib_init(dev);
+	cxd5605_register_resp_callback(dev, driver_cxd5605_resp_cb);
+	cxd5605_register_nmea_callback(dev, driver_cxd5605_nmea_cb);
+
 	return result;
 }
 
@@ -429,11 +435,6 @@ static int cxd5605_attr_set(const struct device *dev,
 	uint8_t min = 0;
 	uint8_t sec = 0;
 
-
-	const struct cxd5605_config *config = dev->config;
-	const struct gpio_dt_spec *pwr_gpio = &config->pwr_gpio;
-	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
-
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP && chan != SENSOR_CHAN_ALL) {
 		return -ENOTSUP;
 	}
@@ -459,6 +460,9 @@ static int cxd5605_attr_set(const struct device *dev,
 				__FILE__, __LINE__, result);
 			return result;
 		}
+		drv_data->op_mode = val[0].val1;
+		drv_data->pos_cycle = val[0].val2;
+		drv_data->sleep_time = val[1].val1;
 		break;
 
 	case SENSOR_ATTR_CXD5605_PULSE:
@@ -508,6 +512,7 @@ static int cxd5605_attr_set(const struct device *dev,
 				__FILE__, __LINE__, result);
 			return result;
 		}
+		drv_data->selected_sentences = val->val1;
 		break;
 
 	case SENSOR_ATTR_CXD5605_HOT_START:
@@ -580,39 +585,10 @@ static int cxd5605_attr_set(const struct device *dev,
 		}
 		break;
 
-	case SENSOR_ATTR_CXD5605_PWR_CTRL:
-		if (val->val1 == 0) {
-			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_LOW);
-			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_LOW);
-		} else {
-			result = gpio_pin_configure_dt(pwr_gpio, GPIO_OUTPUT_HIGH);
-			result = gpio_pin_configure_dt(rst_gpio, GPIO_OUTPUT_HIGH);
-		}
-		break;
-
-	case SENSOR_ATTR_CXD5605_CALLBACK:
-		init(dev);
-		LOG_DBG("Got CXD5605_ALERT_INTERRUPTS\n");
-		cxd5605_setup_interrupts(dev);
-		/* setup shim callbacks */
-#ifdef DEBUG
-		printf("[driver] register driver callback\n");
-#endif
-		cxd5605_lib_init(dev);
-		cxd5605_register_resp_callback(dev, driver_cxd5605_resp_cb);
-		cxd5605_register_nmea_callback(dev, driver_cxd5605_nmea_cb);
-		return 0;
-
 	default:
 		return -ENOTSUP;
 	}
 
-	if (drv_data->cxd5605_cmd != SENSOR_ATTR_CXD5605_PWR_CTRL) {
-		result = cxd5605_wait_fetch(dev);
-		if (result < 0) {
-			return result;
-		}
-	}
 
 	return 0;
 }
@@ -684,6 +660,7 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 {
 	const struct cxd5605_config *config = dev->config;
 	const struct gpio_dt_spec *rst_gpio = &config->rst_gpio;
+	struct cxd5605_data *drv_data = dev->data;
 
 	int result = 0;
 
@@ -699,6 +676,12 @@ static int cxd5605_driver_pm_action(const struct device *dev,
 		if (result < 0) {
 			printk("ERROR: I2C interface not working (CXD5605 driver)\n");
 		}
+		if (drv_data->pps_cb) {
+			cxd5605_pulse(dev, 1);
+		}
+		cxd5605_operating_mode(dev, drv_data->op_mode, drv_data->pos_cycle, \
+				       drv_data->sleep_time);
+		cxd5605_sentence_select(dev, drv_data->selected_sentences);
 
 	case PM_DEVICE_ACTION_SUSPEND:
 		cxd5605_sleep(dev, 0);

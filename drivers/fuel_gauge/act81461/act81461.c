@@ -198,10 +198,10 @@ static int act81461_charger_get_prop(const struct device *dev, struct fuel_gauge
 	 * IDK if this is the best way to handle this, but this is our mode and
 	 * there is no stanard nor spec for this property
 	 */
-	case FUEL_GAUGE_MODE:
+	case FUEL_GAUGE_SBS_MODE:
 		rc = i2c_reg_read_byte_dt(&config->i2c, BAT_STAT_REG, &val);
 
-		prop->value.mode = val & CHG_STAT_MSK;
+		prop->value.sbs_mode = val & CHG_STAT_MSK;
 		break;
 
 	/* TODO: Support reading charge current/voltage settings */

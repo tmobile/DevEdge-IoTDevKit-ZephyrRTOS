@@ -1345,7 +1345,7 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 
 	if (dev->api == &api) {
 		const struct regulator_act81461_node_config *config = dev->config;
-		uint8_t reg;
+		uint8_t reg, msk;
 
 		cconfig = config->p->config;
 		switch (config->source) {
@@ -1379,7 +1379,7 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 				      REGULATOR_ERROR_OVER_CURRENT)) {
 				return -EINVAL;
 			}
-			uint8_t msk = 0;
+			msk = 0;
 
 			if (flags & REGULATOR_ERROR_OVER_VOLTAGE) {
 				msk |= OV_INT_MSK;
@@ -1409,7 +1409,7 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 			if (flags & ~REGULATOR_ERROR_OVER_CURRENT) {
 				return -EINVAL;
 			}
-			uint8_t msk = 0;
+			msk = 0;
 
 			if (flags & REGULATOR_ERROR_OVER_CURRENT) {
 				msk |= ILIM_INT_MSK;
@@ -1422,7 +1422,7 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 				      REGULATOR_ERROR_OVER_CURRENT)) {
 				return -EINVAL;
 			}
-			uint8_t msk = 0;
+			msk = 0;
 
 			if (flags & REGULATOR_ERROR_OVER_VOLTAGE) {
 				msk |= BST_OV_INT_MSK;
@@ -1439,12 +1439,14 @@ int act81461_fault_int_msk_set(const struct device *dev, regulator_error_flags_t
 			return -EINVAL;
 		}
 	} else {
+		uint8_t msk;
+
 		cconfig = dev->config;
 		if (flags & ~(REGULATOR_ERROR_OVER_TEMP | REGULATOR_ERROR_VSYS_UNDER_VOLTAGE |
 			      REGULATOR_ERROR_VBAT_LOW)) {
 			return -EINVAL;
 		}
-		uint8_t msk = 0;
+		msk = 0;
 
 		if (flags & REGULATOR_ERROR_OVER_TEMP) {
 			msk |= TWARN;

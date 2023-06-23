@@ -1021,7 +1021,7 @@ MODEM_CMD_DEFINE(on_cmd_unsol_cmt)
 #endif /* CONFIG_MODEM_SMS */
 
 /**
- * @brief Handler for unsolicited events ( SOCKETEV)
+ * @brief Handler for unsolicited events (SOCKETEV)
  */
 MODEM_CMD_DEFINE(on_cmd_unsol_SEV)
 {
@@ -1062,6 +1062,25 @@ MODEM_CMD_DEFINE(on_cmd_unsol_SEV)
 	case 6: /* socket activation done */
 		break;
 	default:
+		break;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief Handler for unsolicited events (STATCM)
+ */
+MODEM_CMD_DEFINE(on_cmd_unsol_SCM)
+{
+	int event = strtol(argv[0], NULL, 10);
+
+	switch (event) {
+	case 0: /* LTE deregistered */
+		return net_if_down(mdata.net_iface);
+	case 1: /* LTE registered */
+		return net_if_up(mdata.net_iface);
+	default: /* Ignore all other events */
 		break;
 	}
 
@@ -2231,6 +2250,7 @@ static const struct modem_cmd response_cmds[] = {
 
 static const struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("%SOCKETEV:", on_cmd_unsol_SEV, 2U, ","),
+	MODEM_CMD("%STATCM:", on_cmd_unsol_SCM, 1U, ","),
 #if defined(CONFIG_MODEM_SMS)
 	MODEM_CMD("+CMTI:", on_cmd_unsol_sms, 2U, ","),
 #if defined(CONFIG_MODEM_SMS_CALLBACK)
@@ -4736,6 +4756,7 @@ static int murata_1sc_setup(void)
 	  SETUP_CMD("AT+CEREG?", "+CEREG:", on_cmd_get_cereg, 0U, ""),
 	  SETUP_CMD("AT+CGCONTRDP", "+CGCONTRDP:", on_cmd_get_cgcontrdp, 0U, ""),
 #endif
+	  SETUP_CMD_NOHANDLE("AT%STATCM=1"),
 #if defined(CONFIG_MODEM_DEMO_LOW_POWERMODE)
 	  SETUP_CMD_NOHANDLE("AT+CFUN=0"),
 #endif
