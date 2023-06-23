@@ -435,10 +435,10 @@ class RimageSigner(Signer):
         # TODO: make this a new sign.py --bootloader option.
         if target in ('imx8', 'imx8m'):
             bootloader = None
-            kernel = str(b / 'zephyr' / f'{kernel_name}.elf')
-            out_bin = str(b / 'zephyr' / f'{kernel_name}.ri')
-            out_xman = str(b / 'zephyr' / f'{kernel_name}.ri.xman')
-            out_tmp = str(b / 'zephyr' / f'{kernel_name}.rix')
+            kernel = str(b / 'zephyr' / 'zephyr.elf')
+            out_bin = str(b / 'zephyr' / 'zephyr.ri')
+            out_xman = str(b / 'zephyr' / 'zephyr.ri.xman')
+            out_tmp = str(b / 'zephyr' / 'zephyr.rix')
         else:
             bootloader = str(b / 'zephyr' / 'boot.mod')
             kernel = str(b / 'zephyr' / 'main.mod')
