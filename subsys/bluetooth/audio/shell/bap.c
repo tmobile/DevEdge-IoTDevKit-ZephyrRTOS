@@ -207,6 +207,9 @@ static void clear_lc3_sine_data(struct bt_bap_stream *bap_stream)
 	(void)k_work_cancel_delayable(&sh_stream->audio_send_work);
 }
 
+static void lc3_audio_send_data(struct k_work *work);
+static K_WORK_DEFINE(audio_send_work, lc3_audio_send_data);
+
 static void clear_lc3_sine_data(void)
 {
 	lc3_start_time = 0;
@@ -364,19 +367,7 @@ static void lc3_audio_send_data(struct k_work *work)
 	lc3_sdu_cnt++;
 }
 
-	sh_stream->lc3_sdu_cnt++;
-	sh_stream->seq_num++;
-	atomic_dec(&sh_stream->lc3_enqueue_cnt);
-
-	if (atomic_get(&sh_stream->lc3_enqueue_cnt) > 0) {
-		/* If we have more buffers available, we reschedule the workqueue item immediately
-		 * to trigger another encode + TX, but without blocking this call for too long
-		 */
-		k_work_reschedule(k_work_delayable_from_work(work), K_NO_WAIT);
-	}
-}
-
-void sdu_sent_cb(struct bt_bap_stream *bap_stream)
+void sdu_sent_cb(struct bt_bap_stream *stream)
 {
 	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
 	int err;
