@@ -1,6 +1,7 @@
 name: Run tests with twister
 
 on:
+  workflow_call:
   push:
     branches:
       - main
