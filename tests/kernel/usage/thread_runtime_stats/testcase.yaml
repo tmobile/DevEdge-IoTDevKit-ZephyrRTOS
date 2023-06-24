@@ -16,4 +16,3 @@ tests:
     integration_platforms:
       - qemu_x86
       - mps2_an385
-    platform_exclude: tmo_dev_edge
