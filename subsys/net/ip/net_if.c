@@ -1811,7 +1811,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 	bool ret = false;
 	struct net_if_ipv6 *ipv6;
 	struct in6_addr maddr;
-	int i;
+	int found = -1;
 
 	NET_ASSERT(addr);
 
@@ -1824,7 +1824,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 
 	net_ipv6_addr_create_solicited_node(addr, &maddr);
 
-	for (i = 0; i < NET_IF_MAX_IPV6_ADDR; i++) {
+	for (int i = 0; i < NET_IF_MAX_IPV6_ADDR; i++) {
 		if (!ipv6->unicast[i].is_used) {
 			continue;
 		}
@@ -1844,6 +1844,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 		}
 
 		found = i;
+		break;
 	}
 
 	if (found >= 0) {
@@ -1866,12 +1867,13 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 #if defined(CONFIG_NET_IPV6_DAD)
 		if (!net_if_flag_is_set(iface, NET_IF_IPV6_NO_ND)) {
 			k_mutex_lock(&lock, K_FOREVER);
-			sys_slist_find_and_remove(&active_dad_timers, &ipv6->unicast[i].dad_node);
+			sys_slist_find_and_remove(&active_dad_timers,
+						  &ipv6->unicast[found].dad_node);
 			k_mutex_unlock(&lock);
 		}
 #endif
 
-		ipv6->unicast[i].is_used = false;
+		ipv6->unicast[found].is_used = false;
 
 		net_if_ipv6_maddr_rm(iface, &maddr);
 
