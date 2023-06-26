@@ -1811,8 +1811,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 	bool ret = false;
 	struct net_if_ipv6 *ipv6;
 	struct in6_addr maddr;
-	int found = -1;
-	unsigned int maddr_count = 0;
+	int i;
 
 	NET_ASSERT(addr);
 
@@ -1825,9 +1824,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 
 	net_ipv6_addr_create_solicited_node(addr, &maddr);
 
-	for (int i = 0; i < NET_IF_MAX_IPV6_ADDR; i++) {
-		struct in6_addr unicast_maddr;
-
+	for (i = 0; i < NET_IF_MAX_IPV6_ADDR; i++) {
 		if (!ipv6->unicast[i].is_used) {
 			continue;
 		}
@@ -1876,14 +1873,7 @@ bool net_if_ipv6_addr_rm(struct net_if *iface, const struct in6_addr *addr)
 
 		ipv6->unicast[i].is_used = false;
 
-		ipv6->unicast[found].is_used = false;
-
-		if (maddr_count == 1) {
-			/* remove the solicited-node multicast address only if no other
-			 * unicast address is also using it
-			 */
-			net_if_ipv6_maddr_rm(iface, &maddr);
-		}
+		net_if_ipv6_maddr_rm(iface, &maddr);
 
 		NET_DBG("[%d] interface %p address %s type %s removed",
 			found, iface, net_sprint_ipv6_addr(addr),
