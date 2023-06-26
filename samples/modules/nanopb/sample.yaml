@@ -17,3 +17,4 @@ tests:
     integration_platforms:
       - native_posix
       - native_posix_64
+    platform_exclude: tmo_dev_edge
