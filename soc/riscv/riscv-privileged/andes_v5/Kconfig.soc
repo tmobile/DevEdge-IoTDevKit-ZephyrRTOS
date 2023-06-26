@@ -11,9 +11,6 @@ config SOC_RISCV_ANDES_AE350
 	select INCLUDE_RESET_VECTOR
 	select RISCV_ISA_EXT_M
 	select RISCV_ISA_EXT_A
-	select RISCV_ISA_EXT_C
-	select CPU_HAS_DCACHE
-	select CPU_HAS_ICACHE
 	select RISCV_PMP
 
 endchoice
