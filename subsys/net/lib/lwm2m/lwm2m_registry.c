@@ -650,8 +650,12 @@ static int lwm2m_engine_set(const struct lwm2m_obj_path *path, const void *value
 		break;
 
 	case LWM2M_RES_TYPE_STRING:
-		strncpy(data_ptr, value, len - 1);
-		((char *)data_ptr)[len - 1] = '\0';
+		if (len) {
+			strncpy(data_ptr, value, len - 1);
+			((char *)data_ptr)[len - 1] = '\0';
+		} else {
+			((char *)data_ptr)[0] = '\0';
+		}
 		break;
 
 	case LWM2M_RES_TYPE_U32:
