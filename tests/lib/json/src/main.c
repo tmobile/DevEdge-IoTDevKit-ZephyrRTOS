@@ -350,9 +350,9 @@ ZTEST(lib_json_test, test_json_decoding_array_array)
 	int ret;
 	struct obj_array_array obj_array_array_ts;
 	char encoded[] = "{\"objects_array\":["
-			  "{\"height\":168,\"name\":\"Sim\303\263n Bol\303\255var\"},"
-			  "{\"height\":173,\"name\":\"Pel\303\251\"},"
-			  "{\"height\":195,\"name\":\"Usain Bolt\"}]"
+			  "[{\"height\":168,\"name\":\"Sim\303\263n Bol\303\255var\"}],"
+			  "[{\"height\":173,\"name\":\"Pel\303\251\"}],"
+			  "[{\"height\":195,\"name\":\"Usain Bolt\"}]]"
 			  "}";
 
 	ret = json_obj_parse(encoded, sizeof(encoded),
@@ -397,7 +397,7 @@ ZTEST(lib_json_test, test_json_obj_arr_encoding)
 		},
 		.num_elements = 10,
 	};
-	char encoded[] = "{\"elements\":["
+	const char encoded[] = "{\"elements\":["
 		"{\"name\":\"Sim\303\263n Bol\303\255var\",\"height\":168},"
 		"{\"name\":\"Muggsy Bogues\",\"height\":160},"
 		"{\"name\":\"Pel\303\251\",\"height\":173},"
