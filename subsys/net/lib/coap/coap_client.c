@@ -482,27 +482,17 @@ static int resend_request(struct coap_client *client,
 {
 	int ret = 0;
 
-	if (internal_req->pending.timeout != 0 && coap_pending_cycle(&internal_req->pending)) {
-		LOG_ERR("Timeout in poll, retrying send");
+	while (1) {
+		struct zsock_pollfd fds;
 
-		/* Reset send block context as it was updated in previous init from packet */
-		if (internal_req->send_blk_ctx.total_size > 0) {
-			internal_req->send_blk_ctx.current = internal_req->offset;
-		}
-		k_mutex_lock(&client->send_mutex, K_FOREVER);
-		ret = coap_client_init_request(client, &internal_req->coap_request,
-					       internal_req, true);
-		if (ret < 0) {
-			LOG_ERR("Error re-creating CoAP request");
+		fds.fd = client->fd;
+		fds.events = ZSOCK_POLLIN;
+		fds.revents = 0;
+		/* rfc7252#section-5.2.2, use separate timeout value for a separate response */
+		if (client->pending.timeout != 0) {
+			ret = zsock_poll(&fds, 1, client->pending.timeout);
 		} else {
-			ret = send_request(client->fd, internal_req->request.data,
-					   internal_req->request.offset, 0, &client->address,
-					   client->socklen);
-			if (ret > 0) {
-				ret = 0;
-			} else {
-				LOG_ERR("Failed to resend request, %d", ret);
-			}
+			ret = zsock_poll(&fds, 1, COAP_SEPARATE_TIMEOUT);
 		}
 		k_mutex_unlock(&client->send_mutex);
 	} else {
@@ -553,32 +543,45 @@ static int handle_poll(void)
 			errno = 0;
 			return ret;
 		} else if (ret == 0) {
-			/* Resend all the expired pending messages */
-			ret = coap_client_resend_handler();
-
-			if (ret < 0) {
-				LOG_ERR("Error resending request: %d", ret);
+			if (client->pending.timeout != 0 && coap_pending_cycle(&client->pending)) {
+				LOG_ERR("Timeout in poll, retrying send");
+				ret = send_request(client->fd, client->request.data,
+						   client->request.offset, 0, &client->address,
+						   client->socklen);
+				if (ret < 0) {
+					LOG_ERR("Transmission failed: %d", errno);
+					ret = -errno;
+					break;
+				}
+			} else {
+				/* No more retries left, don't retry */
+				LOG_ERR("Timeout in poll, no more retries");
+				ret = -EFAULT;
+				break;
 			}
-
-			if (!has_ongoing_requests()) {
-				return ret;
-			}
-
 		} else {
-			for (int i = 0; i < nfds; i++) {
-				if (fds[i].revents & ZSOCK_POLLERR) {
-					LOG_ERR("Error in poll for socket %d", fds[i].fd);
-				}
-				if (fds[i].revents & ZSOCK_POLLHUP) {
-					LOG_ERR("Error in poll: POLLHUP for socket %d", fds[i].fd);
-				}
-				if (fds[i].revents & ZSOCK_POLLNVAL) {
-					LOG_ERR("Error in poll: POLLNVAL - fd %d not open",
-						fds[i].fd);
-				}
-				if (fds[i].revents & ZSOCK_POLLIN) {
-					clients[i]->response_ready = true;
-				}
+			if (fds.revents & ZSOCK_POLLERR) {
+				LOG_ERR("Error in poll");
+				ret = -EIO;
+				break;
+			}
+
+			if (fds.revents & ZSOCK_POLLHUP) {
+				LOG_ERR("Error in poll: POLLHUP");
+				ret = -ECONNRESET;
+				break;
+			}
+
+			if (fds.revents & ZSOCK_POLLNVAL) {
+				LOG_ERR("Error in poll: POLLNVAL - fd not open");
+				ret = -EINVAL;
+				break;
+			}
+
+			if (!(fds.revents & ZSOCK_POLLIN)) {
+				LOG_ERR("Unknown poll error");
+				ret = -EINVAL;
+				break;
 			}
 
 			return 0;
