@@ -745,3 +745,9 @@ test_i2c_tcs3400: tcs3400@72 {
 	reg = <0x72>;
 	int-gpios = <&test_gpio 0 0>;
 };
+
+test_i2c_tsl2540: tsl2540@73 {
+	compatible = "ams,tsl2540";
+	reg = <0x73>;
+	int-gpios = <&test_gpio 0 0>;
+};
