@@ -332,6 +332,7 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 			imr_layout->imr_state.header.imr_ram_storage = NULL;
 			sys_clock_idle_exit();
 			mem_window_idle_exit();
+			soc_mp_on_d3_exit();
 		}
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 		soc_cpus_active[cpu] = true;
