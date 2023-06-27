@@ -20,7 +20,6 @@
 		led1 = &red_led;
 		watchdog0 = &wdog0;
 		sdhc0 = &usdhc1;
-		pwm-0 = &flexpwm2_pwm0;
 		gps1 = &lpuart2;
 		telem1 = &lpuart3;
 		telem4-gps2 = &lpuart5;
