@@ -9,3 +9,4 @@ tests:
     filter: CONFIG_ENTROPY_HAS_DRIVER
     integration_platforms:
       - frdm_k64f
+    platform_exclude: tmo_dev_edge

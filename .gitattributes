@@ -16,6 +16,14 @@
 # will never be auto-merged into from main. If the file doesn't exist here, then
 # any upstream changes will override ours.
 .gitattributes merge=ours
+.github/ISSUE_TEMPLATE/001_bug_report.md
+.github/ISSUE_TEMPLATE/002_enhancement.md
+.github/ISSUE_TEMPLATE/003_rfc-proposal.md
+.github/ISSUE_TEMPLATE/004_feature_request.md
+.github/ISSUE_TEMPLATE/005_hardware_support.md
+.github/ISSUE_TEMPLATE/006_nomination.md
+.github/ISSUE_TEMPLATE/007_ext-source.md
+.github/ISSUE_TEMPLATE/008_bin-blobs.md
 .github/workflows/assigner.yml merge=ours
 .github/workflows/backport.yml merge=ours
 .github/workflows/backport_issue_check.yml merge=ours
@@ -59,6 +67,7 @@ CODEOWNERS merge=ours
 README.md merge=ours
 README.rst merge=ours
 Trademark_License.md merge=ours
+VERSION merge=ours
 boards/arm/efm32pg_stk3402a/Kconfig.defconfig merge=ours
 boards/arm/efm32pg_stk3402a/doc/index.rst merge=ours
 boards/arm/efm32pg_stk3402a/efm32pg_stk3402a-pinctrl.dtsi merge=ours
@@ -149,6 +158,7 @@ drivers/sensor/cxd5605/CMakeLists.txt merge=ours
 drivers/sensor/cxd5605/Kconfig merge=ours
 drivers/sensor/cxd5605/cxd5605.c merge=ours
 drivers/sensor/cxd5605/cxd5605.h merge=ours
+drivers/sensor/lis2dw12/Kconfig merge=ours
 drivers/sensor/lis2dw12/lis2dw12.c merge=ours
 drivers/sensor/lis2dw12/lis2dw12.h merge=ours
 drivers/sensor/lis2dw12/lis2dw12_trigger.c merge=ours
@@ -224,6 +234,7 @@ samples/drivers/counter/gecko_rtcc/README.rst merge=ours
 samples/drivers/counter/gecko_rtcc/prj.conf merge=ours
 samples/drivers/counter/gecko_rtcc/sample.yaml merge=ours
 samples/drivers/counter/gecko_rtcc/src/main.c merge=ours
+samples/modules/nanopb/sample.yaml merge=ours
 samples/net/mqtt_publisher/overlay-1sc.conf merge=ours
 samples/net/sockets/echo_client/src/echo-client.c merge=ours
 samples/sensor/cxd5605_hot/CMakeLists.txt merge=ours
@@ -232,9 +243,11 @@ samples/sensor/cxd5605_hot/prj.conf merge=ours
 samples/sensor/cxd5605_hot/src/main.c merge=ours
 samples/sensor/cxd5605_hot/uart.yaml merge=ours
 samples/sensor/tmp108/src/main.c merge=ours
+samples/subsys/nvs/sample.yaml merge=ours
 samples/subsys/shell/fs/boards/tmo_dev_edge.conf merge=ours
 samples/subsys/shell/shell_module/boards/efm32pg_stk3402a.conf merge=ours
 samples/subsys/shell/shell_module/boards/tmo_dev_edge.conf merge=ours
+samples/subsys/task_wdt/sample.yaml merge=ours
 soc/arm/silabs_exx32/Kconfig merge=ours
 soc/arm/silabs_exx32/common/CMakeLists.txt merge=ours
 soc/arm/silabs_exx32/common/soc_power.c merge=ours
@@ -249,6 +262,21 @@ subsys/shell/modules/date_service.c merge=ours
 subsys/shell/shell_help.c merge=ours
 subsys/shell/shell_cmds.c merge=ours
 subsys/shell/shell_ops.c merge=ours
+tests/benchmarks/sched/testcase.yaml merge=ours
+tests/drivers/counter/counter_basic_api/testcase.yaml merge=ours
+tests/drivers/flash/common/testcase.yaml merge=ours
 tests/drivers/gpio/gpio_basic_api/boards/efm32pg_stk3402a.overlay merge=ours
 tests/drivers/regulator/fixed/boards/efm32pg_stk3402a.overlay merge=ours
+tests/kernel/mem_slab/mslab/testcase.yaml merge=ours
+tests/kernel/usage/thread_runtime_stats/testcase.yaml merge=ours
+tests/kernel/workq/work_queue/testcase.yaml merge=ours
+tests/lib/cmsis_dsp/filtering/testcase.yaml merge=ours
+tests/subsys/dsp/basicmath/testcase.yaml merge=ours
+tests/subsys/jwt/testcase.yaml merge=ours
+tests/subsys/logging/log_backend_init/testcase.yaml merge=ours
+tests/subsys/logging/log_core_additional/testcase.yaml merge=ours
+tests/subsys/logging/log_link_order/testcase.yaml mereg=ours
+tests/subsys/logging/log_timestamp/testcase.yaml merge=ours
+tests/subsys/portability/cmsis_rtos_v2/testcase.yaml merge=ours
+tests/subsys/rtio/rtio_api/testcase.yaml merge=ours
 west.yml merge=ours

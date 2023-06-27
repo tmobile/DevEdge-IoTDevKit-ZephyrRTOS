@@ -13,3 +13,4 @@ tests:
       regex:
         - "unpend\\s+\\d* ready\\s+\\d* switch\\s+\\d* pend\\s+\\d* tot\\s+\\d* \\(avg\\s+\\d*\\)"
         - "fin"
+    platform_exclude: tmo_dev_edge
