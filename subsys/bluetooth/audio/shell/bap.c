@@ -1754,6 +1754,7 @@ static struct bt_bap_broadcast_sink_cb sink_cbs = {
 #endif /* CONFIG_BT_BAP_BROADCAST_SINK */
 
 #if defined(CONFIG_BT_AUDIO_RX)
+static unsigned long recv_stats_interval = 100U;
 static size_t lost_pkts;
 static size_t err_pkts;
 static size_t dup_psn;
@@ -1784,8 +1785,7 @@ static void audio_recv(struct bt_bap_stream *stream,
 		lost_pkts++;
 	}
 
-	/* TODO: Make it possible to only print every X packets, and make X settable by the shell */
-	if ((rx_cnt % 100) == 0) {
+	if ((rx_cnt % recv_stats_interval) == 0) {
 		shell_print(ctx_shell,
 			    "[%zu]: Incoming audio on stream %p len %u ts %u seq_num %u flags %u "
 			    "(dup ts %zu; dup psn %zu, err_pkts %zu, lost_pkts %zu)",
