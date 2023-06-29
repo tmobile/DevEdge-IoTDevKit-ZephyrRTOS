@@ -1909,4 +1909,12 @@ config BT_MESH_STATISTIC
 	  frames. This helps to estimate the quality of the communication and
 	  the sufficiency of configured advertiser instances.
 
+config BT_MESH_STATISTIC
+	bool "The frame handling statistics [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	help
+	  The module gathers statistics of received, relayed, and transmitted
+	  frames. This helps to estimate the quality of the communication and
+	  the sufficiency of configured advertiser instances.
+
 endif # BT_MESH
