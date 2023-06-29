@@ -381,6 +381,11 @@ static void scan_recv(const struct bt_le_scan_recv_info *info,
 		return;
 	}
 
+	(void)memset(name, 0, sizeof(name));
+
+	bt_data_parse(buf, data_cb, name);
+	bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
+
 	shell_print(ctx_shell, "%s%s, AD evt type %u, RSSI %i %s "
 		    "C:%u S:%u D:%d SR:%u E:%u Prim: %s, Secn: %s, "
 		    "Interval: 0x%04x (%u us), SID: 0x%x",
