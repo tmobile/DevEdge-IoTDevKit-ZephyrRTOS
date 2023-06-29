@@ -24,6 +24,7 @@
 #define WIFI_LISTEN_INTERVAL_MIN 0
 #define WIFI_LISTEN_INTERVAL_MAX 65535
 
+/** IEEE 802.11 security types. */
 enum wifi_security_type {
 	/** No security. */
 	WIFI_SECURITY_TYPE_NONE = 0,
@@ -305,11 +306,15 @@ static inline const char *wifi_link_mode_txt(enum wifi_link_mode link_mode)
 	}
 }
 
+/** Wi-Fi scanning types. */
 enum wifi_scan_type {
+	/** Active scanning (default). */
 	WIFI_SCAN_TYPE_ACTIVE = 0,
+	/** Passive scanning. */
 	WIFI_SCAN_TYPE_PASSIVE,
 };
 
+/** Wi-Fi power save states. */
 enum wifi_ps {
 	/** Power save disabled. */
 	WIFI_PS_DISABLED = 0,
@@ -340,9 +345,9 @@ static const char * const wifi_ps_mode2str[] = {
 
 /** Wi-Fi Target Wake Time (TWT) operations. */
 enum wifi_twt_operation {
-	/** TWT setup operation */
+	/* TWT setup operation */
 	WIFI_TWT_SETUP = 0,
-	/** TWT teardown operation */
+	/* TWT teardown operation */
 	WIFI_TWT_TEARDOWN,
 };
 
@@ -353,11 +358,11 @@ static const char * const wifi_twt_operation2str[] = {
 
 /** Wi-Fi Target Wake Time (TWT) negotiation types. */
 enum wifi_twt_negotiation_type {
-	/** TWT individual negotiation */
+	/* TWT individual negotiation */
 	WIFI_TWT_INDIVIDUAL = 0,
-	/** TWT broadcast negotiation */
+	/* TWT broadcast negotiation */
 	WIFI_TWT_BROADCAST,
-	/** TWT wake TBTT negotiation */
+	/* TWT wake TBTT negotiation */
 	WIFI_TWT_WAKE_TBTT
 };
 
@@ -369,21 +374,23 @@ static const char * const wifi_twt_negotiation_type2str[] = {
 
 /** Wi-Fi Target Wake Time (TWT) setup commands. */
 enum wifi_twt_setup_cmd {
-	/** TWT setup request */
+	/** TWT Requests */
+	/* TWT setup request */
 	WIFI_TWT_SETUP_CMD_REQUEST = 0,
-	/** TWT setup suggest (parameters can be changed by AP) */
+	/* TWT setup suggest (parameters can be changed by AP) */
 	WIFI_TWT_SETUP_CMD_SUGGEST,
-	/** TWT setup demand (parameters can not be changed by AP) */
+	/* TWT setup demand (parameters can not be changed by AP) */
 	WIFI_TWT_SETUP_CMD_DEMAND,
-	/** TWT setup grouping (grouping of TWT flows) */
+	/** TWT Responses */
+	/* TWT setup grouping (grouping of TWT flows) */
 	WIFI_TWT_SETUP_CMD_GROUPING,
-	/** TWT setup accept (parameters accepted by AP) */
+	/* TWT setup accept (parameters accepted by AP) */
 	WIFI_TWT_SETUP_CMD_ACCEPT,
-	/** TWT setup alternate (alternate parameters suggested by AP) */
+	/* TWT setup alternate (alternate parameters suggested by AP) */
 	WIFI_TWT_SETUP_CMD_ALTERNATE,
-	/** TWT setup dictate (parameters dictated by AP) */
+	/* TWT setup dictate (parameters dictated by AP) */
 	WIFI_TWT_SETUP_CMD_DICTATE,
-	/** TWT setup reject (parameters rejected by AP) */
+	/* TWT setup reject (parameters rejected by AP) */
 	WIFI_TWT_SETUP_CMD_REJECT,
 };
 
@@ -426,7 +433,9 @@ enum wifi_twt_fail_reason {
 	WIFI_TWT_FAIL_OPERATION_IN_PROGRESS,
 	/** Invalid negotiated flow id */
 	WIFI_TWT_FAIL_INVALID_FLOW_ID,
+	/** IP address not assigned or configured */
 	WIFI_TWT_FAIL_IP_NOT_ASSIGNED,
+	/** Flow already exists */
 	WIFI_TWT_FAIL_FLOW_ALREADY_EXISTS,
 };
 

@@ -174,8 +174,11 @@ enum net_event_wifi_cmd {
 #define NET_EVENT_WIFI_DISCONNECT_COMPLETE			\
 	(_NET_WIFI_EVENT | NET_EVENT_WIFI_CMD_DISCONNECT_COMPLETE)
 
+/** Wi-Fi scan parameters */
 struct wifi_scan_params {
-	/* The scan_type is only a hint to the underlying Wi-Fi chip for the
+	/** Scan type, see enum wifi_scan_type.
+	 *
+	 * The scan_type is only a hint to the underlying Wi-Fi chip for the
 	 * preferred mode of scan. The actual mode of scan can depend on factors
 	 * such as the Wi-Fi chip implementation support, regulatory domain
 	 * restrictions etc.
@@ -183,7 +186,7 @@ struct wifi_scan_params {
 	enum wifi_scan_type scan_type;
 };
 
-/* Each result is provided to the net_mgmt_event_callback
+/** Wi-Fi scan result, each result is provided to the net_mgmt_event_callback
  * via its info attribute (see net_mgmt.h)
  */
 struct wifi_scan_result {
@@ -280,13 +283,16 @@ struct wifi_ps_params {
 	enum wifi_ps_wakeup_mode wakeup_mode;
 	/** Wi-Fi power save mode */
 	enum wifi_ps_mode mode;
-	/* This is the time out to wait after sending a TX packet
+	/** Wi-Fi power save timeout
+	 *
+	 * This is the time out to wait after sending a TX packet
 	 * before going back to power save (in ms) to receive any replies
 	 * from the AP. Zero means this feature is disabled.
 	 *
 	 * It's a tradeoff between power consumption and latency.
 	 */
 	unsigned int timeout_ms;
+	/** Wi-Fi power save type */
 	enum ps_param_type type;
 	/** Wi-Fi power save fail reason */
 	enum wifi_config_ps_param_fail_reason fail_reason;
@@ -430,14 +436,30 @@ typedef void (*scan_result_cb_t)(struct net_if *iface, int status,
 typedef void (*raw_scan_result_cb_t)(struct net_if *iface, int status,
 				     struct wifi_raw_scan_result *entry);
 #endif /* CONFIG_WIFI_MGMT_RAW_SCAN_RESULTS */
+
+/** Wi-Fi management API */
 struct wifi_mgmt_ops {
-	/* cb parameter is the cb that should be called for each
-	 * result by the driver. The wifi mgmt part will take care of
-	 * raising the necessary event etc...
+	/** Scan for Wi-Fi networks
+	 *
+	 * @param dev Pointer to the device structure for the driver instance.
+	 * @param params Scan parameters
+	 * @param cb Callback to be called for each result
+	 *           cb parameter is the cb that should be called for each
+	 *           result by the driver. The wifi mgmt part will take care of
+	 *           raising the necessary event etc.
+	 *
+	 * @return 0 if ok, < 0 if error
 	 */
 	int (*scan)(const struct device *dev,
 		    struct wifi_scan_params *params,
 		    scan_result_cb_t cb);
+	/** Connect to a Wi-Fi network
+	 *
+	 * @param dev Pointer to the device structure for the driver instance.
+	 * @param params Connect parameters
+	 *
+	 * @return 0 if ok, < 0 if error
+	 */
 	int (*connect)(const struct device *dev,
 		       struct wifi_connect_req_params *params);
 	/** Disconnect from a Wi-Fi network
@@ -515,6 +537,7 @@ struct wifi_mgmt_ops {
 	int (*reg_domain)(const struct device *dev, struct wifi_reg_domain *reg_domain);
 };
 
+/** Wi-Fi management offload API */
 struct net_wifi_mgmt_offload {
 	/**
 	 * Mandatory to get in first position.
@@ -522,11 +545,14 @@ struct net_wifi_mgmt_offload {
 	 * net_if_api structure. So we make current structure pointer
 	 * that can be casted to a net_if_api structure pointer.
 	 */
-#ifdef CONFIG_WIFI_USE_NATIVE_NETWORKING
+#if defined(CONFIG_WIFI_USE_NATIVE_NETWORKING) || defined(__DOXYGEN__)
+	/** Ethernet API */
 	struct ethernet_api wifi_iface;
 #else
+	/** Offloaded network device API */
 	struct offloaded_if_api wifi_iface;
 #endif
+	/** Wi-Fi management API */
 	const struct wifi_mgmt_ops *const wifi_mgmt_api;
 };
 
