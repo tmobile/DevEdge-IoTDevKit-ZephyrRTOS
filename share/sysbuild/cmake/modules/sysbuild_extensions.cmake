@@ -315,16 +315,6 @@ function(ExternalZephyrProject_Cmake)
   get_target_property(${ZCMAKE_APPLICATION}_BOARD      ${ZCMAKE_APPLICATION} BOARD)
   get_target_property(${ZCMAKE_APPLICATION}_MAIN_APP   ${ZCMAKE_APPLICATION} MAIN_APP)
 
-  # Update ROOT variables with relative paths to use absolute paths based on
-  # the source application directory.
-  foreach(type MODULE_EXT BOARD SOC ARCH SCA)
-    if(DEFINED CACHE{${type}_ROOT} AND NOT IS_ABSOLUTE $CACHE{${type}_ROOT})
-      set(rel_path $CACHE{${type}_ROOT})
-      cmake_path(ABSOLUTE_PATH rel_path BASE_DIRECTORY "${APP_DIR}" NORMALIZE OUTPUT_VARIABLE abs_path)
-      set(${type}_ROOT ${abs_path} CACHE PATH "Sysbuild adjusted absolute path" FORCE)
-    endif()
-  endforeach()
-
   get_cmake_property(sysbuild_cache CACHE_VARIABLES)
   foreach(var_name ${sysbuild_cache})
     if(NOT "${var_name}" MATCHES "^(CMAKE_.*|BOARD)$")
