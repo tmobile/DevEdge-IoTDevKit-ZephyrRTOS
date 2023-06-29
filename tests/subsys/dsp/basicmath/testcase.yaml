@@ -9,7 +9,6 @@ tests:
     tags: zdsp
     min_flash: 128
     min_ram: 64
-    platform_exclude: tmo_dev_edge
   zdsp.basicmath.fpu:
     filter: (CONFIG_CPU_HAS_FPU and TOOLCHAIN_HAS_NEWLIB == 1) or CONFIG_ARCH_POSIX
     integration_platforms:
@@ -22,7 +21,6 @@ tests:
       - CONFIG_FPU=y
     min_flash: 128
     min_ram: 64
-    platform_exclude: tmo_dev_edge
   zdsp.basicmath.arcmwdt:
     filter: CONFIG_ISA_ARCV2
     toolchain_allow: arcmwdt

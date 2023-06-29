@@ -123,8 +123,8 @@ int main(void)
 		case ST_WAIT_FOR_FIX:
 			k_msleep(1000);
 			sensor_attr_get(cxd5605,
-					GNSS_CHANNEL_POSITION,
-					GNSS_ATTRIBUTE_FIXTYPE,
+					SENSOR_CHAN_GNSS_POSITION,
+					SENSOR_ATTR_GNSS_FIXTYPE,
 					&temp_flags);
 			if (temp_flags.val1 >= 1) {
 				temp_flags.val1 = 0;

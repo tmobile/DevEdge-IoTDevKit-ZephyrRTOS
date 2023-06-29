@@ -4,7 +4,6 @@ tests:
     extra_args: CONF_FILE=prj.conf
     integration_platforms:
       - native_posix
-    platform_exclude: tmo_dev_edge
   logging.add.sync:
     tags: logging
     extra_args: CONF_FILE=log_sync.conf
