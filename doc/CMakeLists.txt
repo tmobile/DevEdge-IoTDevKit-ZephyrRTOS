@@ -13,6 +13,7 @@ message(STATUS "Zephyr base: ${ZEPHYR_BASE}")
 # Options
 
 set(SPHINXOPTS "-j auto -W --keep-going" CACHE STRING "Default Sphinx Options")
+set(SPHINXOPTS_EXTRA "" CACHE STRING "Extra Sphinx Options (added to defaults)")
 set(LATEXMKOPTS "-halt-on-error -no-shell-escape" CACHE STRING "Default latexmk options")
 set(DT_TURBO_MODE OFF CACHE BOOL "Enable DT turbo mode")
 set(DOC_TAG "development" CACHE STRING "Documentation tag")
