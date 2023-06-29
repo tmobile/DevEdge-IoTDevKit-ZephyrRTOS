@@ -24,7 +24,6 @@
 #define WIFI_LISTEN_INTERVAL_MIN 0
 #define WIFI_LISTEN_INTERVAL_MAX 65535
 
-/** IEEE 802.11 security types. */
 enum wifi_security_type {
 	/** No security. */
 	WIFI_SECURITY_TYPE_NONE = 0,
