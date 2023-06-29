@@ -148,12 +148,68 @@ int bt_bap_unicast_server_metadata(struct bt_bap_stream *stream, struct bt_audio
 
 int bt_bap_unicast_server_disable(struct bt_bap_stream *stream)
 {
-	return bt_ascs_disable_ase(stream->ep);
+	struct bt_bap_ep *ep;
+	struct bt_bap_ascs_rsp rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_SUCCESS,
+						     BT_BAP_ASCS_REASON_NONE);
+	int err;
+
+	if (unicast_server_cb != NULL && unicast_server_cb->disable != NULL) {
+		err = unicast_server_cb->disable(stream, &rsp);
+	} else {
+		err = -ENOTSUP;
+	}
+
+	if (err != 0) {
+		LOG_ERR("Disable failed: err %d, code %u, reason %u", err, rsp.code, rsp.reason);
+		return err;
+	}
+
+	ep = stream->ep;
+
+	/* Set reason in case this exits the streaming state */
+	ep->reason = BT_HCI_ERR_LOCALHOST_TERM_CONN;
+
+	/* The ASE state machine goes into different states from this operation
+	 * based on whether it is a source or a sink ASE.
+	 */
+	if (ep->dir == BT_AUDIO_DIR_SOURCE) {
+		ascs_ep_set_state(ep, BT_BAP_EP_STATE_DISABLING);
+	} else {
+		ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
+	}
+
+	return 0;
 }
 
 int bt_bap_unicast_server_release(struct bt_bap_stream *stream)
 {
-	return bt_ascs_release_ase(stream->ep);
+	struct bt_bap_ascs_rsp rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_SUCCESS,
+						     BT_BAP_ASCS_REASON_NONE);
+	struct bt_bap_ep *ep;
+	int err;
+
+	if (unicast_server_cb != NULL && unicast_server_cb->release != NULL) {
+		err = unicast_server_cb->release(stream, &rsp);
+	} else {
+		err = -ENOTSUP;
+	}
+
+	if (err != 0) {
+		LOG_ERR("Release failed: err %d, code %u, reason %u", err, rsp.code, rsp.reason);
+		return err;
+	}
+
+	ep = stream->ep;
+
+	/* Set reason in case this exits the streaming state */
+	ep->reason = BT_HCI_ERR_LOCALHOST_TERM_CONN;
+
+	/* ase_process will set the state to IDLE after sending the
+	 * notification, finalizing the release
+	 */
+	ascs_ep_set_state(ep, BT_BAP_EP_STATE_RELEASING);
+
+	return 0;
 }
 
 int bt_bap_unicast_server_config_ase(struct bt_conn *conn, struct bt_bap_stream *stream,
