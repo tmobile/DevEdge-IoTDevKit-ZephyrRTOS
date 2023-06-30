@@ -653,7 +653,7 @@ test_i2c_ina230: ina230@57 {
 	reg = <0x57>;
 	config = <0>;
 	current-lsb-microamps = <1000>;
-	rshunt-micro-ohms = <1000>;
+	rshunt-micro-ohms = <0>;
 	mask = <0>;
 	alert-limit = <0>;
 	alert-gpios = <&test_gpio 0 0>;
@@ -672,7 +672,7 @@ test_i2c_ina231: ina231@59 {
 	reg = <0x59>;
 	config = <0>;
 	current-lsb-microamps = <1000>;
-	rshunt-micro-ohms = <1000>;
+	rshunt-micro-ohms = <0>;
 	mask = <0>;
 	alert-limit = <0>;
 	alert-gpios = <&test_gpio 0 0>;
@@ -685,7 +685,7 @@ test_i2c_ina237: ina237@5a {
 	config = <0>;
 	current-lsb-microamps = <1000>;
 	adc-config = <0>;
-	rshunt-micro-ohms = <1000>;
+	rshunt-micro-ohms = <0>;
 	alert-config = <0>;
 	alert-gpios = <&test_gpio 0 0>;
 	status = "okay";
