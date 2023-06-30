@@ -193,30 +193,22 @@ NET_BUF_POOL_FIXED_DEFINE(sine_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
 static int16_t audio_buf[MAX_NUM_SAMPLES];
 static lc3_encoder_t lc3_encoder;
 static lc3_encoder_mem_48k_t lc3_encoder_mem;
-static int lc3_freq_hz;
-static int lc3_frame_duration_us;
-static int lc3_frame_duration_100us;
-static int lc3_frames_per_sdu;
-static int lc3_octets_per_frame;
-
-static void clear_lc3_sine_data(struct bt_bap_stream *bap_stream)
-{
-	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
-
-	sh_stream->tx_active = false;
-	(void)k_work_cancel_delayable(&sh_stream->audio_send_work);
-}
+static int freq_hz;
+static int frame_duration_us;
+static int frame_duration_100us;
+static int frames_per_sdu;
+static int octets_per_frame;
+static int32_t lc3_sdu_cnt;
 
 static void lc3_audio_send_data(struct k_work *work);
-static K_WORK_DEFINE(audio_send_work, lc3_audio_send_data);
+static K_WORK_DELAYABLE_DEFINE(audio_send_work, lc3_audio_send_data);
 
 static void clear_lc3_sine_data(void)
 {
-	lc3_start_time = 0;
 	lc3_sdu_cnt = 0;
 	txing_stream = NULL;
 
-	(void)k_work_cancel(&audio_send_work);
+	(void)k_work_cancel_delayable(&audio_send_work);
 }
 
 /**
@@ -315,14 +307,11 @@ static void lc3_audio_send_data(struct k_work *work)
 		return;
 	}
 
-	if (atomic_get(&sh_stream->lc3_enqueue_cnt) == 0U) {
-		shell_error(ctx_shell, "Stream %p enqueue count was 0", bap_stream);
-
-		/* Reschedule for next interval */
-		k_work_reschedule(k_work_delayable_from_work(work),
-				  K_USEC(bap_stream->qos->interval));
-		return;
-	}
+	const uint16_t tx_sdu_len = frames_per_sdu * octets_per_frame;
+	struct net_buf *buf;
+	uint8_t *net_buffer;
+	off_t offset = 0;
+	int err;
 
 	buf = net_buf_alloc(&sine_tx_pool, K_FOREVER);
 	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
@@ -344,44 +333,41 @@ static void lc3_audio_send_data(struct k_work *work)
 
 			/* Reschedule for next interval */
 			k_work_reschedule(k_work_delayable_from_work(work),
-					  K_USEC(bap_stream->qos->interval));
+					  K_USEC(txing_stream->qos->interval));
 			return;
 		}
 	}
 
-	err = bt_bap_stream_send(bap_stream, buf, sh_stream->seq_num, BT_ISO_TIMESTAMP_NONE);
+	seq_num = get_next_seq_num(txing_stream->qos->interval);
+	err = bt_bap_stream_send(txing_stream, buf, seq_num,
+					BT_ISO_TIMESTAMP_NONE);
 	if (err < 0) {
 		shell_error(ctx_shell, "Failed to send LC3 audio data (%d)", err);
 		net_buf_unref(buf);
 
 		/* Reschedule for next interval */
 		k_work_reschedule(k_work_delayable_from_work(work),
-				  K_USEC(bap_stream->qos->interval));
+				  K_USEC(txing_stream->qos->interval));
 		return;
 	}
 
-	if ((sh_stream->lc3_sdu_cnt % 100) == 0) {
-		shell_info(ctx_shell, "[%zu]: stream %p : TX LC3: %zu (seq_num %u)",
-			   sh_stream->lc3_sdu_cnt, bap_stream, tx_sdu_len, sh_stream->seq_num);
+	if ((lc3_sdu_cnt % 100) == 0) {
+		shell_info(ctx_shell, "[%zu]: TX LC3: %zu", lc3_sdu_cnt, tx_sdu_len);
 	}
 	lc3_sdu_cnt++;
 }
 
 void sdu_sent_cb(struct bt_bap_stream *stream)
 {
-	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
 	int err;
 
-	atomic_inc(&sh_stream->lc3_enqueue_cnt);
-
-	if (!sh_stream->tx_active) {
-		/* TX has been aborted */
+	if (txing_stream == NULL || txing_stream->qos == NULL) {
 		return;
 	}
 
-	err = k_work_schedule(&sh_stream->audio_send_work, K_NO_WAIT);
+	err = k_work_schedule(&audio_send_work, K_NO_WAIT);
 	if (err < 0) {
-		shell_error(ctx_shell, "Failed to schedule TX for stream %p: %d", bap_stream, err);
+		shell_error(ctx_shell, "Failed to schedule TX: %d", err);
 	}
 }
 #endif /* CONFIG_LIBLC3 && CONFIG_BT_AUDIO_TX */
@@ -2542,87 +2528,11 @@ static int stream_start_sine(struct bt_bap_stream *bap_stream)
 	sh_stream->tx_active = true;
 	sh_stream->seq_num = get_next_seq_num(bap_stream);
 
-	return 0;
-}
-
-static int cmd_start_sine(const struct shell *sh, size_t argc, char *argv[])
-{
-	bool start_all = false;
-	int err;
-
-	if (argc > 1) {
-		if (strcmp(argv[1], "all") == 0) {
-			start_all = true;
-		} else {
-			shell_help(sh);
-
-			return SHELL_CMD_HELP_PRINTED;
-		}
-	}
-
-	if (start_all) {
-		bool lc3_initialized = false;
-
-		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
-			struct bt_bap_stream *bap_stream = &unicast_streams[i].stream.bap_stream;
-
-			if (!lc3_initialized) {
-				init_lc3(bap_stream);
-				lc3_initialized = true;
-			}
-
-			if (!stream_start_sine_verify(bap_stream)) {
-				continue;
-			}
-
-			err = stream_start_sine(bap_stream);
-			if (err != 0) {
-				shell_error(sh, "Failed to start TX for stream %p: %d", bap_stream,
-					    err);
-				return err;
-			}
-
-			shell_print(sh, "Started transmitting on unicast stream %p", bap_stream);
-		}
-
-		for (size_t i = 0U; i < ARRAY_SIZE(broadcast_source_streams); i++) {
-			struct bt_bap_stream *bap_stream =
-				&broadcast_source_streams[i].stream.bap_stream;
-
-			if (!lc3_initialized) {
-				init_lc3(bap_stream);
-				lc3_initialized = true;
-			}
-
-			if (!stream_start_sine_verify(bap_stream)) {
-				continue;
-			}
-
-			err = stream_start_sine(bap_stream);
-			if (err != 0) {
-				shell_error(sh, "Failed to start TX for stream %p: %d", bap_stream,
-					    err);
-				return err;
-			}
-
-			shell_print(sh, "Started transmitting on broadcast stream %p", bap_stream);
-		}
-	} else {
-		if (stream_start_sine_verify(default_stream)) {
-			shell_error(sh, "Invalid stream %p", default_stream);
-			return -ENOEXEC;
-		}
-
-		init_lc3(default_stream);
-
-		err = stream_start_sine(default_stream);
-		if (err != 0) {
-			shell_error(sh, "Failed to start TX for stream %p: %d", default_stream,
-				    err);
-			return err;
-		}
-
-		shell_print(sh, "Started transmitting on default_stream %p", default_stream);
+	for (size_t i = 0U; i < prime_count; i++) {
+		/* Call callback directly as submitted the work item multiple times won't do any
+		 * good
+		 */
+		lc3_audio_send_data(&audio_send_work.work);
 	}
 
 	return 0;
