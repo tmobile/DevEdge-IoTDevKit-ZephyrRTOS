@@ -283,19 +283,11 @@ static void init_lc3(const struct bt_bap_stream *stream)
 
 static void lc3_audio_send_data(struct k_work *work)
 {
-	struct shell_stream *sh_stream = CONTAINER_OF(k_work_delayable_from_work(work),
-						      struct shell_stream, audio_send_work);
-	struct bt_bap_stream *bap_stream = &sh_stream->stream.bap_stream;
-	const uint16_t tx_sdu_len = lc3_frames_per_sdu * lc3_octets_per_frame;
+	const uint16_t tx_sdu_len = frames_per_sdu * octets_per_frame;
 	struct net_buf *buf;
 	uint8_t *net_buffer;
 	off_t offset = 0;
 	int err;
-
-	if (!sh_stream->tx_active) {
-		/* TX has been aborted */
-		return;
-	}
 
 	if (lc3_encoder == NULL) {
 		shell_error(ctx_shell, "LC3 encoder not setup, cannot encode data");
@@ -307,12 +299,6 @@ static void lc3_audio_send_data(struct k_work *work)
 		return;
 	}
 
-	const uint16_t tx_sdu_len = frames_per_sdu * octets_per_frame;
-	struct net_buf *buf;
-	uint8_t *net_buffer;
-	off_t offset = 0;
-	int err;
-
 	buf = net_buf_alloc(&sine_tx_pool, K_FOREVER);
 	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
 
@@ -323,8 +309,8 @@ static void lc3_audio_send_data(struct k_work *work)
 		int lc3_ret;
 
 		lc3_ret = lc3_encode(lc3_encoder, LC3_PCM_FORMAT_S16, audio_buf, 1,
-				     lc3_octets_per_frame, net_buffer + offset);
-		offset += lc3_octets_per_frame;
+				     octets_per_frame, net_buffer + offset);
+		offset += octets_per_frame;
 
 		if (lc3_ret == -1) {
 			shell_error(ctx_shell, "LC3 encoder failed - wrong parameters?: %d",
@@ -339,8 +325,7 @@ static void lc3_audio_send_data(struct k_work *work)
 	}
 
 	seq_num = get_next_seq_num(txing_stream->qos->interval);
-	err = bt_bap_stream_send(txing_stream, buf, seq_num,
-					BT_ISO_TIMESTAMP_NONE);
+	err = bt_bap_stream_send(txing_stream, buf, seq_num, BT_ISO_TIMESTAMP_NONE);
 	if (err < 0) {
 		shell_error(ctx_shell, "Failed to send LC3 audio data (%d)", err);
 		net_buf_unref(buf);
@@ -354,6 +339,7 @@ static void lc3_audio_send_data(struct k_work *work)
 	if ((lc3_sdu_cnt % 100) == 0) {
 		shell_info(ctx_shell, "[%zu]: TX LC3: %zu", lc3_sdu_cnt, tx_sdu_len);
 	}
+
 	lc3_sdu_cnt++;
 }
 
