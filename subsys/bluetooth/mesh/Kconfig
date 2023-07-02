@@ -13,163 +13,11 @@ menuconfig BT_MESH
 
 if BT_MESH
 
-choice BT_MESH_CRYPTO_LIB
-	prompt "Crypto library selection for mesh security"
-	default BT_MESH_USES_TFM_PSA if BUILD_WITH_TFM
-	default BT_MESH_USES_TINYCRYPT
+###################################################################################################
+# Invisible options
+###################################################################################################
 
-config BT_MESH_USES_TINYCRYPT
-	bool "Use TinyCrypt"
-	select TINYCRYPT
-	select TINYCRYPT_AES
-	select TINYCRYPT_AES_CMAC
-	select TINYCRYPT_ECC_DH
-	select TINYCRYPT_SHA256
-	select TINYCRYPT_SHA256_HMAC
-	select BT_HOST_CCM
-	help
-	  Use TinyCrypt library to perform crypto operations.
-
-config BT_MESH_USES_MBEDTLS_PSA
-	bool "Use mbed TLS PSA [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	select MBEDTLS
-	select MBEDTLS_ZEPHYR_ENTROPY
-	select MBEDTLS_PSA_CRYPTO_C
-	select MBEDTLS_MAC_CMAC_ENABLED
-	select MBEDTLS_CIPHER_AES_ENABLED
-	select MBEDTLS_AES_ROM_TABLES
-	select MBEDTLS_CIPHER_CCM_ENABLED
-	select MBEDTLS_ECP_C
-	select MBEDTLS_ECDH_C
-	select MBEDTLS_ECDSA_C
-	select MBEDTLS_KEY_EXCHANGE_ECDH_ECDSA_ENABLED
-	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
-	select MBEDTLS_PK_WRITE_C
-	help
-	  Use mbed TLS library to perform crypto operations. Support of
-	  mbed TLS and PSA is experimental and only BabbleSim tests were run.
-	  Mbed TLS still does not support ITS (internal trust storage) based
-	  on Zephyr's settings subsystem.
-	  Not possible to use for embedded devices yet.
-
-config BT_MESH_USES_TFM_PSA
-	bool "Use TF-M PSA [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	depends on BUILD_WITH_TFM
-	help
-	  Use TF-M that implements PSA security framework. Support of TF-M is
-	  experimental. It is only possible to use with platforms that TF-M supports.
-	  For more platform details see TF-M documentation.
-
-endchoice
-
-if BT_MESH_USES_MBEDTLS_PSA || BT_MESH_USES_TFM_PSA
-
-config BT_MESH_PSA_KEY_ID_USER_MIN_OFFSET
-	int "Offset of BLE Mesh key id range regarding PSA_KEY_ID_USER_MIN"
-	default 0
-	help
-	  The PSA specification mandates to set key identifiers for keys
-	  with persistent lifetime. The users of the PSA API is responsible
-	  (BLE Mesh is user of PSA API) to provide correct and unique identifiers.
-	  The BLE Mesh identifier range should be between PSA_KEY_ID_USER_MIN and
-	  PSA_KEY_ID_USER_MAX. BLE Mesh requires two ids for each subnetwork, two ids
-	  for each application key, and two ids for the device key and device key candidate.
-	  It should consider the Mesh Configuration Database instances if database enabled.
-
-endif # BT_MESH_USES_MBEDTLS_PSA || BT_MESH_USES_TFM_PSA
-
-# Virtual option enabled whenever Generic Provisioning layer is needed
-config BT_MESH_PROV
-	bool
-
-config BT_MESH_PROV_DEVICE
-	bool "Provisioning device role support"
-	depends on BT_MESH_PROV
-	default y
-	help
-	  Enable this option to allow the device to be provisioned into a mesh network.
-
-config BT_MESH_PROV_OOB_PUBLIC_KEY
-	bool "OOB Public key support"
-	depends on BT_MESH_PROV_DEVICE
-	help
-	  Enable this option if public key is to be exchanged via Out of Band (OOB) technology.
-
-config BT_MESH_PB_ADV
-	bool "Provisioning support using the advertising bearer (PB-ADV)"
-	select BT_MESH_PROV
-	default y
-	help
-	  Enable this option to allow the device to be provisioned over
-	  the advertising bearer.
-
-config BT_MESH_UNPROV_BEACON_INT
-	int
-	prompt "The interval (in seconds) to send the unprovisioned beacon" if BT_MESH_PB_ADV
-	default 5
-	range 1 10
-	help
-	  This option specifies the interval (in seconds) at which the
-	  device sends unprovisioned beacon.
-
-config BT_MESH_PB_ADV_RETRANS_TIMEOUT
-	int "Timeout value of retransmit provisioning PDUs"
-	default 500
-	range 100 800
-	help
-	  Timeout value of retransmit provisioning PDUs.
-
-config BT_MESH_PROVISIONER
-	bool "Provisioner support"
-	depends on BT_MESH_CDB
-	depends on BT_MESH_PROV
-	depends on BT_MESH_PB_ADV || BT_MESH_PB_GATT_CLIENT
-	help
-	  Enable this option to have support for provisioning remote devices.
-
-config BT_MESH_CDB
-	bool "Mesh Configuration Database"
-
-config BT_MESH_ECDH_P256_CMAC_AES128_AES_CCM
-	bool "Support CMAC AES128 for OOB authentication"
-	depends on BT_MESH_PROV
-	default y
-	help
-	  Enable this option to support CMAC AES128 for OOB authentication.
-
-if BT_MESH_CDB
-
-config BT_MESH_CDB_NODE_COUNT
-	int "Maximum number of nodes in the database"
-	default 8
-	range 1 4096
-	help
-	  This option specifies how many nodes each network can at most
-	  save in the configuration database.
-
-config BT_MESH_CDB_SUBNET_COUNT
-	int "Maximum number of subnets in the database"
-	default 1
-	range 1 4096
-	help
-	  This option specifies how many subnets that can at most be
-	  saved in the configuration database.
-
-config BT_MESH_CDB_APP_KEY_COUNT
-	int "Maximum number of application keys in the database"
-	default 1
-	range 1 4096
-	help
-	  This option specifies how many application keys that can at most
-	  be saved in the configuration database.
-
-endif # BT_MESH_CDB
-
-if BT_CONN
-
-# Virtual option enabled whenever any Proxy protocol is needed
+# Virtual option enabled whenever Proxy Server or Client is needed
 config BT_MESH_PROXY
 	bool
 
@@ -261,46 +109,26 @@ config BT_MESH_RELAY_ADV_SETS
 	range 0 BT_EXT_ADV_MAX_ADV_SET
 	depends on BT_MESH_RELAY
 	help
-	  Maximum of simultaneous relay message support. Requires controller support
-	  multiple advertising sets.
+	  Support for acting as a Mesh Relay Node.
 
-config BT_MESH_ADV_EXT_RELAY_USING_MAIN_ADV_SET
-	bool "Use the main advertising set to relay messages"
-	depends on BT_MESH_RELAY_ADV_SETS > 0
+if BT_MESH_RELAY
+
+config BT_MESH_RELAY_ENABLED
+	bool "Relay feature enabled by default"
+	default y
 	help
-	  When this option is enabled, there is a message that needs to be
-	  relayed, all relay advertising sets defined by
-	  CONFIG_BT_MESH_RELAY_ADV_SETS are busy with relaying messages
-	  and the main advertising set is not busy with sending local
-	  messages, the stack will use the main advertising set to relay
-	  the message. This maximizes the utilization efficiency of
-	  advertising sets, which is helpful for the sending of dense
-	  relays. With CONFIG_BT_MESH_RELAY_RETRANSMIT_COUNT value
-	  greater than zero, this can noticeably delay transmission of
-	  local messages. When Friend feature is enabled and the node is
-	  in a friendship, this option can delay transmission of local
-	  messages thus requiring bigger CONFIG_BT_MESH_FRIEND_RECV_WIN
-	  value. This in turn will result in increase of the power
-	  consumption of the Low Power node.
+	  Controls whether the Relay feature is enabled by default when the
+	  device boots up for the first time or unprovisioned. Can be changed
+	  at runtime using bt_mesh_relay_set() function.
 
-config BT_MESH_ADV_EXT_GATT_SEPARATE
-	bool "Use a separate extended advertising set for GATT Server Advertising"
-	depends on BT_MESH_GATT_SERVER
+config BT_MESH_RELAY_RETRANSMIT_COUNT
+	int "Relay Retransmit Count"
+	default 2
+	range 0 7
 	help
-	  Use a separate extended advertising set for GATT Server Advertising,
-	  otherwise a shared advertising set will be used.
-
-config BT_MESH_ADV_EXT_FRIEND_SEPARATE
-	bool "Use a separate extended advertising set for Friend advertising"
-	depends on BT_MESH_FRIEND
-	help
-	  Use a separate extended advertising set for Friend advertising,
-	  otherwise a shared advertising set will be used. Using the separate
-	  extended advertising set makes the Friend node send friendship
-	  messages as close to the start of the ReceiveWindow as possible,
-	  thus reducing the scanning time on the Low Power node.
-
-endif # BT_MESH_ADV_EXT
+	  Controls the initial number of retransmissions of relayed messages, in
+	  addition to the first transmission. Can be changed through runtime
+	  configuration.
 
 endchoice
 
@@ -443,25 +271,9 @@ endmenu # Provisioning
 
 menu "Network layer"
 
-config BT_MESH_LABEL_NO_RECOVER
-	bool "[DEPRECATED] Don't recover Label UUIDs from groups address subscription list"
-	select DEPRECATED
-	depends on BT_MESH_LABEL_COUNT > 0
-	help
-	  After adding support for virtual addresses with collision (where two Label UUIDs have the
-	  same virtual address), the format of the data in the persistent storage with the Label
-	  UUIDs which a model is subscribed to or publishes to has been changed. The recovery
-	  code is added and the Label UUIDs will be recovered by picking first Label UUID matching
-	  to the virtual address in the subscription list or model publication. This options can
-	  disable the recovery code and save some flash if the recovery is not required (e.g.
-	  virtual address support wasn't enabled before this option was added, or the devices were
-	  unprovisioned before upgrading to the version with this option). The option is marked as
-	  deprecated to remove the recovery code eventually.
-
-config BT_MESH_CRPL
-	int "Maximum capacity of the replay protection list"
-	default 10
-	range 2 65535
+config BT_MESH_LOOPBACK_BUFS
+	int "Number of loopback buffers"
+	default 3
 	help
 	  The number of buffers allocated for the network loopback mechanism.
 	  Loopback is used when the device sends messages to itself.
@@ -1900,14 +1712,6 @@ config BT_MESH_SELF_TEST
 	help
 	  This option adds extra self-tests which are run every time
 	  mesh networking is initialized.
-
-config BT_MESH_STATISTIC
-	bool "The frame handling statistics [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	help
-	  The module gathers statistics of received, relayed, and transmitted
-	  frames. This helps to estimate the quality of the communication and
-	  the sufficiency of configured advertiser instances.
 
 config BT_MESH_STATISTIC
 	bool "The frame handling statistics [EXPERIMENTAL]"
