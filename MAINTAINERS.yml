@@ -1017,6 +1017,7 @@ Release Notes:
     - jciupis
   files:
     - drivers/ieee802154/
+    - include/zephyr/net/ieee802154_radio.h
   labels:
     - "area: IEEE 802.15.4"
 
