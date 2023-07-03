@@ -11,9 +11,6 @@
 #include <zephyr/sys_clock.h>
 #include <zephyr/ztest.h>
 
-#include <zephyr/sys_clock.h>
-#include <zephyr/ztest.h>
-
 ZTEST(posix_apis, test_nanosleep_errors_errno)
 {
 	struct timespec rem = {};
