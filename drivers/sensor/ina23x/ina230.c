@@ -183,10 +183,7 @@ static int ina230_calibrate(const struct device *dev)
 	int ret;
 
 	/* See datasheet "Programming" section */
-	val = (INA230_CAL_SCALING * 10000U) /
-	      ((config->current_lsb * config->rshunt) / 1000U);
-
-	ret = ina23x_reg_write(&config->bus, INA230_REG_CALIB, val);
+	ret = ina23x_reg_write(&config->bus, INA230_REG_CALIB, config->cal);
 	if (ret < 0) {
 		return ret;
 	}
@@ -260,23 +257,19 @@ static const struct sensor_driver_api ina230_driver_api = {
 #define INA230_CFG_IRQ(inst)
 #endif /* CONFIG_INA230_TRIGGER */
 
-#define INA230_DRIVER_INIT(inst)				    \
-	static struct ina230_data drv_data_##inst;		    \
-	static const struct ina230_config drv_config_##inst = {	    \
-		.bus = I2C_DT_SPEC_INST_GET(inst),		    \
-		.config = DT_INST_PROP(inst, config),		    \
-		.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),\
-		.rshunt = DT_INST_PROP(inst, rshunt_micro_ohms),	    \
-		COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, alert_gpios),\
-			    (INA230_CFG_IRQ(inst)), ())		    \
-	};							    \
-	SENSOR_DEVICE_DT_INST_DEFINE(inst,			    \
-			      &ina230_init,			    \
-			      NULL,				    \
-			      &drv_data_##inst,			    \
-			      &drv_config_##inst,		    \
-			      POST_KERNEL,			    \
-			      CONFIG_SENSOR_INIT_PRIORITY,	    \
-			      &ina230_driver_api);
+#define INA230_DRIVER_INIT(inst)                                                                   \
+	static struct ina230_data drv_data_##inst;                                                 \
+	static const struct ina230_config drv_config_##inst = {                                    \
+		.bus = I2C_DT_SPEC_INST_GET(inst),                                                 \
+		.config = DT_INST_PROP(inst, config),                                              \
+		.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),                          \
+		.cal = (uint16_t)((INA230_CAL_SCALING * 10000000ULL) /                             \
+				  ((uint64_t)DT_INST_PROP(inst, current_lsb_microamps) *           \
+				   DT_INST_PROP(inst, rshunt_micro_ohms))),                        \
+		COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, alert_gpios), (INA230_CFG_IRQ(inst)),      \
+			    ())};                                                                  \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, &ina230_init, NULL, &drv_data_##inst,                   \
+				     &drv_config_##inst, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, \
+				     &ina230_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(INA230_DRIVER_INIT)

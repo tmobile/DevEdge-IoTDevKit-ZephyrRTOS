@@ -236,10 +236,7 @@ static int ina237_calibrate(const struct device *dev)
 	int ret;
 
 	/* see datasheet "Current and Power calculations" section */
-	val = (INA237_CAL_SCALING * ((config->current_lsb * config->rshunt) /
-	       1000U)) / 10000000U;
-
-	ret = ina23x_reg_write(&config->bus, INA237_REG_CALIB, val);
+	ret = ina23x_reg_write(&config->bus, INA237_REG_CALIB, config->cal);
 	if (ret < 0) {
 		return ret;
 	}
@@ -363,24 +360,20 @@ static const struct sensor_driver_api ina237_driver_api = {
 	.channel_get = ina237_channel_get,
 };
 
-#define INA237_DRIVER_INIT(inst)						\
-	static struct ina237_data ina237_data_##inst;				\
-	static const struct ina237_config ina237_config_##inst = {		\
-		.bus = I2C_DT_SPEC_INST_GET(inst),				\
-		.config = DT_INST_PROP(inst, config),				\
-		.adc_config = DT_INST_PROP(inst, adc_config),			\
-		.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),	\
-		.rshunt = DT_INST_PROP(inst, rshunt_micro_ohms),			\
-		.alert_config = DT_INST_PROP_OR(inst, alert_config, 0x01),	\
-		.alert_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, alert_gpios, {0}),	\
-	};							    \
-	SENSOR_DEVICE_DT_INST_DEFINE(inst,			    \
-			      &ina237_init,			    \
-			      NULL,				    \
-			      &ina237_data_##inst,		    \
-			      &ina237_config_##inst,		    \
-			      POST_KERNEL,			    \
-			      CONFIG_SENSOR_INIT_PRIORITY,	    \
-			      &ina237_driver_api);
+#define INA237_DRIVER_INIT(inst)                                                                   \
+	static struct ina237_data ina237_data_##inst;                                              \
+	static const struct ina237_config ina237_config_##inst = {                                 \
+		.bus = I2C_DT_SPEC_INST_GET(inst),                                                 \
+		.config = DT_INST_PROP(inst, config),                                              \
+		.adc_config = DT_INST_PROP(inst, adc_config),                                      \
+		.current_lsb = DT_INST_PROP(inst, current_lsb_microamps),                          \
+		.cal = INA237_CAL_SCALING * DT_INST_PROP(inst, current_lsb_microamps) *            \
+		       DT_INST_PROP(inst, rshunt_micro_ohms) / 10000000000ULL,                     \
+		.alert_config = DT_INST_PROP_OR(inst, alert_config, 0x01),                         \
+		.alert_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, alert_gpios, {0}),                    \
+	};                                                                                         \
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, &ina237_init, NULL, &ina237_data_##inst,                \
+				     &ina237_config_##inst, POST_KERNEL,                           \
+				     CONFIG_SENSOR_INIT_PRIORITY, &ina237_driver_api);             \
 
 DT_INST_FOREACH_STATUS_OKAY(INA237_DRIVER_INIT)
