@@ -412,7 +412,7 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 				void *data, size_t len)
 {
 	struct ieee802154_context *ctx = net_if_l2_data(iface);
-	struct ieee802154_frame_params params = {0};
+	struct ieee802154_frame_params params;
 	struct ieee802154_req_params *req;
 	struct ieee802154_command *cmd;
 	struct net_pkt *pkt;
@@ -424,26 +424,8 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 
 	req = (struct ieee802154_req_params *)data;
 
-	/* Validate the coordinator's PAN ID. */
-	if (req->pan_id == IEEE802154_PAN_ID_NOT_ASSOCIATED) {
-		return -EINVAL;
-	}
-
-	params.dst.pan_id = req->pan_id;
-
-	/* If the Version field is set to 0b10, the Source PAN ID field is
-	 * omitted. Otherwise, the Source PAN ID field shall contain the
-	 * broadcast PAN ID.
-	 */
-	params.pan_id = IEEE802154_BROADCAST_PAN_ID;
-
-	/* Validate the coordinator's short address - if any. */
-	if (req->len == IEEE802154_SHORT_ADDR_LENGTH) {
-		if (req->short_addr == IEEE802154_SHORT_ADDRESS_NOT_ASSOCIATED ||
-		    req->short_addr == IEEE802154_NO_SHORT_ADDRESS_ASSIGNED) {
-			return -EINVAL;
-		}
-
+	params.dst.len = req->len;
+	if (params.dst.len == IEEE802154_SHORT_ADDR_LENGTH) {
 		params.dst.short_addr = req->short_addr;
 	} else if (req->len == IEEE802154_EXT_ADDR_LENGTH) {
 		memcpy(params.dst.ext_addr, req->addr, sizeof(params.dst.ext_addr));
@@ -569,6 +551,9 @@ static int ieee802154_disassociate(uint32_t mgmt_request, struct net_if *iface,
 	struct ieee802154_frame_params params = {0};
 	struct ieee802154_command *cmd;
 	struct net_pkt *pkt;
+
+	ARG_UNUSED(data);
+	ARG_UNUSED(len);
 
 	ARG_UNUSED(data);
 	ARG_UNUSED(len);
