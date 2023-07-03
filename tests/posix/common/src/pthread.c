@@ -419,7 +419,7 @@ ZTEST(posix_apis, test_pthread_execution)
 	printk("Barrier test OK\n");
 }
 
-ZTEST(posix_apis, test_pthread_error_condition)
+ZTEST(posix_apis, test_pthread_errors_errno)
 {
 	pthread_attr_t attr;
 	struct sched_param param;
