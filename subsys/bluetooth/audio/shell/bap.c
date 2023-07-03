@@ -150,13 +150,10 @@ static struct shell_stream *shell_stream_from_bap_stream(struct bt_bap_stream *b
 }
 
 #if defined(CONFIG_BT_AUDIO_TX)
-static struct bt_bap_stream *txing_stream;
 
 static uint16_t get_next_seq_num(struct bt_bap_stream *bap_stream)
 {
-	struct bt_cap_stream *cap_stream =
-		CONTAINER_OF(bap_stream, struct bt_cap_stream, bap_stream);
-	struct shell_stream *sh_stream = CONTAINER_OF(cap_stream, struct shell_stream, stream);
+	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
 	const uint32_t interval_us = bap_stream->qos->interval;
 	int64_t uptime_ticks;
 	int64_t delta_ticks;
@@ -171,20 +168,6 @@ static uint16_t get_next_seq_num(struct bt_bap_stream *bap_stream)
 	/* Calculate the sequence number by dividing the stream uptime by the SDU interval */
 	seq_num = (uint16_t)(delta_us / interval_us);
 
-	/* In the case that we call this multiple times, we need to account for any sequence numbers
-	 * already allocated and send to the controller. Ensuring that the next PSN is 1 higher than
-	 * the last we allocated (assuming that we it was actually sent to the controller).
-	 *
-	 * The additional condition that checks that the difference is smaller than a specific value
-	 * is used to handle the case where seq_num has wrapped.
-	 */
-	if (seq_num <= sh_stream->last_allocated_seq_num &&
-	    sh_stream->last_allocated_seq_num - seq_num < 100) {
-		seq_num = sh_stream->last_allocated_seq_num + 1;
-	}
-
-	sh_stream->last_allocated_seq_num = seq_num;
-
 	return seq_num;
 }
 #endif /* CONFIG_BT_AUDIO_TX */
@@ -194,7 +177,8 @@ static uint16_t get_next_seq_num(struct bt_bap_stream *bap_stream)
  * controller ISO buffer to handle jitter.
  */
 #define PRIME_COUNT 2U
-NET_BUF_POOL_FIXED_DEFINE(sine_tx_pool, PRIME_COUNT, BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
+NET_BUF_POOL_FIXED_DEFINE(sine_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
+			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 #include "lc3.h"
@@ -209,22 +193,18 @@ NET_BUF_POOL_FIXED_DEFINE(sine_tx_pool, PRIME_COUNT, BT_ISO_SDU_BUF_SIZE(CONFIG_
 static int16_t audio_buf[MAX_NUM_SAMPLES];
 static lc3_encoder_t lc3_encoder;
 static lc3_encoder_mem_48k_t lc3_encoder_mem;
-static int freq_hz;
-static int frame_duration_us;
-static int frame_duration_100us;
-static int frames_per_sdu;
-static int octets_per_frame;
-static int32_t lc3_sdu_cnt;
+static int lc3_freq_hz;
+static int lc3_frame_duration_us;
+static int lc3_frame_duration_100us;
+static int lc3_frames_per_sdu;
+static int lc3_octets_per_frame;
 
-static void lc3_audio_send_data(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(audio_send_work, lc3_audio_send_data);
-
-static void clear_lc3_sine_data(void)
+static void clear_lc3_sine_data(struct bt_bap_stream *bap_stream)
 {
-	lc3_sdu_cnt = 0;
-	txing_stream = NULL;
+	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
 
-	(void)k_work_cancel_delayable(&audio_send_work);
+	sh_stream->tx_active = false;
+	(void)k_work_cancel_delayable(&sh_stream->audio_send_work);
 }
 
 /**
@@ -257,11 +237,11 @@ static void init_lc3(const struct bt_bap_stream *stream)
 		return;
 	}
 
-	freq_hz = bt_audio_codec_cfg_get_freq(stream->codec_cfg);
-	frame_duration_us = bt_audio_codec_cfg_get_frame_duration_us(stream->codec_cfg);
-	octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
-	frames_per_sdu = bt_audio_codec_cfg_get_frame_blocks_per_sdu(stream->codec_cfg, true);
-	octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
+	lc3_freq_hz = bt_audio_codec_cfg_get_freq(stream->codec_cfg);
+	lc3_frame_duration_us = bt_audio_codec_cfg_get_frame_duration_us(stream->codec_cfg);
+	lc3_octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
+	lc3_frames_per_sdu = bt_audio_codec_cfg_get_frame_blocks_per_sdu(stream->codec_cfg, true);
+	lc3_octets_per_frame = bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg);
 
 	if (lc3_freq_hz < 0) {
 		printk("Error: Codec frequency not set, cannot start codec.");
@@ -299,12 +279,19 @@ static void init_lc3(const struct bt_bap_stream *stream)
 
 static void lc3_audio_send_data(struct k_work *work)
 {
-	const uint16_t tx_sdu_len = frames_per_sdu * octets_per_frame;
+	struct shell_stream *sh_stream = CONTAINER_OF(k_work_delayable_from_work(work),
+						      struct shell_stream, audio_send_work);
+	struct bt_bap_stream *bap_stream = &sh_stream->stream.bap_stream;
+	const uint16_t tx_sdu_len = lc3_frames_per_sdu * lc3_octets_per_frame;
 	struct net_buf *buf;
 	uint8_t *net_buffer;
 	off_t offset = 0;
-	uint16_t seq_num;
 	int err;
+
+	if (!sh_stream->tx_active) {
+		/* TX has been aborted */
+		return;
+	}
 
 	if (lc3_encoder == NULL) {
 		shell_error(ctx_shell, "LC3 encoder not setup, cannot encode data");
@@ -313,6 +300,15 @@ static void lc3_audio_send_data(struct k_work *work)
 
 	if (bap_stream == NULL || bap_stream->qos == NULL) {
 		shell_error(ctx_shell, "invalid stream, aborting");
+		return;
+	}
+
+	if (atomic_get(&sh_stream->lc3_enqueue_cnt) == 0U) {
+		shell_error(ctx_shell, "Stream %p enqueue count was 0", bap_stream);
+
+		/* Reschedule for next interval */
+		k_work_reschedule(k_work_delayable_from_work(work),
+				  K_USEC(bap_stream->qos->interval));
 		return;
 	}
 
@@ -326,8 +322,8 @@ static void lc3_audio_send_data(struct k_work *work)
 		int lc3_ret;
 
 		lc3_ret = lc3_encode(lc3_encoder, LC3_PCM_FORMAT_S16, audio_buf, 1,
-				     octets_per_frame, net_buffer + offset);
-		offset += octets_per_frame;
+				     lc3_octets_per_frame, net_buffer + offset);
+		offset += lc3_octets_per_frame;
 
 		if (lc3_ret == -1) {
 			shell_error(ctx_shell, "LC3 encoder failed - wrong parameters?: %d",
@@ -336,51 +332,54 @@ static void lc3_audio_send_data(struct k_work *work)
 
 			/* Reschedule for next interval */
 			k_work_reschedule(k_work_delayable_from_work(work),
-					  K_USEC(txing_stream->qos->interval));
+					  K_USEC(bap_stream->qos->interval));
 			return;
 		}
 	}
 
-	seq_num = get_next_seq_num(txing_stream);
-	err = bt_bap_stream_send(txing_stream, buf, seq_num, BT_ISO_TIMESTAMP_NONE);
+	err = bt_bap_stream_send(bap_stream, buf, sh_stream->seq_num, BT_ISO_TIMESTAMP_NONE);
 	if (err < 0) {
 		shell_error(ctx_shell, "Failed to send LC3 audio data (%d)", err);
 		net_buf_unref(buf);
 
 		/* Reschedule for next interval */
 		k_work_reschedule(k_work_delayable_from_work(work),
-				  K_USEC(txing_stream->qos->interval));
+				  K_USEC(bap_stream->qos->interval));
 		return;
 	}
 
-	if ((lc3_sdu_cnt % 100) == 0) {
-		shell_info(ctx_shell, "[%zu]: TX LC3: %zu (seq_num %u)", lc3_sdu_cnt, tx_sdu_len,
-			   seq_num);
+	if ((sh_stream->lc3_sdu_cnt % 100) == 0) {
+		shell_info(ctx_shell, "[%zu]: stream %p : TX LC3: %zu (seq_num %u)",
+			   sh_stream->lc3_sdu_cnt, bap_stream, tx_sdu_len, sh_stream->seq_num);
 	}
 
-	lc3_sdu_cnt++;
+	sh_stream->lc3_sdu_cnt++;
+	sh_stream->seq_num++;
+	atomic_dec(&sh_stream->lc3_enqueue_cnt);
 
-	/* If we have more buffers available, we reschedule the workqueue item immediately to
-	 * trigger antother encode + TX, but without blocking this call for too long
-	 */
-	buf = net_buf_alloc(&sine_tx_pool, K_NO_WAIT);
-	if (buf != NULL) {
-		net_buf_unref(buf);
+	if (atomic_get(&sh_stream->lc3_enqueue_cnt) > 0) {
+		/* If we have more buffers available, we reschedule the workqueue item immediately
+		 * to trigger another encode + TX, but without blocking this call for too long
+		 */
 		k_work_reschedule(k_work_delayable_from_work(work), K_NO_WAIT);
 	}
 }
 
-void sdu_sent_cb(struct bt_bap_stream *stream)
+void sdu_sent_cb(struct bt_bap_stream *bap_stream)
 {
+	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
 	int err;
 
-	if (txing_stream == NULL || txing_stream->qos == NULL) {
+	atomic_inc(&sh_stream->lc3_enqueue_cnt);
+
+	if (!sh_stream->tx_active) {
+		/* TX has been aborted */
 		return;
 	}
 
-	err = k_work_schedule(&audio_send_work, K_NO_WAIT);
+	err = k_work_schedule(&sh_stream->audio_send_work, K_NO_WAIT);
 	if (err < 0) {
-		shell_error(ctx_shell, "Failed to schedule TX: %d", err);
+		shell_error(ctx_shell, "Failed to schedule TX for stream %p: %d", bap_stream, err);
 	}
 }
 #endif /* CONFIG_LIBLC3 && CONFIG_BT_AUDIO_TX */
@@ -1018,7 +1017,6 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	enum bt_audio_location location = BT_AUDIO_LOCATION_PROHIBITED;
 	const struct named_lc3_preset *named_preset;
 	struct shell_stream *uni_stream;
-	struct bt_cap_stream *cap_stream;
 	struct bt_bap_stream *bap_stream;
 	struct bt_bap_ep *ep = NULL;
 	unsigned long index;
@@ -1125,8 +1123,7 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 		}
 	}
 
-	cap_stream = CONTAINER_OF(bap_stream, struct bt_cap_stream, bap_stream);
-	uni_stream = CONTAINER_OF(cap_stream, struct shell_stream, stream);
+	uni_stream = shell_stream_from_bap_stream(bap_stream);
 	copy_unicast_stream_preset(uni_stream, named_preset);
 
 	/* If location has been modifed, we update the location in the codec configuration */
@@ -1756,45 +1753,41 @@ static struct bt_bap_broadcast_sink_cb sink_cbs = {
 
 #if defined(CONFIG_BT_AUDIO_RX)
 static unsigned long recv_stats_interval = 100U;
-static size_t lost_pkts;
-static size_t err_pkts;
-static size_t dup_psn;
-static size_t rx_cnt;
-static size_t dup_ts;
 
 static void audio_recv(struct bt_bap_stream *stream,
 		       const struct bt_iso_recv_info *info,
 		       struct net_buf *buf)
 {
-	static struct bt_iso_recv_info last_info;
+	struct shell_stream *sh_stream = shell_stream_from_bap_stream(stream);
 
-	rx_cnt++;
+	sh_stream->rx_cnt++;
 
-	if (info->ts == last_info.ts) {
-		dup_ts++;
+	if (info->ts == sh_stream->last_info.ts) {
+		sh_stream->dup_ts++;
 	}
 
-	if (info->seq_num == last_info.seq_num) {
-		dup_psn++;
+	if (info->seq_num == sh_stream->last_info.seq_num) {
+		sh_stream->dup_psn++;
 	}
 
 	if (info->flags & BT_ISO_FLAGS_ERROR) {
-		err_pkts++;
+		sh_stream->err_pkts++;
 	}
 
 	if (info->flags & BT_ISO_FLAGS_LOST) {
-		lost_pkts++;
+		sh_stream->lost_pkts++;
 	}
 
-	if ((rx_cnt % recv_stats_interval) == 0) {
+	if ((sh_stream->rx_cnt % recv_stats_interval) == 0) {
 		shell_print(ctx_shell,
 			    "[%zu]: Incoming audio on stream %p len %u ts %u seq_num %u flags %u "
 			    "(dup ts %zu; dup psn %zu, err_pkts %zu, lost_pkts %zu)",
-			    rx_cnt, stream, buf->len, info->ts, info->seq_num, info->flags, dup_ts,
-			    dup_psn, err_pkts, lost_pkts);
+			    sh_stream->rx_cnt, stream, buf->len, info->ts, info->seq_num,
+			    info->flags, sh_stream->dup_ts, sh_stream->dup_psn, sh_stream->err_pkts,
+			    sh_stream->lost_pkts);
 	}
 
-	(void)memcpy(&last_info, info, sizeof(last_info));
+	(void)memcpy(&sh_stream->last_info, info, sizeof(sh_stream->last_info));
 }
 #endif /* CONFIG_BT_AUDIO_RX */
 
@@ -1837,25 +1830,24 @@ static void stream_enabled_cb(struct bt_bap_stream *stream)
 
 static void stream_started_cb(struct bt_bap_stream *bap_stream)
 {
+	struct shell_stream *sh_stream = shell_stream_from_bap_stream(bap_stream);
+
 #if defined(CONFIG_BT_AUDIO_TX)
-	struct bt_cap_stream *cap_stream =
-		CONTAINER_OF(bap_stream, struct bt_cap_stream, bap_stream);
-	struct shell_stream *sh_stream = CONTAINER_OF(cap_stream, struct shell_stream, stream);
-
 	sh_stream->connected_at_ticks = k_uptime_ticks();
-
-	/* Set to max value to support sending the first packet with PSN = 0*/
-	sh_stream->last_allocated_seq_num = UINT16_MAX;
+#if defined(CONFIG_LIBLC3)
+	atomic_set(&sh_stream->lc3_enqueue_cnt, PRIME_COUNT);
+	sh_stream->lc3_sdu_cnt = 0U;
+#endif /* CONFIG_LIBLC3 */
 #endif /* CONFIG_BT_AUDIO_TX */
 
 	printk("Stream %p started\n", bap_stream);
 
 #if defined(CONFIG_BT_AUDIO_RX)
-	lost_pkts = 0U;
-	err_pkts = 0U;
-	dup_psn = 0U;
-	rx_cnt = 0U;
-	dup_ts = 0U;
+	sh_stream->lost_pkts = 0U;
+	sh_stream->err_pkts = 0U;
+	sh_stream->dup_psn = 0U;
+	sh_stream->rx_cnt = 0U;
+	sh_stream->dup_ts = 0U;
 #endif
 }
 
@@ -1864,9 +1856,7 @@ static void stream_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 	printk("Stream %p stopped with reason 0x%02X\n", stream, reason);
 
 #if defined(CONFIG_LIBLC3)
-	if (stream == default_stream) {
-		clear_lc3_sine_data();
-	}
+	clear_lc3_sine_data(stream);
 #endif /* CONFIG_LIBLC3 */
 }
 
@@ -1913,9 +1903,7 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 
 #if defined(CONFIG_LIBLC3)
 	/* stop sending */
-	if (stream == default_stream) {
-		clear_lc3_sine_data();
-	}
+	clear_lc3_sine_data(stream);
 #endif /* CONFIG_LIBLC3 */
 }
 #endif /* CONFIG_BT_BAP_UNICAST */
@@ -2491,7 +2479,7 @@ static int cmd_send(const struct shell *sh, size_t argc, char *argv[])
 
 	net_buf_add_mem(buf, data, len);
 
-	ret = bt_bap_stream_send(default_stream, buf, get_next_seq_num(txing_stream),
+	ret = bt_bap_stream_send(default_stream, buf, get_next_seq_num(default_stream),
 				 BT_ISO_TIMESTAMP_NONE);
 	if (ret < 0) {
 		shell_print(sh, "Unable to send: %d", -ret);
@@ -2509,6 +2497,9 @@ static int cmd_send(const struct shell *sh, size_t argc, char *argv[])
 #if defined(CONFIG_LIBLC3)
 static bool stream_start_sine_verify(const struct bt_bap_stream *bap_stream)
 {
+	int stream_frame_duration_us;
+	struct bt_bap_ep_info info;
+	int stream_freq_hz;
 	int err;
 
 	if (bap_stream == NULL || bap_stream->qos == NULL) {
@@ -2551,9 +2542,87 @@ static int stream_start_sine(struct bt_bap_stream *bap_stream)
 	sh_stream->tx_active = true;
 	sh_stream->seq_num = get_next_seq_num(bap_stream);
 
-	err = k_work_schedule(&audio_send_work, K_NO_WAIT);
-	if (err < 0) {
-		shell_error(ctx_shell, "Failed to schedule TX: %d", err);
+	return 0;
+}
+
+static int cmd_start_sine(const struct shell *sh, size_t argc, char *argv[])
+{
+	bool start_all = false;
+	int err;
+
+	if (argc > 1) {
+		if (strcmp(argv[1], "all") == 0) {
+			start_all = true;
+		} else {
+			shell_help(sh);
+
+			return SHELL_CMD_HELP_PRINTED;
+		}
+	}
+
+	if (start_all) {
+		bool lc3_initialized = false;
+
+		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
+			struct bt_bap_stream *bap_stream = &unicast_streams[i].stream.bap_stream;
+
+			if (!lc3_initialized) {
+				init_lc3(bap_stream);
+				lc3_initialized = true;
+			}
+
+			if (!stream_start_sine_verify(bap_stream)) {
+				continue;
+			}
+
+			err = stream_start_sine(bap_stream);
+			if (err != 0) {
+				shell_error(sh, "Failed to start TX for stream %p: %d", bap_stream,
+					    err);
+				return err;
+			}
+
+			shell_print(sh, "Started transmitting on unicast stream %p", bap_stream);
+		}
+
+		for (size_t i = 0U; i < ARRAY_SIZE(broadcast_source_streams); i++) {
+			struct bt_bap_stream *bap_stream =
+				&broadcast_source_streams[i].stream.bap_stream;
+
+			if (!lc3_initialized) {
+				init_lc3(bap_stream);
+				lc3_initialized = true;
+			}
+
+			if (!stream_start_sine_verify(bap_stream)) {
+				continue;
+			}
+
+			err = stream_start_sine(bap_stream);
+			if (err != 0) {
+				shell_error(sh, "Failed to start TX for stream %p: %d", bap_stream,
+					    err);
+				return err;
+			}
+
+			shell_print(sh, "Started transmitting on broadcast stream %p", bap_stream);
+		}
+	} else {
+		if (stream_start_sine_verify(default_stream)) {
+			shell_error(sh, "Invalid stream %p", default_stream);
+			return -ENOEXEC;
+		}
+
+		init_lc3(default_stream);
+
+		err = stream_start_sine(default_stream);
+		if (err != 0) {
+			shell_error(sh, "Failed to start TX for stream %p: %d", default_stream,
+				    err);
+			return err;
+		}
+
+		shell_print(sh, "Started transmitting on default_stream %p", default_stream);
 	}
 
 	return 0;
@@ -2561,7 +2630,44 @@ static int stream_start_sine(struct bt_bap_stream *bap_stream)
 
 static int cmd_stop_sine(const struct shell *sh, size_t argc, char *argv[])
 {
-	clear_lc3_sine_data();
+	bool stop_all = false;
+
+	if (argc > 1) {
+		if (strcmp(argv[1], "all") == 0) {
+			stop_all = true;
+		} else {
+			shell_help(sh);
+
+			return SHELL_CMD_HELP_PRINTED;
+		}
+	}
+
+	if (stop_all) {
+		for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
+			struct bt_bap_stream *bap_stream = &unicast_streams[i].stream.bap_stream;
+
+			if (unicast_streams[i].tx_active) {
+				clear_lc3_sine_data(bap_stream);
+				shell_print(sh, "Stopped transmitting on stream %p", bap_stream);
+			}
+		}
+
+		for (size_t i = 0U; i < ARRAY_SIZE(broadcast_source_streams); i++) {
+			struct bt_bap_stream *bap_stream =
+				&broadcast_source_streams[i].stream.bap_stream;
+			if (unicast_streams[i].tx_active) {
+				clear_lc3_sine_data(bap_stream);
+				shell_print(sh, "Stopped transmitting on stream %p", bap_stream);
+			}
+		}
+	} else {
+		struct shell_stream *sh_stream = shell_stream_from_bap_stream(default_stream);
+
+		if (sh_stream->tx_active) {
+			clear_lc3_sine_data(default_stream);
+			shell_print(sh, "Stopped transmitting on stream %p", default_stream);
+		}
+	}
 
 	return 0;
 }
