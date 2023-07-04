@@ -51,6 +51,12 @@ struct audio_stream {
 	uint16_t seq_num;
 	uint16_t max_sdu;
 	size_t len_to_send;
+	struct k_work_delayable audio_clock_work;
+	struct k_work_delayable audio_send_work;
+	uint8_t cig_id;
+	uint8_t cis_id;
+	struct bt_bap_unicast_group **cig;
+	bool already_sent;
 };
 
 #define MAX_STREAMS_COUNT MAX(CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT, \
@@ -64,10 +70,11 @@ struct audio_connection {
 	size_t configured_source_stream_count;
 	struct bt_audio_codec_cfg codec_cfg;
 	struct bt_audio_codec_qos qos;
-	struct bt_bap_unicast_group *unicast_group;
 	struct bt_bap_ep *end_points[MAX_END_POINTS_COUNT];
 	size_t end_points_count;
 } connections[CONFIG_BT_MAX_CONN];
+
+static struct bt_bap_unicast_group *cigs[CONFIG_BT_ISO_MAX_CIG];
 
 static struct bt_audio_codec_qos_pref qos_pref =
 	BT_AUDIO_CODEC_QOS_PREF(true, BT_GAP_LE_PHY_2M, 0x02, 10, 10000, 40000, 10000, 40000);
@@ -78,8 +85,6 @@ NET_BUF_POOL_FIXED_DEFINE(tx_pool, MAX(CONFIG_BT_ASCS_ASE_SRC_COUNT,
 
 static struct net_buf_simple *rx_ev_buf = NET_BUF_SIMPLE(CONFIG_BT_ISO_RX_MTU +
 							 sizeof(struct btp_bap_stream_received_ev));
-
-static bool already_sent;
 
 RING_BUF_DECLARE(audio_ring_buf, CONFIG_BT_ISO_TX_MTU);
 static void audio_clock_timeout(struct k_work *work);
@@ -215,6 +220,19 @@ static void btp_send_ascs_operation_completed_ev(struct bt_conn *conn, uint8_t a
 	ev.flags = 0;
 
 	tester_event(BTP_SERVICE_ID_ASCS, BTP_ASCS_EV_OPERATION_COMPLETED, &ev, sizeof(ev));
+}
+
+static void btp_send_ascs_ase_state_changed_ev(struct bt_conn *conn, uint8_t ase_id, uint8_t state)
+{
+	struct btp_ascs_ase_state_changed_ev ev;
+	struct bt_conn_info info;
+
+	(void)bt_conn_get_info(conn, &info);
+	bt_addr_le_copy(&ev.address, info.le.dst);
+	ev.ase_id = ase_id;
+	ev.state = state;
+
+	tester_event(BTP_SERVICE_ID_ASCS, BTP_ASCS_EV_ASE_STATE_CHANGED, &ev, sizeof(ev));
 }
 
 static int validate_codec_parameters(const struct bt_audio_codec_cfg *codec_cfg)
@@ -522,6 +540,13 @@ static void stream_disabled(struct bt_bap_stream *stream)
 	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
 
 	LOG_DBG("Disabled stream %p", stream);
+
+	if (stream->ep->dir == BT_AUDIO_DIR_SINK) {
+		/* Stop send timer */
+		k_work_cancel_delayable(&a_stream->audio_clock_work);
+		k_work_cancel_delayable(&a_stream->audio_send_work);
+	}
+
 	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
 					     BT_ASCS_DISABLE_OP, BTP_ASCS_STATUS_SUCCESS);
 }
@@ -535,10 +560,17 @@ static void stream_released(struct bt_bap_stream *stream)
 
 	audio_conn = &connections[a_stream->conn_id];
 
-	if (audio_conn->unicast_group != NULL) {
+	if (stream->ep->dir == BT_AUDIO_DIR_SINK) {
+		/* Stop send timer */
+		k_work_cancel_delayable(&a_stream->audio_clock_work);
+		k_work_cancel_delayable(&a_stream->audio_send_work);
+	}
+
+	if (cigs[stream->ep->cig_id] != NULL) {
+		/* The unicast group will be deleted only at release of the last stream */
 		LOG_DBG("Deleting unicast group");
 
-		int err = bt_bap_unicast_group_delete(audio_conn->unicast_group);
+		int err = bt_bap_unicast_group_delete(cigs[stream->ep->cig_id]);
 
 		if (err != 0) {
 			LOG_DBG("Unable to delete unicast group: %d", err);
@@ -546,7 +578,7 @@ static void stream_released(struct bt_bap_stream *stream)
 			return;
 		}
 
-		audio_conn->unicast_group = NULL;
+		cigs[stream->ep->cig_id] = NULL;
 	}
 
 	a_stream->ase_id = 0;
@@ -557,6 +589,8 @@ static void stream_started(struct bt_bap_stream *stream)
 	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
 	struct bt_bap_ep_info info;
 	int err;
+
+	/* Callback called on transition to Streaming state */
 
 	LOG_DBG("Started stream %p", stream);
 
@@ -581,8 +615,8 @@ static void stream_started(struct bt_bap_stream *stream)
 					  K_USEC(a_stream->stream.qos->interval));
 	}
 
-	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
-					     BT_ASCS_START_OP, BTP_STATUS_SUCCESS);
+	btp_send_ascs_ase_state_changed_ev(stream->conn, a_stream->ase_id,
+					   stream->ep->status.state);
 }
 
 static void stream_stopped(struct bt_bap_stream *stream, uint8_t reason)
@@ -590,6 +624,13 @@ static void stream_stopped(struct bt_bap_stream *stream, uint8_t reason)
 	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
 
 	LOG_DBG("Stopped stream %p with reason 0x%02X", stream, reason);
+
+	if (stream->ep->dir == BT_AUDIO_DIR_SINK) {
+		/* Stop send timer */
+		k_work_cancel_delayable(&a_stream->audio_clock_work);
+		k_work_cancel_delayable(&a_stream->audio_send_work);
+	}
+
 	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
 					     BT_ASCS_STOP_OP, BTP_STATUS_SUCCESS);
 }
@@ -598,12 +639,14 @@ static void stream_recv(struct bt_bap_stream *stream,
 			const struct bt_iso_recv_info *info,
 			struct net_buf *buf)
 {
-	if (already_sent == false) {
+	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
+
+	if (a_stream->already_sent == false) {
 		/* For now, send just a first packet, to limit the number
 		 * of logs and not unnecessarily spam through btp.
 		 */
 		LOG_DBG("Incoming audio on stream %p len %u", stream, buf->len);
-		already_sent = true;
+		a_stream->already_sent = true;
 		btp_send_stream_received_ev(stream->conn, stream->ep, buf->len, buf->data);
 	}
 }
@@ -741,9 +784,15 @@ static void enable_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rs
 static void start_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rsp_code,
 		     enum bt_bap_ascs_reason reason)
 {
-	LOG_DBG("start_cb");
+	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
+
+	/* Callback called on Receiver Start Ready notification from ASE Control Point */
+
 	LOG_DBG("stream %p start operation rsp_code %u reason %u", stream, rsp_code, reason);
-	already_sent = false;
+	a_stream->already_sent = false;
+
+	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
+					     BT_ASCS_START_OP, BTP_STATUS_SUCCESS);
 }
 
 static void stop_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rsp_code,
@@ -899,6 +948,92 @@ static uint8_t bap_discover(const void *cmd, uint16_t cmd_len,
 	return BTP_STATUS_SUCCESS;
 }
 
+static void audio_clock_timeout(struct k_work *work)
+{
+	struct audio_stream *stream;
+	struct k_work_delayable *dwork;
+
+	dwork = k_work_delayable_from_work(work);
+	stream = CONTAINER_OF(dwork, struct audio_stream, audio_clock_work);
+	atomic_inc(&stream->seq_num);
+
+	k_work_schedule(dwork, K_USEC(stream->stream.qos->interval));
+}
+
+static void audio_send_timeout(struct k_work *work)
+{
+	struct bt_iso_tx_info info;
+	struct audio_stream *stream;
+	struct k_work_delayable *dwork;
+	struct bt_iso_chan *iso_chan;
+	struct net_buf *buf;
+	uint32_t size;
+	uint8_t *data;
+	int err;
+
+	dwork = k_work_delayable_from_work(work);
+	stream = CONTAINER_OF(dwork, struct audio_stream, audio_send_work);
+
+	if (stream->last_req_seq_num % 201 == 200) {
+		iso_chan = bt_bap_stream_iso_chan_get(&stream->stream);
+		err = bt_iso_chan_get_tx_sync(iso_chan, &info);
+		if (err != 0) {
+			LOG_DBG("Failed to get last seq num: err %d", err);
+		} else if (stream->last_req_seq_num > info.seq_num) {
+			LOG_DBG("Previous TX request rejected by the controller: requested seq %u,"
+				" last accepted seq %u", stream->last_req_seq_num, info.seq_num);
+			stream->last_sent_seq_num = info.seq_num;
+		} else {
+			LOG_DBG("Host and Controller sequence number is in sync.");
+			stream->last_sent_seq_num = info.seq_num;
+		}
+		/* TODO: Synchronize the Host clock with the Controller clock */
+	}
+
+	buf = net_buf_alloc(&tx_pool, K_NO_WAIT);
+	if (!buf) {
+		LOG_ERR("Cannot allocate net_buf. Dropping data.");
+		k_work_schedule_for_queue(&iso_data_work_q, dwork,
+					  K_USEC(stream->stream.qos->interval));
+		return;
+	}
+
+	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
+
+	/* Get buffer within a ring buffer memory */
+	size = ring_buf_get_claim(&audio_ring_buf, &data, stream->stream.qos->sdu);
+	if (size != 0) {
+		net_buf_add_mem(buf, data, size);
+	}
+
+	/* Because the seq_num field of the audio_stream struct is atomic_val_t (4 bytes),
+	 * let's allow an overflow and just cast it to uint16_t.
+	 */
+	stream->last_req_seq_num = (uint16_t)atomic_get(&stream->seq_num);
+
+	LOG_DBG("Sending data to ASE: ase_id %d len %d seq %d", stream->stream.ep->status.id,
+		size, stream->last_req_seq_num);
+
+	err = bt_bap_stream_send(&stream->stream, buf, stream->last_req_seq_num,
+				 BT_ISO_TIMESTAMP_NONE);
+	if (err != 0) {
+		LOG_ERR("Failed to send audio data to stream: ase_id %d dir seq %d %d err %d",
+			stream->ase_id, stream->stream.ep->dir, stream->last_req_seq_num, err);
+		net_buf_unref(buf);
+	}
+
+	if (size != 0) {
+		/* Free ring buffer memory */
+		err = ring_buf_get_finish(&audio_ring_buf, size);
+		if (err != 0) {
+			LOG_ERR("Error freeing ring buffer memory: %d", err);
+		}
+	}
+
+	k_work_schedule_for_queue(&iso_data_work_q, dwork,
+				  K_USEC(stream->stream.qos->interval));
+}
+
 static uint8_t bap_send(const void *cmd, uint16_t cmd_len,
 			void *rsp, uint16_t *rsp_len)
 {
@@ -920,7 +1055,7 @@ static uint8_t bap_send(const void *cmd, uint16_t cmd_len,
 	(void)bt_conn_get_info(conn, &conn_info);
 
 	stream = stream_find(audio_conn, cp->ase_id);
-	if (stream == NULL || stream->stream.dir != BT_AUDIO_DIR_SINK) {
+	if (stream == NULL || stream->stream.ep->dir != BT_AUDIO_DIR_SINK) {
 		return BTP_STATUS_FAILED;
 	}
 
@@ -1026,7 +1161,31 @@ static int server_stream_config(struct bt_conn *conn, struct bt_bap_stream *stre
 	return 0;
 }
 
-static int client_create_unicast_group(struct audio_connection *audio_conn, uint8_t ase_id)
+static uint8_t client_add_ase_to_cis(struct audio_connection *audio_conn, uint8_t ase_id,
+				     uint8_t cis_id, uint8_t cig_id)
+{
+	struct audio_stream *stream;
+
+	if (cig_id >= CONFIG_BT_ISO_MAX_CIG || cis_id >= UNICAST_GROUP_STREAM_CNT) {
+		return BTP_STATUS_FAILED;
+	}
+
+	stream = stream_find(audio_conn, ase_id);
+	if (stream == NULL) {
+		return BTP_STATUS_FAILED;
+	}
+
+	LOG_DBG("Added ASE %u to CIS %u at CIG %u", ase_id, cis_id, cig_id);
+
+	stream->cig = &cigs[cig_id];
+	stream->cig_id = cig_id;
+	stream->cis_id = cis_id;
+
+	return 0;
+}
+
+static int client_create_unicast_group(struct audio_connection *audio_conn, uint8_t ase_id,
+									   uint8_t cig_id)
 {
 	int err;
 	struct bt_bap_unicast_group_stream_pair_param pair_params[MAX_STREAMS_COUNT];
@@ -1035,13 +1194,31 @@ static int client_create_unicast_group(struct audio_connection *audio_conn, uint
 	size_t stream_cnt = 0;
 	size_t src_cnt = 0;
 	size_t sink_cnt = 0;
+	size_t cis_cnt = 0;
+
 	(void)memset(pair_params, 0, sizeof(pair_params));
 	(void)memset(stream_params, 0, sizeof(stream_params));
 
-	for (size_t i = 0; i < MAX_STREAMS_COUNT; i++) {
-		struct bt_bap_stream *stream = &audio_conn->streams[i].stream;
+	if (cig_id >= CONFIG_BT_ISO_MAX_CIG) {
+		return -EINVAL;
+	}
 
-		if (stream == NULL || stream->ep == NULL) {
+	/* API does not allow to assign a CIG ID freely, so ensure we create groups
+	 * in the right order.
+	 */
+	for (uint8_t i = 0; i < cig_id; i++) {
+		if (cigs[cig_id] == NULL) {
+			return -EINVAL;
+		}
+	}
+
+	/* Assign end points to CISes */
+	for (size_t i = 0; i < MAX_STREAMS_COUNT; i++) {
+		struct audio_stream *a_stream = &audio_conn->streams[i];
+		struct bt_bap_stream *stream = &a_stream->stream;
+
+		if (stream == NULL || stream->ep == NULL || a_stream->cig == NULL ||
+			a_stream->cig_id != cig_id) {
 			continue;
 		}
 
@@ -1049,26 +1226,45 @@ static int client_create_unicast_group(struct audio_connection *audio_conn, uint
 		stream_params[stream_cnt].qos = &audio_conn->qos;
 
 		if (stream->ep->dir == BT_AUDIO_DIR_SOURCE) {
-			pair_params[src_cnt].rx_param = &stream_params[stream_cnt];
+			if (pair_params[a_stream->cis_id].rx_param != NULL) {
+				return -EINVAL;
+			}
+
+			pair_params[a_stream->cis_id].rx_param = &stream_params[stream_cnt];
 			src_cnt++;
 		} else {
-			pair_params[sink_cnt].tx_param = &stream_params[stream_cnt];
+			if (pair_params[a_stream->cis_id].tx_param != NULL) {
+				return -EINVAL;
+			}
+
+			pair_params[a_stream->cis_id].tx_param = &stream_params[stream_cnt];
 			sink_cnt++;
 		}
 
 		stream_cnt++;
 	}
 
-	if (stream_cnt == 0) {
+	/* Count CISes to be established */
+	for (size_t i = 0; i < MAX_STREAMS_COUNT; i++) {
+		if (pair_params[i].tx_param == NULL && pair_params[i].rx_param == NULL) {
+			/* No gaps allowed */
+			break;
+		}
+
+		cis_cnt++;
+	}
+
+	/* Make sure there are no gaps in the pair_params */
+	if (cis_cnt == 0 || cis_cnt < MAX(sink_cnt, src_cnt)) {
 		return -EINVAL;
 	}
 
 	param.params = pair_params;
-	param.params_count = stream_cnt;
+	param.params_count = cis_cnt;
 	param.packing = BT_ISO_PACKING_SEQUENTIAL;
 
 	LOG_DBG("Creating unicast group");
-	err = bt_bap_unicast_group_create(&param, &audio_conn->unicast_group);
+	err = bt_bap_unicast_group_create(&param, &cigs[cig_id]);
 	if (err != 0) {
 		LOG_DBG("Could not create unicast group (err %d)", err);
 		return -EINVAL;
@@ -1227,6 +1423,23 @@ static uint8_t ascs_configure_qos(const void *cmd, uint16_t cmd_len,
 	}
 
 	audio_conn = &connections[bt_conn_index(conn)];
+
+	if (cigs[cp->cig_id] != NULL) {
+		err = bt_bap_unicast_group_delete(cigs[cp->cig_id]);
+		if (err != 0) {
+			LOG_DBG("Failed to delete the unicast group, err %d", err);
+			bt_conn_unref(conn);
+
+			return BTP_STATUS_FAILED;
+		}
+		cigs[cp->cig_id] = NULL;
+	}
+
+	err = client_add_ase_to_cis(audio_conn, cp->ase_id, cp->cis_id, cp->cig_id);
+	if (err != 0) {
+		return BTP_STATUS_FAILED;
+	}
+
 	qos = &audio_conn->qos;
 	qos->phy = BT_AUDIO_CODEC_QOS_2M;
 	qos->framing = cp->framing;
@@ -1236,7 +1449,7 @@ static uint8_t ascs_configure_qos(const void *cmd, uint16_t cmd_len,
 	qos->interval = sys_get_le24(cp->sdu_interval);
 	qos->pd = sys_get_le24(cp->presentation_delay);
 
-	err = client_create_unicast_group(audio_conn, cp->ase_id);
+	err = client_create_unicast_group(audio_conn, cp->ase_id, cp->cig_id);
 	if (err != 0) {
 		LOG_DBG("Unable to create unicast group, err %d", err);
 		bt_conn_unref(conn);
@@ -1245,7 +1458,7 @@ static uint8_t ascs_configure_qos(const void *cmd, uint16_t cmd_len,
 	}
 
 	LOG_DBG("QoS configuring streams");
-	err = bt_bap_stream_qos(conn, audio_conn->unicast_group);
+	err = bt_bap_stream_qos(conn, cigs[cp->cig_id]);
 	bt_conn_unref(conn);
 
 	if (err != 0) {
@@ -1346,12 +1559,25 @@ static uint8_t ascs_receiver_start_ready(const void *cmd, uint16_t cmd_len,
 		return BTP_STATUS_FAILED;
 	}
 
-	LOG_DBG("Starting stream");
-	err = bt_bap_stream_start(&stream->stream);
-	if (err != 0) {
-		LOG_DBG("Could not start stream: %d", err);
-		return BTP_STATUS_FAILED;
-	}
+	LOG_DBG("Starting stream %p, ep %u, dir %u", &stream->stream, cp->ase_id,
+		stream->stream.ep->dir);
+
+	while (true) {
+		err = bt_bap_stream_start(&stream->stream);
+		if (err == -EBUSY) {
+			/* TODO: How to determine if a controller is ready again after
+			 * bt_bap_stream_start? In AC 6(i) tests the PTS sends Receiver Start Ready
+			 * only after all CISes are established.
+			 */
+			k_sleep(K_MSEC(1000));
+			continue;
+		} else if (err != 0) {
+			LOG_DBG("Could not start stream: %d", err);
+			return BTP_STATUS_FAILED;
+		}
+
+		break;
+	};
 
 	return BTP_STATUS_SUCCESS;
 }
@@ -1382,7 +1608,7 @@ static uint8_t ascs_receiver_stop_ready(const void *cmd, uint16_t cmd_len,
 	LOG_DBG("Stopping stream");
 	err = bt_bap_stream_stop(&stream->stream);
 	if (err != 0) {
-		LOG_DBG("Could not start stream: %d", err);
+		LOG_DBG("Could not stop stream: %d", err);
 		return BTP_STATUS_FAILED;
 	}
 
@@ -1461,6 +1687,40 @@ static uint8_t ascs_update_metadata(const void *cmd, uint16_t cmd_len, void *rsp
 	return BTP_STATUS_SUCCESS;
 }
 
+static uint8_t ascs_add_ase_to_cis(const void *cmd, uint16_t cmd_len, void *rsp, uint16_t *rsp_len)
+{
+	int err;
+	struct bt_conn *conn;
+	struct audio_connection *audio_conn;
+	struct bt_conn_info conn_info;
+	const struct btp_ascs_add_ase_to_cis *cp = cmd;
+
+	conn = bt_conn_lookup_addr_le(BT_ID_DEFAULT, &cp->address);
+	if (!conn) {
+		LOG_ERR("Unknown connection");
+
+		return BTP_STATUS_FAILED;
+	}
+
+	(void)bt_conn_get_info(conn, &conn_info);
+
+	if (conn_info.role == BT_HCI_ROLE_PERIPHERAL) {
+		bt_conn_unref(conn);
+
+		return BTP_STATUS_FAILED;
+	}
+
+	audio_conn = &connections[bt_conn_index(conn)];
+	bt_conn_unref(conn);
+
+	err = client_add_ase_to_cis(audio_conn, cp->ase_id, cp->cis_id, cp->cig_id);
+	if (err != 0) {
+		return BTP_STATUS_FAILED;
+	}
+
+	return BTP_STATUS_SUCCESS;
+}
+
 static const struct btp_handler ascs_handlers[] = {
 	{
 		.opcode = BTP_ASCS_READ_SUPPORTED_COMMANDS,
@@ -1507,6 +1767,11 @@ static const struct btp_handler ascs_handlers[] = {
 		.opcode = BTP_ASCS_UPDATE_METADATA,
 		.expect_len = sizeof(struct btp_ascs_update_metadata_cmd),
 		.func = ascs_update_metadata,
+	},
+	{
+		.opcode = BTP_ASCS_ADD_ASE_TO_CIS,
+		.expect_len = sizeof(struct btp_ascs_add_ase_to_cis),
+		.func = ascs_add_ase_to_cis,
 	},
 };
 
