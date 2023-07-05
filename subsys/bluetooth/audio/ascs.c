@@ -1597,13 +1597,10 @@ int bt_ascs_config_ase(struct bt_conn *conn, struct bt_bap_stream *stream,
 
 	ep = &ase->ep;
 
-	if (ep == NULL) {
-		return -EINVAL;
-	}
-
 	err = ascs_ep_set_codec(ep, codec_cfg->id, sys_le16_to_cpu(codec_cfg->cid),
 				sys_le16_to_cpu(codec_cfg->vid), NULL, 0, &rsp);
 	if (err) {
+		ase_free(ase);
 		return err;
 	}
 
