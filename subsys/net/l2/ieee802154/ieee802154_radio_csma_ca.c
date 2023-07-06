@@ -33,7 +33,10 @@ static inline int csma_ca_radio_send(struct net_if *iface,
 	uint8_t nb = 0U;
 	int ret = -EIO;
 
-	NET_DBG("frag %p", frag);
+	is_subg_phy = ieee802154_radio_get_hw_capabilities(iface) & IEEE802154_HW_SUB_GHZ;
+	/* TODO: Move symbol period calculation to radio driver. */
+	symbol_period = IEEE802154_PHY_SYMBOL_PERIOD(is_subg_phy);
+	turnaround_time = IEEE802154_PHY_A_TURNAROUND_TIME(is_subg_phy);
 
 loop:
 	while (retries) {
@@ -58,10 +61,13 @@ loop:
 			}
 		}
 
-		ret = ieee802154_tx(iface, IEEE802154_TX_MODE_DIRECT,
-				    pkt, frag);
-		if (ret) {
-			continue;
+		ret = ieee802154_radio_cca(iface);
+		if (ret == 0) {
+			/* Channel is idle -> CSMA Success */
+			return 0;
+		} else if (ret != -EBUSY) {
+			/* CCA exited with failure code -> CSMA Abort */
+			return -EIO;
 		}
 
 		ret = wait_for_ack(iface, ack_required);
