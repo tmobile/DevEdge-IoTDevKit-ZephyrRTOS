@@ -1049,7 +1049,7 @@ static int ase_release(struct bt_ascs_ase *ase, uint8_t reason, struct bt_bap_as
 	}
 
 	/* Set reason in case this exits the streaming state */
-	ase->ep.reason = BT_HCI_ERR_REMOTE_USER_TERM_CONN;
+	ase->ep.reason = reason;
 
 	ascs_ep_set_state(&ase->ep, BT_BAP_EP_STATE_RELEASING);
 
@@ -1138,8 +1138,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		}
 
 		if (ase->ep.status.state != BT_BAP_EP_STATE_IDLE) {
-			ase->ep.reason = reason;
-			ase_release(ase);
+			ase_release(ase, reason, BT_BAP_ASCS_RSP_NULL);
 			/* At this point, `ase` object have been free'd */
 		}
 	}
