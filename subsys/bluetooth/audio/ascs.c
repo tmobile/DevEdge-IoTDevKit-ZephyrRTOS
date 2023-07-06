@@ -1106,7 +1106,7 @@ static int ase_disable(struct bt_ascs_ase *ase, uint8_t reason, struct bt_bap_as
 	}
 
 	/* Set reason in case this exits the streaming state */
-	ep->reason = BT_HCI_ERR_REMOTE_USER_TERM_CONN;
+	ep->reason = reason;
 
 	/* The ASE state machine goes into different states from this operation
 	 * based on whether it is a source or a sink ASE.
