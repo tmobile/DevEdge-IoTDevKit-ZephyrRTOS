@@ -1846,11 +1846,6 @@ static void ase_qos(struct bt_ascs_ase *ase, uint8_t cig_id, uint8_t cis_id,
 {
 	struct bt_bap_ep *ep = &ase->ep;
 	struct bt_bap_stream *stream = ep->stream;
-	struct bt_audio_codec_qos *cqos = &ep->qos;
-	const uint8_t cig_id = qos->cig;
-	const uint8_t cis_id = qos->cis;
-	struct bt_bap_ascs_rsp rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_SUCCESS,
-						     BT_BAP_ASCS_REASON_NONE);
 	int err;
 
 	LOG_DBG("ase %p cig 0x%02x cis 0x%02x interval %u framing 0x%02x phy 0x%02x sdu %u rtn %u "
