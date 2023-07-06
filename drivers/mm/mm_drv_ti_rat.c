@@ -99,12 +99,12 @@ int sys_mm_drv_page_phys_get(void *virt, uintptr_t *phys)
 	if (virt == NULL) {
 		return -EINVAL;
 	}
-	uintptr_t pa = (uintptr_t) virt;
+	uint64_t pa = ((uint64_t) (virt));
 	uintptr_t *va = phys;
 
 	uint32_t found, regionId;
 
-	__ASSERT(translate_config.num_regions < ADDR_TRANSLATE_MAX_REGIONS,
+	__ASSERT(translate_config.num_regions < address_trans_MAX_REGIONS,
 		 "Exceeding maximum number of regions");
 
 	found = 0;
@@ -130,10 +130,10 @@ int sys_mm_drv_page_phys_get(void *virt, uintptr_t *phys)
 		uint32_t offset =
 			pa - translate_config.region_config[regionId].system_addr;
 
-		*va = (translate_config.region_config[regionId].local_addr + offset);
+		*va = (void *)(translate_config.region_config[regionId].local_addr + offset);
 	} else {
 		/* no mapping found, set output = input with 32b truncation */
-		*va = pa;
+		*va = (void *)pa;
 	}
 
 	if (va == NULL) {
