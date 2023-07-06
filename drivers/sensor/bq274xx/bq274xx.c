@@ -48,28 +48,17 @@ static int bq274xx_cmd_reg_read(const struct device *dev, uint8_t reg_addr,
 static int bq274xx_ctrl_reg_write(const struct device *dev, uint16_t subcommand)
 {
 	const struct bq274xx_config *config = dev->config;
-	uint8_t i2c_data, reg_addr;
 	int ret;
 
-	reg_addr = BQ274XX_CMD_CONTROL_LOW;
-	i2c_data = subcommand & 0xFF;
+	uint8_t tx_buf[3] = {
+		BQ274XX_CMD_CONTROL_LOW,
+		subcommand & 0xff,
+		subcommand >> 8,
+	};
 
-	status = i2c_reg_write_byte_dt(&config->i2c, reg_addr,
-				       i2c_data);
-	if (status < 0) {
-		LOG_ERR("Failed to write into control low register");
-		return -EIO;
-	}
-
-	k_msleep(BQ274XX_SUBCLASS_DELAY);
-
-	reg_addr = BQ274XX_CMD_CONTROL_HIGH;
-	i2c_data = (subcommand >> 8) & 0xFF;
-
-	status = i2c_reg_write_byte_dt(&config->i2c, reg_addr,
-				       i2c_data);
-	if (status < 0) {
-		LOG_ERR("Failed to write into control high register");
+	ret = i2c_write_dt(&config->i2c, tx_buf, 3);
+	if (ret < 0) {
+		LOG_ERR("Failed to write into control register");
 		return -EIO;
 	}
 
@@ -80,15 +69,10 @@ static int bq274xx_cmd_reg_write(const struct device *dev, uint8_t command,
 				 uint8_t data)
 {
 	const struct bq274xx_config *config = dev->config;
-	uint8_t i2c_data, reg_addr;
 	int ret;
 
-	reg_addr = command;
-	i2c_data = data;
-
-	status = i2c_reg_write_byte_dt(&config->i2c, reg_addr,
-				       i2c_data);
-	if (status < 0) {
+	ret = i2c_reg_write_byte_dt(&config->i2c, command, data);
+	if (ret < 0) {
 		LOG_ERR("Failed to write into control register");
 		return -EIO;
 	}
