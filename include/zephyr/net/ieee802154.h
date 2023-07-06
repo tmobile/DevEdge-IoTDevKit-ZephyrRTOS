@@ -71,12 +71,6 @@ struct ieee802154_security_ctx {
 	uint8_t _unused	: 3;
 };
 
-enum ieee802154_device_role {
-	IEEE802154_DEVICE_ROLE_ENDDEVICE,
-	IEEE802154_DEVICE_ROLE_COORDINATOR,
-	IEEE802154_DEVICE_ROLE_PAN_COORDINATOR,
-};
-
 /* This not meant to be used by any code but the IEEE 802.15.4 L2 stack */
 struct ieee802154_context {
 	/* PAN ID
@@ -157,7 +151,10 @@ struct ieee802154_context {
 	int16_t tx_power;
 	enum net_l2_flags flags;
 
-	uint8_t sequence; /* see section 8.4.3.1, table 8-94, macDsn */
+	/* The sequence number added to the transmitted Data frame or MAC
+	 * command, see section 8.4.3.1, table 8-94, macDsn.
+	 */
+	uint8_t sequence;
 
 	/* See section 6.1: A device may be operating as end device
 	 * (0 - default), coordinator (1), or PAN coordinator (2).
