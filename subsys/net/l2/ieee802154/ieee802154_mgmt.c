@@ -507,11 +507,11 @@ static int ieee802154_associate(uint32_t mgmt_request, struct net_if *iface,
 		goto out;
 	}
 
+	/* Acquire the lock so that the next k_sem_take() blocks. */
+	k_sem_take(&ctx->scan_ctx_lock, K_FOREVER);
+
 	/* Wait macResponseWaitTime PHY symbols for the association response, see
 	 * ieee802154_handle_mac_command() and section 6.4.1.
-	 *
-	 * TODO: The Association Response command shall be sent to the device
-	 *       requesting association using indirect transmission.
 	 */
 	k_sem_take(&ctx->scan_ctx_lock, K_USEC(ieee802154_get_response_wait_time_us(iface)));
 
