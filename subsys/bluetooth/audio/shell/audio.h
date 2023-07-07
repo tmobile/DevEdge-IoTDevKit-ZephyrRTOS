@@ -57,23 +57,14 @@ const struct named_lc3_preset *bap_get_named_preset(bool is_unicast, const char 
 		     CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT),                                  \
 		    (0))
 
-struct unicast_stream {
+struct shell_stream {
 	struct bt_cap_stream stream;
 	struct bt_audio_codec_cfg codec_cfg;
 	struct bt_audio_codec_qos qos;
 #if defined(CONFIG_BT_AUDIO_TX)
 	int64_t connected_at_ticks;      /* The uptime tick measured when stream was connected */
 	uint16_t last_allocated_seq_num; /* The last packet sequence number allocated */
-#endif /* defined(CONFIG_BT_AUDIO_TX) */
-};
-
-struct shell_stream {
-	struct bt_cap_stream stream;
-	struct bt_audio_codec_data data;
-#if defined(CONFIG_BT_AUDIO_TX)
-	int64_t connected_at_ticks;      /* The uptime tick measured when stream was connected */
-	uint16_t last_allocated_seq_num; /* The last packet sequence number allocated */
-#endif /* defined(CONFIG_BT_AUDIO_TX) */
+#endif /* CONFIG_BT_AUDIO_TX */
 };
 
 struct broadcast_source {
@@ -186,12 +177,6 @@ static inline void print_codec_cfg(const struct shell *sh,
 }
 
 #if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
-struct bap_broadcast_ac_param {
-	char *name;
-	size_t stream_cnt;
-	size_t chan_cnt;
-};
-
 extern struct shell_stream broadcast_source_streams[CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT];
 extern struct broadcast_source default_source;
 #endif /* CONFIG_BT_BAP_BROADCAST_SOURCE */
