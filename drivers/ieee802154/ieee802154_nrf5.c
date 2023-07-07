@@ -1006,8 +1006,8 @@ static int nrf5_configure(const struct device *dev,
 		 */
 		uint64_t start = target_time_convert_to_64_bits(config->rx_slot.start);
 
-		nrf_802154_receive_at(start, config->rx_slot.duration / NSEC_PER_USEC,
-				      config->rx_slot.channel, DRX_SLOT_RX);
+		nrf_802154_receive_at(start, config->rx_slot.duration, config->rx_slot.channel,
+				      DRX_SLOT_RX);
 	} break;
 
 	case IEEE802154_CONFIG_CSL_PERIOD:
