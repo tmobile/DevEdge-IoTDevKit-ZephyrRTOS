@@ -92,11 +92,6 @@ static int cmd_ieee802154_associate(const struct shell *sh,
 		return -ENOEXEC;
 	}
 
-	if (strlen(argv[2]) > EXT_ADDR_STR_LEN) {
-		shell_fprintf(sh, SHELL_INFO, "Address too long\n");
-		return -ENOEXEC;
-	}
-
 	params = (struct ieee802154_req_params){0};
 	params.pan_id = atoi(argv[1]);
 	strncpy(ext_addr, argv[2], sizeof(ext_addr));
