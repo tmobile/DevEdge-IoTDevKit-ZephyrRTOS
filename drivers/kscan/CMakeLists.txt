@@ -2,7 +2,6 @@
 
 zephyr_library()
 
-zephyr_library_sources_ifdef(CONFIG_KSCAN_GT911  	kscan_gt911.c)
 zephyr_library_sources_ifdef(CONFIG_KSCAN_ITE_IT8XXX2	kscan_ite_it8xxx2.c)
 zephyr_library_sources_ifdef(CONFIG_KSCAN_XEC		kscan_mchp_xec.c)
 zephyr_library_sources_ifdef(CONFIG_KSCAN_HT16K33	kscan_ht16k33.c)
