@@ -20,11 +20,17 @@
 
 LOG_MODULE_REGISTER(bq274xx, CONFIG_SENSOR_LOG_LEVEL);
 
-#define BQ274XX_SUBCLASS_DELAY 5 /* subclass 64 & 82 needs 5ms delay */
+/* subclass 64 & 82 needs 5ms delay */
+#define BQ274XX_SUBCLASS_DELAY K_MSEC(5)
+
+/* Time to wait for CFGUP bit to be set */
+#define BQ274XX_CFGUP_DELAY K_MSEC(50)
+
 /* Time to set pin in order to exit shutdown mode */
-#define PIN_DELAY_TIME 1U
+#define PIN_DELAY_TIME K_MSEC(1)
+
 /* Time it takes device to initialize before doing any configuration */
-#define INIT_TIME 100U
+#define INIT_TIME K_MSEC(100)
 
 /* Data memory size */
 #define BQ27XXX_DM_SZ 32
@@ -101,7 +107,7 @@ static int bq274xx_read_data_block(const struct device *dev, uint8_t offset,
 		return -EIO;
 	}
 
-	k_msleep(BQ274XX_SUBCLASS_DELAY);
+	k_sleep(BQ274XX_SUBCLASS_DELAY);
 
 	return 0;
 }
@@ -137,6 +143,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	uint8_t designcap_msb, designcap_lsb, designenergy_msb, designenergy_lsb,
 		terminatevolt_msb, terminatevolt_lsb, taperrate_msb, taperrate_lsb;
 	uint8_t block[BQ27XXX_DM_SZ];
+	uint8_t try;
 
 	designenergy_mwh = (uint32_t)config->design_capacity * 37 / 10; /* x3.7 */
 	taperrate = config->design_capacity * 10 / config->taper_current;
@@ -162,6 +169,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	}
 
 	/* Step to place the Gauge into CONFIG UPDATE Mode */
+	try = 100;
 	do {
 		ret = bq274xx_cmd_reg_read(dev, BQ274XX_CMD_FLAGS, &flags);
 		if (ret < 0) {
@@ -170,10 +178,14 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		}
 
 		if (!(flags & BQ27XXX_FLAG_CFGUP)) {
-			k_msleep(BQ274XX_SUBCLASS_DELAY * 10);
+			k_sleep(BQ274XX_CFGUP_DELAY);
 		}
+	} while (!(flags & BQ27XXX_FLAG_CFGUP) && --try);
 
-	} while (!(flags & BQ27XXX_FLAG_CFGUP));
+	if (!try) {
+		LOG_ERR("Config mode change timeout");
+		return -EIO;
+	}
 
 	ret = bq274xx_cmd_reg_write(dev, BQ274XX_EXT_DATA_CONTROL, 0x00);
 	if (ret < 0) {
@@ -316,6 +328,7 @@ static int bq274xx_gauge_configure(const struct device *dev)
 	}
 
 	/* Poll Flags */
+	try = 100;
 	do {
 		ret = bq274xx_cmd_reg_read(dev, BQ274XX_CMD_FLAGS, &flags);
 		if (ret < 0) {
@@ -324,9 +337,14 @@ static int bq274xx_gauge_configure(const struct device *dev)
 		}
 
 		if (flags & BQ27XXX_FLAG_CFGUP) {
-			k_msleep(BQ274XX_SUBCLASS_DELAY * 10);
+			k_sleep(BQ274XX_CFGUP_DELAY);
 		}
-	} while (flags & BQ27XXX_FLAG_CFGUP);
+	} while ((flags & BQ27XXX_FLAG_CFGUP) & --try);
+
+	if (!try) {
+		LOG_ERR("Config mode change timeout");
+		return -EIO;
+	}
 
 	/* Seal the gauge */
 	ret = bq274xx_ctrl_reg_write(dev, BQ274XX_CTRL_SEALED);
@@ -659,7 +677,7 @@ static int bq274xx_exit_shutdown_mode(const struct device *dev)
 		return status;
 	}
 
-	k_msleep(PIN_DELAY_TIME);
+	k_sleep(PIN_DELAY_TIME);
 
 	status = gpio_pin_configure_dt(&config->int_gpios, GPIO_INPUT);
 	if (status < 0) {
@@ -668,7 +686,7 @@ static int bq274xx_exit_shutdown_mode(const struct device *dev)
 	}
 
 	if (!config->lazy_loading) {
-		k_msleep(INIT_TIME);
+		k_sleep(INIT_TIME);
 
 		ret = bq274xx_gauge_configure(dev);
 		if (ret < 0) {
