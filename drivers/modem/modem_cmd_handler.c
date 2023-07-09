@@ -111,7 +111,7 @@ static int parse_params(struct modem_cmd_handler_data *data,  size_t match_len,
 			uint8_t **argv, size_t argv_len, uint16_t *argc)
 {
 	int count = 0;
-	size_t begin, end, i;
+	size_t delim_len, begin, end, i;
 	bool quoted = false;
 
 	if (!data || !data->match_buf || !match_len || !cmd || !argv || !argc) {
@@ -131,7 +131,7 @@ static int parse_params(struct modem_cmd_handler_data *data,  size_t match_len,
 			continue;
 		}
 		/* Look for delimiter characters */
-		for (i = 0; i < strlen(cmd->delim); i++) {
+		for (i = 0; i < delim_len; i++) {
 			if (data->match_buf[end] == cmd->delim[i]) {
 				/* mark a parameter beginning */
 				argv[*argc] = &data->match_buf[begin];
