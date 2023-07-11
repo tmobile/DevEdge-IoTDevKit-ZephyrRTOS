@@ -555,8 +555,32 @@ static void stream_released(struct bt_bap_stream *stream)
 static void stream_started(struct bt_bap_stream *stream)
 {
 	struct audio_stream *a_stream = CONTAINER_OF(stream, struct audio_stream, stream);
+	struct bt_bap_ep_info info;
+	int err;
 
 	LOG_DBG("Started stream %p", stream);
+
+	err = bt_bap_ep_get_info(stream->ep, &info);
+	if (err) {
+		LOG_ERR("Could not get EP info for stream %p", stream);
+	}
+
+	if (info.dir == BT_AUDIO_DIR_SINK) {
+		/* Schedule first TX ISO data at seq_num 1 instead of 0 to ensure
+		 * we are in sync with the controller at start of streaming.
+		 */
+		a_stream->seq_num = 1;
+
+		/* Run audio clock work in system work queue */
+		k_work_init_delayable(&a_stream->audio_clock_work, audio_clock_timeout);
+		k_work_schedule(&a_stream->audio_clock_work, K_NO_WAIT);
+
+		/* Run audio send work in user defined work queue */
+		k_work_init_delayable(&a_stream->audio_send_work, audio_send_timeout);
+		k_work_schedule_for_queue(&iso_data_work_q, &a_stream->audio_send_work,
+					  K_USEC(a_stream->stream.qos->interval));
+	}
+
 	btp_send_ascs_operation_completed_ev(stream->conn, a_stream->ase_id,
 					     BT_ASCS_START_OP, BTP_STATUS_SUCCESS);
 }
