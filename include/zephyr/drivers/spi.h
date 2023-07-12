@@ -269,6 +269,16 @@ struct spi_cs_control {
 	SPI_CS_CONTROL_INIT(DT_DRV_INST(inst), delay_)
 
 /**
+ * @typedef spi_operation_t
+ * Opaque type to hold the SPI operation flags.
+ */
+#if defined(CONFIG_SPI_EXTENDED_MODES)
+typedef uint32_t spi_operation_t;
+#else
+typedef uint16_t spi_operation_t;
+#endif
+
+/**
  * @brief SPI controller configuration structure
  *
  * @param frequency is the bus frequency in Hertz
@@ -294,45 +304,10 @@ struct spi_cs_control {
  * transaction.  Changes to fields in the structure may not be
  * detected.
  */
-#if defined(CONFIG_SPI_EXTENDED_MODES)
-typedef uint32_t spi_operation_t;
-#else
-typedef uint16_t spi_operation_t;
-#endif
-
-/**
- * @brief SPI controller configuration structure
- */
 struct spi_config {
-	/** @brief Bus frequency in Hertz. */
-	uint32_t frequency;
-	/**
-	 * @brief Operation flags.
-	 *
-	 * It is a bit field with the following parts:
-	 *
-	 * - 0:      Master or slave.
-	 * - 1..3:   Polarity, phase and loop mode.
-	 * - 4:      LSB or MSB first.
-	 * - 5..10:  Size of a data frame in bits.
-	 * - 11:     Full/half duplex.
-	 * - 12:     Hold on the CS line if possible.
-	 * - 13:     Keep resource locked for the caller.
-	 * - 14:     Active high CS logic.
-	 * - 15:     Motorola or TI frame format (optional).
-	 *
-	 * If @kconfig{CONFIG_SPI_EXTENDED_MODES} is enabled:
-	 *
-	 * - 16..17: MISO lines (Single/Dual/Quad/Octal).
-	 * - 18..31: Reserved for future use.
-	 */
-	spi_operation_t operation;
-	/** @brief Slave number from 0 to host controller slave limit. */
-	uint16_t slave;
-	/**
-	 * @brief GPIO chip-select line (optional, must be initialized to zero
-	 * if not used).
-	 */
+	uint32_t		frequency;
+	spi_operation_t		operation;
+	uint16_t		slave;
 	struct spi_cs_control cs;
 };
 
