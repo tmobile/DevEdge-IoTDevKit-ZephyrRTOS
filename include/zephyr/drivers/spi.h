@@ -269,8 +269,30 @@ struct spi_cs_control {
 	SPI_CS_CONTROL_INIT(DT_DRV_INST(inst), delay_)
 
 /**
- * @typedef spi_operation_t
- * Opaque type to hold the SPI operation flags.
+ * @brief SPI controller configuration structure
+ *
+ * @param frequency is the bus frequency in Hertz
+ * @param operation is a bit field with the following parts:
+ *
+ *     operational mode    [ 0 ]       - master or slave.
+ *     mode                [ 1 : 3 ]   - Polarity, phase and loop mode.
+ *     transfer            [ 4 ]       - LSB or MSB first.
+ *     word_size           [ 5 : 10 ]  - Size of a data frame in bits.
+ *     duplex              [ 11 ]      - full/half duplex.
+ *     cs_hold             [ 12 ]      - Hold on the CS line if possible.
+ *     lock_on             [ 13 ]      - Keep resource locked for the caller.
+ *     cs_active_high      [ 14 ]      - Active high CS logic.
+ *     format              [ 15 ]      - Motorola or TI frame format (optional).
+ * if @kconfig{CONFIG_SPI_EXTENDED_MODES} is defined:
+ *     lines               [ 16 : 17 ] - MISO lines: Single/Dual/Quad/Octal.
+ *     reserved            [ 18 : 31 ] - reserved for future use.
+ * @param slave is the slave number from 0 to host controller slave limit.
+ * @param cs GPIO chip-select line (optional, must be initialized to zero if not
+ *           used).
+ * @warning Most drivers use pointer comparison to determine whether a
+ * passed configuration is different from one used in a previous
+ * transaction.  Changes to fields in the structure may not be
+ * detected.
  */
 #if defined(CONFIG_SPI_EXTENDED_MODES)
 typedef uint32_t spi_operation_t;
