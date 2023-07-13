@@ -61,14 +61,6 @@ struct video_format {
  * @brief Video format capability
  *
  * Used to describe a video endpoint format capability.
- *
- * @param pixelformat is the fourcc pixel format value.
- * @param width_min is the minimum supported frame width.
- * @param width_max is the maximum supported frame width.
- * @param height_min is the minimum supported frame height.
- * @param height_max is the maximum supported frame height.
- * @param width_step is the width step size.
- * @param height_step is the height step size.
  */
 struct video_format_cap {
 	/** FourCC pixel format value (\ref video_pixel_formats). */
