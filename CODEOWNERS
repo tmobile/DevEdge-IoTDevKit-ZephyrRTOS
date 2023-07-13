@@ -71,7 +71,7 @@
 /soc/arm64/arm/fvp_aemv8a/                @carlocaione
 /soc/arm64/intel_socfpga/*                @siclim
 /soc/Kconfig                              @tejlmand @galak @nashif @nordicjm
-/submanifests/*                           @mbolivar-ampere
+/submanifests/*                           @mbolivar-nordic
 /arch/x86/                                @jhedberg @nashif
 /arch/nios2/                              @nashif
 /arch/posix/                              @aescolar @daor-oti
@@ -410,7 +410,7 @@
 /drivers/serial/*b91*                     @andy-liu-telink
 /drivers/serial/uart_altera_jtag.c        @nashif @gohshunjing
 /drivers/serial/uart_altera.c             @gohshunjing
-/drivers/serial/*ns16550*                 @dcpleung @nashif @gdengi
+/drivers/serial/*ns16550*                 @dcpleung @nashif
 /drivers/serial/*nrfx*                    @anangl
 /drivers/serial/uart_liteuart.c           @mateusz-holenko @kgugala @pgielda
 /drivers/serial/Kconfig.mcux_iuart        @Mani-Sadhasivam
@@ -783,7 +783,7 @@ scripts/build/gen_image_info.py           @tejlmand
 /scripts/build/process_gperf.py           @dcpleung @nashif
 /scripts/build/gen_relocate_app.py        @dcpleung
 /scripts/generate_usb_vif/                @madhurimaparuchuri
-/scripts/requirements*.txt                @mbolivar-ampere @galak @nashif
+/scripts/requirements*.txt                @mbolivar-nordic @galak @nashif
 /scripts/tests/build/test_subfolder_list.py @rmstoi
 /scripts/tracing/                         @nashif
 /scripts/pylib/twister/                   @nashif
