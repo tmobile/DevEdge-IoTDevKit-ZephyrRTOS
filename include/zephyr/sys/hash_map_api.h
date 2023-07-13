@@ -164,12 +164,6 @@ typedef bool (*sys_hashmap_get_t)(const struct sys_hashmap *map, uint64_t key, u
 
 /**
  * @brief Generic Hashmap API
- *
- * @param iter Iterator constructor (in-place)
- * @param clear Clear the hash table, freeing all resources
- * @param insert Insert a key-value pair into the Hashmap
- * @param remove Remove a key-value pair from the Hashmap
- * @param get Retrieve a the value associated with a given key from the Hashmap
  */
 struct sys_hashmap_api {
 	/** Iterator constructor (in-place) */
