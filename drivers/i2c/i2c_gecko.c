@@ -79,9 +79,6 @@ static int i2c_gecko_configure(const struct device *dev, uint32_t dev_config_raw
 {
 	I2C_TypeDef *base = DEV_BASE(dev);
 	struct i2c_gecko_data *data = dev->data;
-#if defined(CONFIG_I2C_TARGET)
-	const struct i2c_gecko_config *config = dev->config;
-#endif
 	I2C_Init_TypeDef i2cInit = I2C_INIT_DEFAULT;
 	uint32_t baudrate;
 #if defined(CONFIG_I2C_TARGET)
@@ -219,6 +216,7 @@ static int i2c_gecko_target_register(const struct device *dev, struct i2c_target
 	data->target_cfg = cfg;
 
 	I2C_SlaveAddressSet(config->base, cfg->address << _I2C_SADDR_ADDR_SHIFT);
+	/* Match with specified address, no wildcards in address */
 	I2C_SlaveAddressMaskSet(config->base, _I2C_SADDRMASK_SADDRMASK_MASK);
 
 	I2C_IntDisable(config->base, _I2C_IEN_MASK);
@@ -336,22 +334,6 @@ static void i2c_gecko_isr(const struct device *dev)
 #define GECKO_I2C_IRQ_DATA(idx)
 #endif
 
-#if defined(CONFIG_I2C_TARGET)
-#define GECKO_I2C_IRQ_DEF(idx)  static void i2c_gecko_config_func_##idx(const struct device *dev);
-#define GECKO_I2C_IRQ_DATA(idx) .irq_config_func = i2c_gecko_config_func_##idx,
-#define GECKO_I2C_IRQ_HANDLER(idx)                                                                 \
-	static void i2c_gecko_config_func_##idx(const struct device *dev)                          \
-	{                                                                                          \
-		IRQ_CONNECT(DT_INST_IRQ(idx, irq), DT_INST_IRQ(idx, priority), i2c_gecko_isr,      \
-			    DEVICE_DT_INST_GET(idx), 0);                                           \
-		irq_enable(DT_INST_IRQ(idx, irq));                                                 \
-	}
-#else
-#define GECKO_I2C_IRQ_HANDLER(idx)
-#define GECKO_I2C_IRQ_DEF(idx)
-#define GECKO_I2C_IRQ_DATA(idx)
-#endif
-
 #define I2C_INIT(idx)                                                                              \
 	I2C_VALIDATE_LOC(idx);                                                                     \
 	GECKO_I2C_IRQ_DEF(idx)                                                                     \
@@ -359,9 +341,9 @@ static void i2c_gecko_isr(const struct device *dev)
 		.base = (I2C_TypeDef *)DT_INST_REG_ADDR(idx),                                      \
 		.clock = cmuClock_I2C##idx,                                                        \
 		.pin_sda = {DT_INST_PROP_BY_IDX(idx, location_sda, 1),                             \
-			    DT_INST_PROP_BY_IDX(idx, location_sda, 2), gpioModeWiredAnd, 1},    \
+			    DT_INST_PROP_BY_IDX(idx, location_sda, 2), gpioModeWiredAnd, 1},       \
 		.pin_scl = {DT_INST_PROP_BY_IDX(idx, location_scl, 1),                             \
-			    DT_INST_PROP_BY_IDX(idx, location_scl, 2), gpioModeWiredAnd, 1},    \
+			    DT_INST_PROP_BY_IDX(idx, location_scl, 2), gpioModeWiredAnd, 1},       \
 		I2C_LOC_DATA(idx),                                                                 \
 		.bitrate = DT_INST_PROP(idx, clock_frequency),                                     \
 		GECKO_I2C_IRQ_DATA(idx)};                                                          \
