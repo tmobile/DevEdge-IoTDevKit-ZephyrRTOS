@@ -351,20 +351,21 @@ static int net_key_list(struct bt_mesh_model *model,
 {
 	int err = 0;
 	struct net_key_list_param *param;
+	struct net_buf_simple_state state;
 
 	LOG_DBG("net_idx 0x%04x app_idx 0x%04x src 0x%04x len %u: %s", ctx->net_idx, ctx->app_idx,
 		ctx->addr, buf->len, bt_hex(buf->data, buf->len));
 
+	net_buf_simple_save(buf, &state);
 	if (bt_mesh_msg_ack_ctx_match(&cli->ack_ctx, OP_NET_KEY_LIST, ctx->addr, (void **)&param)) {
-
 		if (param->keys && param->key_cnt) {
 
-			int err = bt_mesh_key_idx_unpack_list(buf, param->keys, param->key_cnt);
+			err = bt_mesh_key_idx_unpack_list(buf, param->keys, param->key_cnt);
 
 			if (err) {
 				LOG_ERR("The message size for the application opcode is "
 					"incorrect.");
-				return err;
+				goto done;
 			}
 		}
 
@@ -487,12 +488,12 @@ static int app_key_list(struct bt_mesh_model *model,
 
 		if (param->keys && param->key_cnt) {
 
-			int err = bt_mesh_key_idx_unpack_list(buf, param->keys, param->key_cnt);
+			err = bt_mesh_key_idx_unpack_list(buf, param->keys, param->key_cnt);
 
 			if (err) {
 				LOG_ERR("The message size for the application opcode is "
 					"incorrect.");
-				return err;
+				goto done;
 			}
 		}
 
@@ -595,7 +596,6 @@ static int mod_sub_list_handle(struct bt_mesh_msg_ctx *ctx, struct net_buf_simpl
 	struct net_buf_simple_state state;
 	uint16_t elem_addr, mod_id, cid;
 	uint8_t status;
-	int i;
 
 	status = net_buf_simple_pull_u8(buf);
 	elem_addr = net_buf_simple_pull_le16(buf);
@@ -607,6 +607,7 @@ static int mod_sub_list_handle(struct bt_mesh_msg_ctx *ctx, struct net_buf_simpl
 		return -EMSGSIZE;
 	}
 
+	net_buf_simple_save(buf, &state);
 	if (bt_mesh_msg_ack_ctx_match(&cli->ack_ctx, op, ctx->addr, (void **)&param)) {
 
 		if (param->elem_addr != elem_addr || param->mod_id != mod_id ||
@@ -693,50 +694,6 @@ done:
 	}
 
 	return err;
-}
-
-static int mod_app_list_handle(struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf, uint16_t op,
-			       bool vnd)
-{
-	struct mod_member_list_param *param;
-	uint16_t elem_addr, mod_id, cid;
-	uint8_t status;
-
-	status = net_buf_simple_pull_u8(buf);
-	elem_addr = net_buf_simple_pull_le16(buf);
-	if (vnd) {
-		cid = net_buf_simple_pull_le16(buf);
-	}
-
-	mod_id = net_buf_simple_pull_le16(buf);
-
-	if (bt_mesh_msg_ack_ctx_match(&cli->ack_ctx, op, ctx->addr, (void **)&param)) {
-
-		if (param->elem_addr != elem_addr || param->mod_id != mod_id ||
-		    (vnd && param->cid != cid)) {
-			LOG_WRN("Model Member List parameters did not match");
-			return -ENOENT;
-		}
-
-		if (param->member_cnt && param->members) {
-
-			int err =
-				bt_mesh_key_idx_unpack_list(buf, param->members, param->member_cnt);
-
-			if (err) {
-				LOG_ERR("The message size for the application opcode is "
-					"incorrect.");
-				return err;
-			}
-		}
-
-		if (param->status) {
-			*param->status = status;
-		}
-
-		bt_mesh_msg_ack_ctx_rx(&cli->ack_ctx);
-	}
-	return 0;
 }
 
 static int mod_app_list(struct bt_mesh_model *model,
