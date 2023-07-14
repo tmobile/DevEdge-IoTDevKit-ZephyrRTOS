@@ -1983,6 +1983,7 @@ Power management:
     - gmarull
     - teburd
     - tmleman
+    - JordanYates
   files:
     - include/zephyr/pm/
     - samples/subsys/pm/
