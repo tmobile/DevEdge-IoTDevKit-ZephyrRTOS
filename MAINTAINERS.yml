@@ -2889,10 +2889,12 @@ West:
   collaborators:
     - mmahadevan108
     - danieldegrasse
+    - manuargue
   files:
     - modules/hal_nxp/
     - modules/Kconfig.imx
     - modules/Kconfig.mcux
+    - modules/Kconfig.s32
   labels:
     - manifest-hal_nxp
 
