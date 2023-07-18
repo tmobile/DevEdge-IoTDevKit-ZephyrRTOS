@@ -93,19 +93,34 @@ enum ieee802154_channel {
 };
 
 enum ieee802154_hw_caps {
-	IEEE802154_HW_FCS	  = BIT(0), /* Frame Check-Sum supported */
-	IEEE802154_HW_PROMISC	  = BIT(1), /* Promiscuous mode supported */
-	IEEE802154_HW_FILTER	  = BIT(2), /* Filter PAN ID, long/short addr */
-	IEEE802154_HW_CSMA	  = BIT(3), /* CSMA-CA supported */
-	IEEE802154_HW_2_4_GHZ	  = BIT(4), /* 2.4Ghz radio supported */
-	IEEE802154_HW_TX_RX_ACK	  = BIT(5), /* Handles ACK request on TX */
-	IEEE802154_HW_SUB_GHZ	  = BIT(6), /* Sub-GHz radio supported */
-	IEEE802154_HW_ENERGY_SCAN = BIT(7), /* Energy scan supported */
-	IEEE802154_HW_TXTIME	  = BIT(8), /* TX at specified time supported */
-	IEEE802154_HW_SLEEP_TO_TX = BIT(9), /* TX directly from sleep supported */
-	IEEE802154_HW_TX_SEC	  = BIT(10), /* TX security handling supported */
-	IEEE802154_HW_RXTIME	  = BIT(11), /* RX at specified time supported */
+	IEEE802154_HW_FCS = BIT(0),            /* Frame Check-Sum supported */
+	IEEE802154_HW_PROMISC = BIT(1),        /* Promiscuous mode supported */
+	IEEE802154_HW_FILTER = BIT(2),         /* Filter PAN ID, long/short addr */
+	IEEE802154_HW_CSMA = BIT(3),           /* Executes CSMA-CA procedure on TX */
+	IEEE802154_HW_RETRANSMISSION = BIT(4), /* Handles retransmission on TX ACK timeout */
+	IEEE802154_HW_TX_RX_ACK = BIT(5),      /* Waits for ACK on TX if AR bit is set in TX pkt */
+	IEEE802154_HW_RX_TX_ACK = BIT(6),      /* Sends ACK on RX if AR bit is set in RX pkt */
+	IEEE802154_HW_ENERGY_SCAN = BIT(7),    /* Energy scan supported */
+	IEEE802154_HW_TXTIME = BIT(8),         /* TX at specified time supported */
+	IEEE802154_HW_SLEEP_TO_TX = BIT(9),    /* TX directly from sleep supported */
+	IEEE802154_HW_TX_SEC = BIT(10),        /* TX security handling supported */
+	IEEE802154_HW_RXTIME = BIT(11),        /* RX at specified time supported */
+	IEEE802154_HW_2_4_GHZ = BIT(12),       /* 2.4Ghz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
+	IEEE802154_HW_SUB_GHZ = BIT(13),       /* Sub-GHz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
+	/* Note: Update also IEEE802154_HW_CAPS_BITS_COMMON_COUNT when changing
+	 * the ieee802154_hw_caps type.
+	 */
 };
+
+/** @brief Number of bits used by ieee802154_hw_caps type. */
+#define IEEE802154_HW_CAPS_BITS_COMMON_COUNT (14)
+
+/** @brief This and higher values are specific to the protocol- or driver-specific extensions. */
+#define IEEE802154_HW_CAPS_BITS_PRIV_START IEEE802154_HW_CAPS_BITS_COMMON_COUNT
 
 enum ieee802154_filter_type {
 	IEEE802154_FILTER_TYPE_IEEE_ADDR,
@@ -169,6 +184,12 @@ enum ieee802154_tx_mode {
 
 	/** Transmit packet in the future, perform CCA before transmission. */
 	IEEE802154_TX_MODE_TXTIME_CCA,
+
+	/** Number of modes defined in ieee802154_tx_mode. */
+	IEEE802154_TX_MODE_COMMON_COUNT,
+
+	/** This and higher values are specific to the protocol- or driver-specific extensions. */
+	IEEE802154_TX_MODE_PRIV_START = IEEE802154_TX_MODE_COMMON_COUNT,
 };
 
 /** IEEE802.15.4 Frame Pending Bit table address matching mode. */
@@ -274,6 +295,12 @@ enum ieee802154_config_type {
 	 *  should disable it for all enabled addresses.
 	 */
 	IEEE802154_CONFIG_ENH_ACK_HEADER_IE,
+
+	/** Number of types defined in ieee802154_config_type. */
+	IEEE802154_CONFIG_COMMON_COUNT,
+
+	/** This and higher values are specific to the protocol- or driver-specific extensions. */
+	IEEE802154_CONFIG_PRIV_START = IEEE802154_CONFIG_COMMON_COUNT,
 };
 
 /** IEEE802.15.4 driver configuration data. */
