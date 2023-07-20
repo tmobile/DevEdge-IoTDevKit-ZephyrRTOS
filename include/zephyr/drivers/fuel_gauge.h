@@ -112,6 +112,23 @@ enum fuel_gauge_property {
 	FUEL_GAUGE_PROP_MAX = UINT16_MAX,
 };
 
+/*
+ * Values retrieved from SBS v1.1 Spec (http://sbs-forum.org/specs/sbdat110.pdf)
+ * Section 5.1.21
+ */
+
+#define FUEL_GAUGE_STATUS_FLAGS_OVER_CHARGED_ALARM        0x8000
+#define FUEL_GAUGE_STATUS_FLAGS_TERMINATE_CHARGE_ALARM    0x4000
+#define FUEL_GAUGE_STATUS_FLAGS_OVER_TEMP_ALARM           0x1000
+#define FUEL_GAUGE_STATUS_FLAGS_TERMINATE_DISCHARGE_ALARM 0x0800
+#define FUEL_GAUGE_STATUS_FLAGS_REMAINING_CAPACITY_ALARM  0x0200
+#define FUEL_GAUGE_STATUS_FLAGS_REMAINING_TIME_ALARM      0x0100
+
+#define FUEL_GAUGE_STATUS_FLAGS_INITIALIZED               0x0080
+#define FUEL_GAUGE_STATUS_FLAGS_DISCHARGING               0x0040
+#define FUEL_GAUGE_STATUS_FLAGS_FULLY_CHARGED             0x0020
+#define FUEL_GAUGE_STATUS_FLAGS_FULLY_DISCHARGED          0x0010
+
 typedef uint16_t fuel_gauge_prop_t;
 
 struct fuel_gauge_get_property {

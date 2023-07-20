@@ -8,7 +8,7 @@
 menuconfig CXD5605
 	bool "CXD5605R GNSS/GPS"
 	depends on I2C
-	select CXD5605_LIB
+	imply CXD5605_LIB
 	help
 		Enable I2C based driver for the CXD5605 based GNSS/GPS
 
@@ -19,5 +19,17 @@ config CXD5605_ALERT_INTERRUPTS
 	help
 		This will set up interrupts to service the 1 pulse per second and allow
 		the application to get a callback one time per second.
+
+config CXD5605_INIT_SUSPENDED
+	bool "Allow the GNSS chip to come up in a suspended state"
+	help
+		This will initialize the CXD5605 into the sleep 2 state rather than 
+		having it on.
+
+config CXD5605_OWN_THREAD
+	bool "Have the GNSS driver use its own thread"
+	help
+		If this option is selected, the CXD5605 driver will use its own thread,
+		otherwise it will use the kernel work queue.
 
 endif # CXD5605

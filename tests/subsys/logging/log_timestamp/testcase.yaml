@@ -15,4 +15,3 @@ tests:
       - timestamp
     extra_configs:
       - CONFIG_LOG_OUTPUT_FORMAT_CUSTOM_TIMESTAMP=y
-    platform_exclude: tmo_dev_edge

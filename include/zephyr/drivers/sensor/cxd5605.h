@@ -15,13 +15,6 @@ extern "C" {
 #include <zephyr/drivers/sensor/gnss.h>
 #include <zephyr/drivers/gpio.h>
 
-#define READ_BYTES_SIZE			128
-#define CXD5605_PACKET_SIZE		74
-#define CXD5605_PACKET_DATA_SIZE	70
-
-#define	NMEA_SENTENCE_ID_IDX		0
-#define	NMEA_SENTENCE_ID_LEN		6
-
 enum power_mode_t {
 	GNSS_NORMAL_PWR_MODE,
 	GNSS_LOW_PWR_MODE
@@ -98,10 +91,11 @@ enum gll_nmea_fieldpos {
 	GLL_MODE_INDICATOR_IDX
 };
 
-struct cxd5605_version {
-	uint32_t major;
-	uint32_t minor;
-	uint32_t patch;
+enum zda_nmea_fieldpos {
+	ZDA_UTC_IDX = 1,
+	ZDA_DAY_IDX,
+	ZDA_MONTH_IDX,
+	ZDA_YEAR_IDX
 };
 
 struct cxd5605_gtr {
@@ -116,62 +110,7 @@ struct cxd5605_assisted {
 	uint32_t qzss_available;
 };
 
-struct cxd5605_cmd_data {
-	struct cxd5605_version ver;
-};
-
-struct cxd5605_packet {
-	uint8_t preamble;
-	uint8_t packet_type;
-	uint8_t data_size;
-	uint8_t data[CXD5605_PACKET_DATA_SIZE];
-	uint8_t checksum;
-};
-
-struct cxd5605_binary_data {
-	uint8_t preamble;
-	uint8_t control_type;
-	uint8_t data_length_upper;
-	uint8_t data_length_lower;
-	uint8_t data[CXD5605_PACKET_DATA_SIZE];
-	uint8_t checksum_upper;
-	uint8_t checksum_lower;
-	uint8_t fixed_value1;
-	uint8_t fixed_value2;
-};
-
 typedef void (*pps_func)(void);
-
-struct cxd5605_data {
-	const struct device *cxd5605_dev;
-
-	struct gpio_callback data_ready_gpio_cb;
-	struct gpio_callback one_pps_gpio_cb;
-	struct gpio_callback gpio_cb;
-
-	pps_func pps_cb;
-	struct gnss_global_data pvt;
-	struct cxd5605_cmd_data cxd5605_cmd_data;
-	char version[32];
-	uint16_t bin_data_ptr;
-	uint16_t bin_data_len;
-	uint16_t bytes_remaining;
-	uint16_t copy_length;
-
-	int cxd5605_cmd;
-	int num_msg;
-
-	uint32_t i2c_error_count;
-
-	bool got_data;
-	bool lib_got_data;
-	int command;
-
-	uint32_t op_mode;
-	uint32_t pos_cycle;
-	uint32_t sleep_time;
-	uint32_t selected_sentences;
-};
 
 /** a mask for the under temp alert bit in the status word*/
 
