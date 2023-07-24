@@ -24,38 +24,80 @@ jobs:
 
       - name: Run Word Exclusion script
         run: |
+          # Define the patterns to search for, paths, and word exclusion list
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
+          $SelectedFolders = @(".scripts", ".doc")
           $WordExcludeList = @("snippet")
-          $StartLineNumber = 18  # Change this value to the desired starting line number
           $Matches = @()
 
-          # Read the .gitattributes file and extract paths to search
-          $GitAttributesFile = Join-Path -Path $RootPath -ChildPath ".gitattributes"
-          $SelectedFolders = Get-Content -Path $GitAttributesFile | ForEach-Object {
-              if ($_ -match '^path="?(.*)"?$') {
-                  $matches[1]
-              }
-          }
+          # Define the full paths to the selected folders in the root directory
+          $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
 
-          # Find matches in file contents within the selected folders in .gitattributes
-          Get-ChildItem -Path $SelectedFolders -Recurse -File | ForEach-Object {
-              $FileName = $_.FullName
+          # Find matches in directory names and file names within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
+              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
+              $Name = $_.FullName
 
               foreach ($Pattern in $Patterns) {
                   # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
-                      # Search for the pattern starting from the specified line number
-                      $MatchesInFile = Select-String -Path $FileName -Pattern $Pattern -Context $StartLineNumber, 0
-                      foreach ($Match in $MatchesInFile) {
-                          $LineNumber = $Match.LineNumber
-                          $Context = $Match.Context.PreContext + $Match.Line + $Match.Context.PostContext
+                      if ($Name -like "*$Pattern*") {
                           $Matches += New-Object PSObject -Property @{
-                              Type = "file"
+                              Type = $Type
                               Match = $Pattern
-                              Name = $FileName
-                              LineNumber = $LineNumber
-                              Context = $Context
+                              Name = $Name
+                          }
+                      }
+                  }
+              }
+          }
+
+          # Read the .gitattributes file to get the list of paths that need to be searched
+          $GitAttributesFile = Join-Path -Path $RootPath -ChildPath ".gitattributes"
+          if (Test-Path $GitAttributesFile) {
+              $GitAttributesContent = Get-Content -Path $GitAttributesFile
+              $GitAttributePaths = $GitAttributesContent | ForEach-Object {
+                  if ($_ -match '^\s*(.*?)\s+(-?[\w\*]+)\s*$') {
+                      $path = $Matches[1]
+                      if ($path -notmatch '^(?:\w:)?[\\\/]') {
+                          # Relative path, convert to absolute path
+                          $path = Join-Path -Path $RootPath -ChildPath $path
+                      }
+                      $path
+                  }
+              } | Where-Object { Test-Path $_ }
+
+              # Find matches in file names within the paths specified in the .gitattributes file
+              Get-ChildItem -Path $GitAttributePaths -Recurse -File | ForEach-Object {
+                  $FileName = $_.FullName
+
+                  foreach ($Pattern in $Patterns) {
+                      if ($WordExcludeList -notcontains $Pattern) {
+                          if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
+                              $Matches += New-Object PSObject -Property @{
+                                  Type = "file"
+                                  Match = $Pattern
+                                  Name = $FileName
+                              }
+                          }
+                      }
+                  }
+              }
+
+              # Find matches in file contents within the paths specified in the .gitattributes file
+              Get-ChildItem -Path $GitAttributePaths -Recurse -File | ForEach-Object {
+                  $FileName = $_.FullName
+
+                  foreach ($Pattern in $Patterns) {
+                      if ($WordExcludeList -notcontains $Pattern) {
+                          $FileContent = Get-Content -Path $FileName -Raw
+                          if ($FileContent -match $Pattern) {
+                              $Matches += New-Object PSObject -Property @{
+                                  Type = "file_content"
+                                  Match = $Pattern
+                                  Name = $FileName
+                              }
                           }
                       }
                   }
@@ -68,7 +110,7 @@ jobs:
           # Convert the matches to JSON format
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
-        shell: pwsh  # Use the PowerShell shell to execute the script
+
 
 
       - name: Upload JSON output
