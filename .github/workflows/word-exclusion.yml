@@ -2,19 +2,12 @@ name: Word Exclusion
 
 on:
   push:
-    branches-ignore:
-      - 'main'
-      - 'tmo-main'  
-  pull_request:
-    types:
-      - opened
     branches:
-      - 'topublic-*'
-      - 'feature/*'
+      - 'tmo-main'
 
 jobs:
   word_exclusion:
-    runs-on: self-hosted-ubuntu-20-04
+    runs-on: ubuntu-20-04
 
     steps:
       - name: Checkout code
