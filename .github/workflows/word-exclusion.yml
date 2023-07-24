@@ -25,6 +25,8 @@ jobs:
       - name: Read .gitattributes
         id: read_gitattributes
         run: |
+          scripts/* scan-directory
+          doc/* scan-directory
           $GitAttributesPath = "${env:GITHUB_WORKSPACE}/.gitattributes"
           if (Test-Path -Path $GitAttributesPath) {
               $SelectedFolders = Get-Content -Path $GitAttributesPath | ForEach-Object {
