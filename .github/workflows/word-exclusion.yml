@@ -28,7 +28,7 @@ jobs:
           $GitAttributesPath = "${env:GITHUB_WORKSPACE}/.gitattributes"
           if (Test-Path -Path $GitAttributesPath) {
               $SelectedFolders = Get-Content -Path $GitAttributesPath | ForEach-Object {
-                  if ($_ -match '^\s*([^#\s].*?)\s+scan-directory$') {
+                  if ($_ -match '^\s*([^#\s].*?)\s') {
                       $Matches[1]
                   }
               }
@@ -43,7 +43,6 @@ jobs:
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE
           $WordExcludeList = @("snippet")
-
           $Matches = @()
 
           foreach ($SelectedFolder in $SelectedFolders) {
