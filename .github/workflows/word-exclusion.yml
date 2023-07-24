@@ -24,13 +24,10 @@ jobs:
       - name: Run Word Exclusion script
         run: |
           $Patterns = @("private", "pets*", "tracker*")
-          $SelectedFolders = @("./scripts", "./doc")
           $PathToCheck = $env:GITHUB_WORKSPACE
+          $SelectedFolders = @(".scripts", ".doc")
           $WordExcludeList = @("snippet")
           $Matches = @()
-
-          # Convert selected folder paths to regular expressions
-          $SelectedFoldersRegex = $SelectedFolders | ForEach-Object { [regex]::Escape($_) -replace '\\\*', '.*' }
 
           # Find matches in directory names and file names
           Get-ChildItem -Path $PathToCheck -Recurse | Where-Object {
@@ -42,8 +39,7 @@ jobs:
               foreach ($Pattern in $Patterns) {
                   # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
-                      # Use -clike (case-insensitive) to perform wildcard matching on the Name
-                      if ($Name -clike "*$Pattern*") {
+                      if ($Name -like "*$Pattern*") {
                           $Matches += New-Object PSObject -Property @{
                               Type = $Type
                               Match = $Pattern
@@ -53,7 +49,6 @@ jobs:
                   }
               }
           }
-
 
         
           # Find matches in file contents
