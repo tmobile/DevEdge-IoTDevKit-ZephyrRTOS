@@ -58,9 +58,9 @@ jobs:
           if (Test-Path $GitAttributesFile) {
               $GitAttributesContent = Get-Content -Path $GitAttributesFile
               $GitAttributePaths = $GitAttributesContent | ForEach-Object {
-                  if ($_ -match '^\s*(.*?)\s+(-?[\w\*]+)\s*$') {
+                  if ($_ -match '^\s*.*?)\s+(-?[\w\*]+)\s*$') {
                       $path = $Matches[1]
-                      if ($path -notmatch '^(?:\w:)?[\\\/]') {
+                      if ($path -notmatch '^?:\w:)?[\\\/]') {
                           # Relative path, convert to absolute path
                           $path = Join-Path -Path $RootPath -ChildPath $path
                       }
