@@ -1,3 +1,6 @@
+scripts/* scan-directory
+doc/* scan-directory
+
 # used to remove files from deployment using `git archive`
 # git files
 .gitattributes export-ignore
@@ -15,9 +18,6 @@
 # Tmo excluded files from nightly "theirs" auto-merge. If the file is below, the file
 # will never be auto-merged into from main. If the file doesn't exist here, then
 # any upstream changes will override ours.
-
-scripts/* scan-directory
-doc/* scan-directory
 
 .gitattributes merge=ours
 .github/ISSUE_TEMPLATE/001_bug_report.md
