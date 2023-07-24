@@ -41,6 +41,7 @@ jobs:
       - name: Run Word Exclusion script
         run: |
           $Patterns = @("private", "pets*", "tracker*")
+          $SelectedFolders = @("scripts", "doc")
           $RootPath = $env:GITHUB_WORKSPACE
           $WordExcludeList = @("snippet")
           $Matches = @()
