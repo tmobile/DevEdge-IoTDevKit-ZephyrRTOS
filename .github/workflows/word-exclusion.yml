@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - 'tmo-main'
-    paths:
-      - 'scripts/**' # Adjust the path to the folder or specific files you want to monitor
-      - 'doc/**'     # Add additional paths if needed
 
 jobs:
   word_exclusion:
