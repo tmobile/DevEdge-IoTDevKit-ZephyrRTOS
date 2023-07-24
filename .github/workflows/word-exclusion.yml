@@ -23,18 +23,27 @@ jobs:
           # Install PowerShell Core
           sudo apt-get update
           sudo apt-get install -y powershell
+
+      - name: Get modified files and folders
+        id: changes
+        run: |
+          # Use git diff to get the list of modified files and folders
+          modified_files_folders=$(git diff --name-only HEAD^..HEAD)
+          echo "::set-output name=modified::$modified_files_folders"
+
       - name: Run Word Exclusion script
+        if: steps.changes.outputs.modified != ''
         run: |
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          # Define the full paths to the selected folders in the root directory
-          $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
+          # Get the list of modified files and folders from the previous step
+          $ModifiedItems = $env:MODIFIED_ITEMS -split "`n"
 
           # Find matches in directory names and file names within the selected folders in the root directory
-          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
+          Get-ChildItem -Path $ModifiedItems -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
@@ -53,7 +62,7 @@ jobs:
           }
 
           # Find matches in file contents within the selected folders in the root directory
-          Get-ChildItem -Path $SelectedFolderPaths -Recurse -File | ForEach-Object {
+          Get-ChildItem -Path $ModifiedItems -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
 
               foreach ($Pattern in $Patterns) {
@@ -77,7 +86,6 @@ jobs:
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
         shell: pwsh  # Use the PowerShell shell to execute the script
-
 
       - name: Upload JSON output
         uses: actions/upload-artifact@v2
