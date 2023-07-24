@@ -35,10 +35,17 @@ jobs:
 
           # Read .gitattributes file and extract paths with specific attributes
           $GitAttributesFile = Join-Path -Path $RootPath -ChildPath ".gitattributes"
-          $AttributePaths = Get-Content -Path $GitAttributesFile | Where-Object { $_ -match "^\S+\s+filter=(.*)$" } | ForEach-Object { $matches[1] }
+          if (Test-Path -Path $GitAttributesFile) {
+              $AttributePaths = Get-Content -Path $GitAttributesFile | Where-Object { $_ -match "^\S+\s+filter=(.*)$" } | ForEach-Object { $matches[1] }
+          } else {
+              $AttributePaths = @()  # If the file doesn't exist, set an empty array
+          }
+
+          # Combine the selected folders and attribute paths into a single array of strings
+          $AllPaths = $SelectedFolderPaths + $AttributePaths
 
           # Find matches in directory names and file names within the selected folders and attribute paths in the root directory
-          Get-ChildItem -Path $SelectedFolderPaths,$AttributePaths -Recurse | ForEach-Object {
+          Get-ChildItem -Path $AllPaths -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
@@ -57,7 +64,7 @@ jobs:
           }
 
           # Find matches in file contents within the selected folders and attribute paths in the root directory
-          Get-ChildItem -Path $SelectedFolderPaths,$AttributePaths -Recurse -File | ForEach-Object {
+          Get-ChildItem -Path $AllPaths -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
 
               foreach ($Pattern in $Patterns) {
@@ -81,7 +88,6 @@ jobs:
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
         shell: pwsh  # Use the PowerShell shell to execute the script
-
 
 
 
