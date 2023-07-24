@@ -26,7 +26,7 @@ jobs:
         run: |
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
-          $SelectedFolders = @("scripts", "doc")
+          
           $WordExcludeList = @("snippet")
           $Matches = @()
 
