@@ -14,38 +14,35 @@ jobs:
 
       - name: Install PowerShell Core
         run: |
-          # Import the Microsoft repository GPG key
           wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
           sudo dpkg -i packages-microsoft-prod.deb
-          # Install PowerShell Core
           sudo apt-get update
           sudo apt-get install -y powershell
 
       - name: Get modified files and folders
         id: changes
         run: |
-          # Use git diff to get the list of modified files and folders
-          modified_files_folders=$(git diff --name-only HEAD^..HEAD)
+          # Fetch the commit hash of the latest push
+          commit_hash=$(git rev-parse HEAD)
+          # Get the list of modified files and folders in the latest push
+          modified_files_folders=$(git diff-tree --no-commit-id --name-only -r $commit_hash)
           echo "::set-output name=modified::$modified_files_folders"
 
       - name: Run Word Exclusion script
         if: steps.changes.outputs.modified != ''
         run: |
           $Patterns = @("private", "pets*", "tracker*")
-          $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
+          $RootPath = $env:GITHUB_WORKSPACE
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          # Get the list of modified files and folders from the previous step
           $ModifiedItems = $env:MODIFIED_ITEMS -split "`n"
 
-          # Find matches in directory names and file names within the selected folders in the root directory
           Get-ChildItem -Path $ModifiedItems -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
               foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
                       if ($Name -like "*$Pattern*") {
                           $Matches += New-Object PSObject -Property @{
@@ -58,12 +55,10 @@ jobs:
               }
           }
 
-          # Find matches in file contents within the selected folders in the root directory
           Get-ChildItem -Path $ModifiedItems -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
 
               foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
                       if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
                           $Matches += New-Object PSObject -Property @{
@@ -76,13 +71,8 @@ jobs:
               }
           }
 
-          # Output matches
-          $Matches
-
-          # Convert the matches to JSON format
-          $MatchesJson = $Matches | ConvertTo-Json -Depth 100
-          Write-Output $MatchesJson | Out-File matches.json
-        shell: pwsh  # Use the PowerShell shell to execute the script
+          $Matches | ConvertTo-Json -Depth 100 | Out-File matches.json
+        shell: pwsh
 
       - name: Upload JSON output
         uses: actions/upload-artifact@v2
