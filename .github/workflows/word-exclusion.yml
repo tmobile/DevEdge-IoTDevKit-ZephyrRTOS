@@ -22,30 +22,33 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y powershell
 
+      - name: Read .gitattributes
+        id: read_gitattributes
+        run: |
+          $GitAttributesPath = "${env:GITHUB_WORKSPACE}/.gitattributes"
+          if (Test-Path -Path $GitAttributesPath) {
+              $SelectedFolders = Get-Content -Path $GitAttributesPath | ForEach-Object {
+                  if ($_ -match '^\s*([^#\s].*?)\s') {
+                      $Matches[1]
+                  }
+              }
+          } else {
+              Write-Warning "No .gitattributes file found in the repository. Using default folders."
+              $SelectedFolders = @("scripts", "doc")
+          }
+          Write-Output "Selected Folders: $SelectedFolders"
+
       - name: Run Word Exclusion script
         run: |
           $Patterns = @("private", "pets*", "tracker*")
-          $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
-          
+          $RootPath = $env:GITHUB_WORKSPACE
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          # Define the full paths to the selected folders in the root directory
           $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
 
-          # Read .gitattributes file and extract paths with specific attributes
-          $GitAttributesFile = Join-Path -Path $RootPath -ChildPath ".gitattributes"
-          if (Test-Path -Path $GitAttributesFile) {
-              $AttributePaths = Get-Content -Path $GitAttributesFile | Where-Object { $_ -match "^\S+\s+filter=(.*)$" } | ForEach-Object { $matches[1] }
-          } else {
-              $AttributePaths = @()  # If the file doesn't exist, set an empty array
-          }
-
-          # Combine the selected folders and attribute paths into a single array of strings
-          $AllPaths = $RootPath + $AttributePaths
-
-          # Find matches in directory names and file names within the selected folders and attribute paths in the root directory
-          Get-ChildItem -Path $AllPaths -Recurse | ForEach-Object {
+         # Find matches in directory names and file names within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
@@ -63,8 +66,8 @@ jobs:
               }
           }
 
-          # Find matches in file contents within the selected folders and attribute paths in the root directory
-          Get-ChildItem -Path $AllPaths -Recurse -File | ForEach-Object {
+          # Find matches in file contents within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
 
               foreach ($Pattern in $Patterns) {
@@ -88,7 +91,6 @@ jobs:
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
         shell: pwsh  # Use the PowerShell shell to execute the script
-
 
 
       - name: Upload JSON output
