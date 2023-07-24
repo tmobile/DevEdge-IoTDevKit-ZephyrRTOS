@@ -29,6 +29,9 @@ jobs:
           $WordExcludeList = @("snippet")
           $Matches = @()
 
+          # Convert selected folder paths to regular expressions
+          $SelectedFoldersRegex = $SelectedFolders | ForEach-Object { [regex]::Escape($_) -replace '\\\*', '.*' }
+
           # Find matches in directory names and file names
           Get-ChildItem -Path $PathToCheck -Recurse | Where-Object {
               $_.PSIsContainer -or $SelectedFolders -contains $_.DirectoryName
@@ -39,7 +42,8 @@ jobs:
               foreach ($Pattern in $Patterns) {
                   # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
-                      if ($Name -like "*$Pattern*") {
+                      # Use -clike (case-insensitive) to perform wildcard matching on the Name
+                      if ($Name -clike "*$Pattern*") {
                           $Matches += New-Object PSObject -Property @{
                               Type = $Type
                               Match = $Pattern
@@ -49,6 +53,7 @@ jobs:
                   }
               }
           }
+
 
         
           # Find matches in file contents
