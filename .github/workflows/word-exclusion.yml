@@ -29,14 +29,11 @@ jobs:
           $WordExcludeList = @("snippet")
           $Matches = @()
           # Find matches in directory names and file names
-          Get-ChildItem -Path $PathToCheck -Recurse | ForEach-Object {
+          Get-ChildItem -Path $PathToCheck -Recurse -Path scripts,doc | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
               
-              #Check for specific folders
-              if ($SelectedFolders -contains ($_ | Select-String -Pattern ($_ | Join-Path -ChildPath $_.Name) -Quiet)) {
-            
-                foreach ($Pattern in $Patterns) {
+              foreach ($Pattern in $Patterns) {
                     # Check if the current pattern is not in the word exclude list
                     if ($WordExcludeList -notcontains $Pattern) {
                         if ($Name -like "*$Pattern*") {
@@ -46,7 +43,7 @@ jobs:
                                 Name = $Name
                             }
                         }
-                    }
+                    
                 }
               }
           }
