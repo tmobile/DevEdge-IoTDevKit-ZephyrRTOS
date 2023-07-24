@@ -47,13 +47,11 @@ jobs:
 
           $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
 
-         # Find matches in directory names and file names within the selected folders in the root directory
           Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
               foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
                       if ($Name -like "*$Pattern*") {
                           $Matches += New-Object PSObject -Property @{
@@ -66,12 +64,10 @@ jobs:
               }
           }
 
-          # Find matches in file contents within the selected folders in the root directory
           Get-ChildItem -Path $SelectedFolderPaths -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
 
               foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
                       if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
                           $Matches += New-Object PSObject -Property @{
@@ -84,14 +80,11 @@ jobs:
               }
           }
 
-          # Output matches
           $Matches
 
-          # Convert the matches to JSON format
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
-        shell: pwsh  # Use the PowerShell shell to execute the script
-
+        shell: pwsh
 
       - name: Upload JSON output
         uses: actions/upload-artifact@v2
