@@ -21,72 +21,62 @@ jobs:
           # Install PowerShell Core
           sudo apt-get update
           sudo apt-get install -y powershell
-
-      - name: Read .gitattributes
-        id: read_gitattributes
-        run: |
-          $GitAttributesPath = "${env:GITHUB_WORKSPACE}/.gitattributes"
-          if (Test-Path -Path $GitAttributesPath) {
-              $SelectedFolders = Get-Content -Path $GitAttributesPath | ForEach-Object {
-                  if ($_ -match '^\s*([^#\s].*?)\s') {
-                      $Matches[1]
-                  }
-              }
-          } else {
-              Write-Warning "No .gitattributes file found in the repository. Using default folders."
-              $SelectedFolders = @("scripts", "doc")
-          }
-          Write-Output "Selected Folders: $SelectedFolders"
-
       - name: Run Word Exclusion script
         run: |
           $Patterns = @("private", "pets*", "tracker*")
-          $RootPath = $env:GITHUB_WORKSPACE
+          $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
+          $SelectedFolders = @("scripts", "doc")
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          foreach ($SelectedFolder in $SelectedFolders) {
-              $SelectedFolderPath = Join-Path -Path $RootPath -ChildPath $SelectedFolder
+          # Define the full paths to the selected folders in the root directory
+          $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
 
-              Get-ChildItem -Path $SelectedFolderPath -Recurse | ForEach-Object {
-                  $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
-                  $Name = $_.FullName
+          # Find matches in directory names and file names within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
+              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
+              $Name = $_.FullName
 
-                  foreach ($Pattern in $Patterns) {
-                      if ($WordExcludeList -notcontains $Pattern) {
-                          if ($Name -like "*$Pattern*") {
-                              $Matches += New-Object PSObject -Property @{
-                                  Type = $Type
-                                  Match = $Pattern
-                                  Name = $Name
-                              }
-                          }
-                      }
-                  }
-              }
-
-              Get-ChildItem -Path $SelectedFolderPath -Recurse -File | ForEach-Object {
-                  $FileName = $_.FullName
-
-                  foreach ($Pattern in $Patterns) {
-                      if ($WordExcludeList -notcontains $Pattern) {
-                          if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
-                              $Matches += New-Object PSObject -Property @{
-                                  Type = "file"
-                                  Match = $Pattern
-                                  Name = $FileName
-                              }
+              foreach ($Pattern in $Patterns) {
+                  # Check if the current pattern is not in the word exclude list
+                  if ($WordExcludeList -notcontains $Pattern) {
+                      if ($Name -like "*$Pattern*") {
+                          $Matches += New-Object PSObject -Property @{
+                              Type = $Type
+                              Match = $Pattern
+                              Name = $Name
                           }
                       }
                   }
               }
           }
 
+          # Find matches in file contents within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse -File | ForEach-Object {
+              $FileName = $_.FullName
+
+              foreach ($Pattern in $Patterns) {
+                  # Check if the current pattern is not in the word exclude list
+                  if ($WordExcludeList -notcontains $Pattern) {
+                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
+                          $Matches += New-Object PSObject -Property @{
+                              Type = "file"
+                              Match = $Pattern
+                              Name = $FileName
+                          }
+                      }
+                  }
+              }
+          }
+
+          # Output matches
           $Matches
 
+          # Convert the matches to JSON format
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
-        shell: pwsh
+        shell: pwsh  # Use the PowerShell shell to execute the script
+
 
       - name: Upload JSON output
         uses: actions/upload-artifact@v2
