@@ -27,40 +27,18 @@ jobs:
           # Define the patterns to search for, paths, and word exclusion list
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
-          $SelectedFolders = @(".scripts", ".doc")
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          # Define the full paths to the selected folders in the root directory
-          $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
-
-          # Find matches in directory names and file names within the selected folders in the root directory
-          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
-              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
-              $Name = $_.FullName
-
-              foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if ($Name -like "*$Pattern*") {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = $Type
-                              Match = $Pattern
-                              Name = $Name
-                          }
-                      }
-                  }
-              }
-          }
-
+         
           # Read the .gitattributes file to get the list of paths that need to be searched
           $GitAttributesFile = Join-Path -Path $RootPath -ChildPath ".gitattributes"
           if (Test-Path $GitAttributesFile) {
               $GitAttributesContent = Get-Content -Path $GitAttributesFile
               $GitAttributePaths = $GitAttributesContent | ForEach-Object {
-                  if ($_ -match '^\s*.*?)\s+(-?[\w\*]+)\s*$') {
+                  if ($_ -match '^\s*(.*?)\s+(-?[\w\*]+)\s*$') {
                       $path = $Matches[1]
-                      if ($path -notmatch '^?:\w:)?[\\\/]') {
+                      if ($path -notmatch '^(?:\w:)?[\\\/]') {
                           # Relative path, convert to absolute path
                           $path = Join-Path -Path $RootPath -ChildPath $path
                       }
