@@ -27,6 +27,7 @@ jobs:
           $Patterns = @("private", "pets*", "tracker*")
           $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
           $WordExcludeList = @("snippet")
+          $StartLineNumber = 18  # Change this value to the desired starting line number
           $Matches = @()
 
           # Read the .gitattributes file and extract paths to search
@@ -37,25 +38,6 @@ jobs:
               }
           }
 
-          # Find matches in directory names and file names within the selected folders in .gitattributes
-          Get-ChildItem -Path $SelectedFolders -Recurse | ForEach-Object {
-              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
-              $Name = $_.FullName
-
-              foreach ($Pattern in $Patterns) {
-                  # Check if the current pattern is not in the word exclude list
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if ($Name -like "*$Pattern*") {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = $Type
-                              Match = $Pattern
-                              Name = $Name
-                          }
-                      }
-                  }
-              }
-          }
-
           # Find matches in file contents within the selected folders in .gitattributes
           Get-ChildItem -Path $SelectedFolders -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
@@ -63,11 +45,17 @@ jobs:
               foreach ($Pattern in $Patterns) {
                   # Check if the current pattern is not in the word exclude list
                   if ($WordExcludeList -notcontains $Pattern) {
-                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
+                      # Search for the pattern starting from the specified line number
+                      $MatchesInFile = Select-String -Path $FileName -Pattern $Pattern -Context $StartLineNumber, 0
+                      foreach ($Match in $MatchesInFile) {
+                          $LineNumber = $Match.LineNumber
+                          $Context = $Match.Context.PreContext + $Match.Line + $Match.Context.PostContext
                           $Matches += New-Object PSObject -Property @{
                               Type = "file"
                               Match = $Pattern
                               Name = $FileName
+                              LineNumber = $LineNumber
+                              Context = $Context
                           }
                       }
                   }
@@ -81,6 +69,7 @@ jobs:
           $MatchesJson = $Matches | ConvertTo-Json -Depth 100
           Write-Output $MatchesJson | Out-File matches.json
         shell: pwsh  # Use the PowerShell shell to execute the script
+
 
       - name: Upload JSON output
         uses: actions/upload-artifact@v2
