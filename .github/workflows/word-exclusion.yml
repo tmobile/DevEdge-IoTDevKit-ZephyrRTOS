@@ -24,15 +24,16 @@ jobs:
       - name: Run Word Exclusion script
         run: |
           $Patterns = @("private", "pets*", "tracker*")
-          $PathToCheck = $env:GITHUB_WORKSPACE
+          $RootPath = $env:GITHUB_WORKSPACE  # This variable points to the root of the checked-out repository
           $SelectedFolders = @(".scripts", ".doc")
           $WordExcludeList = @("snippet")
           $Matches = @()
 
-          # Find matches in directory names and file names
-          Get-ChildItem -Path $PathToCheck -Recurse | Where-Object {
-              $_.PSIsContainer -or $SelectedFolders -contains $_.DirectoryName
-          } | ForEach-Object {
+          # Define the full paths to the selected folders in the root directory
+          $SelectedFolderPaths = $SelectedFolders | ForEach-Object { Join-Path -Path $RootPath -ChildPath $_ }
+
+          # Find matches in directory names and file names within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
@@ -50,26 +51,21 @@ jobs:
               }
           }
 
-        
-          # Find matches in file contents
-          Get-ChildItem -Path $PathToCheck -Recurse -File | ForEach-Object {
+          # Find matches in file contents within the selected folders in the root directory
+          Get-ChildItem -Path $SelectedFolderPaths -Recurse -File | ForEach-Object {
               $FileName = $_.FullName
-              
-              # Check if the current item's path matches any of the selected folders
-              if ($SelectedFolders -contains ($_ | Select-String -Pattern ($_ | Join-Path -ChildPath $_.Name) -Quiet)) {
-              
-                foreach ($Pattern in $Patterns) {
-                    # Check if the current pattern is not in the word exclude list
-                    if ($WordExcludeList -notcontains $Pattern) {
-                        if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
-                            $Matches += New-Object PSObject -Property @{
-                                Type = "file"
-                                Match = $Pattern
-                                Name = $FileName
-                            }
-                        }
-                    }
-                }
+
+              foreach ($Pattern in $Patterns) {
+                  # Check if the current pattern is not in the word exclude list
+                  if ($WordExcludeList -notcontains $Pattern) {
+                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
+                          $Matches += New-Object PSObject -Property @{
+                              Type = "file"
+                              Match = $Pattern
+                              Name = $FileName
+                          }
+                      }
+                  }
               }
           }
 
