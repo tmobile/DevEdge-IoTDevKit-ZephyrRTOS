@@ -42,7 +42,7 @@ jobs:
           }
 
           # Combine the selected folders and attribute paths into a single array of strings
-          $AllPaths = $SelectedFolderPaths + $AttributePaths
+          $AllPaths = $RootPath + $AttributePaths
 
           # Find matches in directory names and file names within the selected folders and attribute paths in the root directory
           Get-ChildItem -Path $AllPaths -Recurse | ForEach-Object {
