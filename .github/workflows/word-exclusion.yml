@@ -1,0 +1,85 @@
+name: Word Exclusion
+
+on:
+  push:
+    branches-ignore:
+      - 'main'
+      - 'tmo-main'  
+  pull_request:
+    types:
+      - opened
+    branches:
+      - 'topublic-*'
+      - 'feature/*'
+
+jobs:
+  word_exclusion:
+    runs-on: self-hosted-ubuntu-20-04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install PowerShell Core
+        run: |
+          # Import the Microsoft repository GPG key
+          wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          # Install PowerShell Core
+          sudo apt-get update
+          sudo apt-get install -y powershell
+      - name: Run Word Exclusion script
+        run: |
+          $Patterns = @("private", "pets*", "tracker*")
+          $PathToCheck = $env:GITHUB_WORKSPACE
+          $WordExcludeList = @("snippet")
+          $Matches = @()
+          # Find matches in directory names and file names
+          Get-ChildItem -Path $PathToCheck -Recurse | ForEach-Object {
+              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
+              $Name = $_.FullName
+              foreach ($Pattern in $Patterns) {
+                  # Check if the current pattern is not in the word exclude list
+                  if ($WordExcludeList -notcontains $Pattern) {
+                      if ($Name -like "*$Pattern*") {
+                          $Matches += New-Object PSObject -Property @{
+                              Type = $Type
+                              Match = $Pattern
+                              Name = $Name
+                          }
+                      }
+                  }
+              }
+          }
+
+          # Find matches in file contents
+          Get-ChildItem -Path $PathToCheck -Recurse -File | ForEach-Object {
+              $FileName = $_.FullName
+              foreach ($Pattern in $Patterns) {
+                  # Check if the current pattern is not in the word exclude list
+                  if ($WordExcludeList -notcontains $Pattern) {
+                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
+                          $Matches += New-Object PSObject -Property @{
+                              Type = "file"
+                              Match = $Pattern
+                              Name = $FileName
+                          }
+                      }
+                  }
+              }
+          }
+
+          # Output matches
+          $Matches
+
+          # Convert the matches to JSON format
+          $MatchesJson = $Matches | ConvertTo-Json -Depth 100
+          Write-Output $MatchesJson | Out-File matches.json
+        shell: pwsh  # Use the PowerShell shell to execute the script
+
+
+      - name: Upload JSON output
+        uses: actions/upload-artifact@v2
+        with:
+          name: matches
+          path: matches.json
