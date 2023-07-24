@@ -29,7 +29,7 @@ jobs:
           $WordExcludeList = @("snippet")
           $Matches = @()
           # Find matches in directory names and file names
-          Get-ChildItem -Path $PathToCheck -Recurse "-Path scripts,doc" | ForEach-Object {
+          Get-ChildItem -Path $PathToCheck -Recurse -Path $SelectedFolders | ForEach-Object {
               $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
               
