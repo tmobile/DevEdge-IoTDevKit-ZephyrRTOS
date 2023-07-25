@@ -33,7 +33,7 @@ jobs:
         run: |
           modified_gitattributes=$(git diff-tree --no-commit-id --name-only -r $commit_hash | grep '.gitattributes')
           if [ -n "$modified_gitattributes" ]; then
-            git show $commit_hash:.gitattributes | grep -E '^\S' | awk '{print $1}' | grep -v -E '^\s*#|merge=ours' > directories.txt
+            git show $commit_hash:.gitattributes | awk '{print $1}' | grep -v -E '^\s*#|merge=ours' > directories.txt
           else
             touch directories.txt
           fi
