@@ -25,9 +25,9 @@
 .github/ISSUE_TEMPLATE/006_nomination.md
 .github/ISSUE_TEMPLATE/007_ext-source.md
 .github/ISSUE_TEMPLATE/008_bin-blobs.md
-.github/workflows/assigner.yml merge=ours
+.github/workflows/assigner.yml
 .github/workflows/backport.yml merge=ours
-.github/workflows/backport_issue_check.yml merge=ours
+.github/workflows/backport_issue_check.yml
 .github/workflows/bluetooth-tests-publish.yaml merge=ours
 .github/workflows/bluetooth-tests.yaml merge=ours
 .github/workflows/bsim-tests-publish.yaml merge=ours
@@ -83,9 +83,9 @@ boards/arm/efr32mg_sltb004a/efr32mg_sltb004a_defconfig merge=ours
 boards/arm/gd32a503v_eval/gd32f450z_eval.yaml merge=ours
 boards/arm/tmo_dev_edge/CMakeLists.txt merge=ours
 boards/arm/tmo_dev_edge/Kconfig.board merge=ours
-boards/arm/tmo_dev_edge/Kconfig.defconfig merge=ours
-boards/arm/tmo_dev_edge/board.c merge=ours
-boards/arm/tmo_dev_edge/board.cmake merge=ours
+boards/arm/tmo_dev_edge/Kconfig.defconfig 
+boards/arm/tmo_dev_edge/board.c 
+boards/arm/tmo_dev_edge/board.cmake 
 boards/arm/tmo_dev_edge/board.h merge=ours
 boards/arm/tmo_dev_edge/doc/index.rst merge=ours
 boards/arm/tmo_dev_edge/doc/img/tmo_dev_edge.jpg merge=ours
@@ -250,11 +250,11 @@ samples/subsys/shell/shell_module/boards/efm32pg_stk3402a.conf merge=ours
 samples/subsys/shell/shell_module/boards/tmo_dev_edge.conf merge=ours
 samples/subsys/task_wdt/sample.yaml merge=ours
 soc/arm/silabs_exx32/Kconfig merge=ours
-soc/arm/silabs_exx32/common/CMakeLists.txt merge=ours
+soc/arm/silabs_exx32/common/CMakeLists.txt
 soc/arm/silabs_exx32/common/soc_power.c merge=ours
 subsys/net/l2/wifi/wifi_mgmt.c merge=ours
-subsys/net/lib/CMakeLists.txt merge=ours
-subsys/net/lib/Kconfig merge=ours
+subsys/net/lib/CMakeLists.txt
+subsys/net/lib/Kconfig
 subsys/net/lib/http/http_client.c merge=ours
 subsys/net/lib/ping/CMakeLists.txt merge=ours
 subsys/net/lib/ping/Kconfig merge=ours
@@ -266,12 +266,12 @@ subsys/shell/shell_ops.c merge=ours
 tests/benchmarks/sched/testcase.yaml merge=ours
 tests/drivers/counter/counter_basic_api/testcase.yaml merge=ours
 tests/drivers/flash/common/testcase.yaml merge=ours
-tests/drivers/gpio/gpio_basic_api/boards/efm32pg_stk3402a.overlay merge=ours
+tests/drivers/gpio/gpio_basic_api/boards/efm32pg_stk3402a.overlay
 tests/drivers/regulator/fixed/boards/efm32pg_stk3402a.overlay merge=ours
 tests/kernel/mem_slab/mslab/testcase.yaml merge=ours
 tests/kernel/usage/thread_runtime_stats/testcase.yaml merge=ours
-tests/kernel/workq/work_queue/testcase.yaml merge=ours
-tests/lib/cmsis_dsp/filtering/testcase.yaml merge=ours
+tests/kernel/workq/work_queue/testcase.yaml
+tests/lib/cmsis_dsp/filtering/testcase.yaml
 tests/subsys/dsp/basicmath/testcase.yaml merge=ours
 tests/subsys/jwt/testcase.yaml merge=ours
 tests/subsys/logging/log_backend_init/testcase.yaml merge=ours
@@ -280,4 +280,4 @@ tests/subsys/logging/log_link_order/testcase.yaml mereg=ours
 tests/subsys/logging/log_timestamp/testcase.yaml merge=ours
 tests/subsys/portability/cmsis_rtos_v2/testcase.yaml merge=ours
 tests/subsys/rtio/rtio_api/testcase.yaml merge=ours
-west.yml merge=ours
+west.yml
