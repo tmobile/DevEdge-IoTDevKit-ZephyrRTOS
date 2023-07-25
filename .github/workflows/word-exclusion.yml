@@ -21,7 +21,7 @@ jobs:
 
       - name: Get directory paths from .gitattributes
         run: |
-          directories=$(grep -E '^\S' .gitattributes | awk '{print $1}' | grep -v 'merge=ours')
+          directories=$(grep -E '^\S' .gitattributes | awk '{print $1}' | grep -v -E '^\s*#|merge=ours')
           echo "::set-output name=directories::$directories"
 
       - name: Run Word Search script
