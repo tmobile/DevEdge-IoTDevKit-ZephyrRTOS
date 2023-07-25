@@ -1,81 +1,31 @@
-name: Word Exclusion
+name: Gitattributes Check
 
 on:
   push:
     branches:
-      - 'tmo-main'
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  word_exclusion:
+  check_gitattributes:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Install PowerShell Core
+      - name: Check .gitattributes file
         run: |
-          wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y powershell
-
-      - name: Get modified files and folders
-        id: changes
-        run: |
-          # Fetch the commit hash of the latest push
-          commit_hash=$(git rev-parse HEAD)
-          # Get the list of modified files and folders in the latest push
-          modified_files_folders=$(git diff-tree --no-commit-id --name-only -r $commit_hash)
-          echo "::set-output name=modified::$modified_files_folders"
-
-      - name: Run Word Exclusion script
-        if: steps.changes.outputs.modified != ''
-        run: |
-          $Patterns = @("private", "pets*", "tracker*")
-          $RootPath = $env:GITHUB_WORKSPACE
-          $WordExcludeList = @("snippet")
-          $Matches = @()
-
-          $ModifiedItems = $env:MODIFIED_ITEMS -split "`n"
-
-          Get-ChildItem -Path $ModifiedItems -Recurse | ForEach-Object {
-              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
-              $Name = $_.FullName
-
-              foreach ($Pattern in $Patterns) {
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if ($Name -like "*$Pattern*") {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = $Type
-                              Match = $Pattern
-                              Name = $Name
-                          }
-                      }
-                  }
-              }
-          }
-
-          Get-ChildItem -Path $ModifiedItems -Recurse -File | ForEach-Object {
-              $FileName = $_.FullName
-
-              foreach ($Pattern in $Patterns) {
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = "file"
-                              Match = $Pattern
-                              Name = $FileName
-                          }
-                      }
-                  }
-              }
-          }
-
-          $Matches | ConvertTo-Json -Depth 100 | Out-File matches.json
-        shell: pwsh
-
-      - name: Upload JSON output
-        uses: actions/upload-artifact@v2
-        with:
-          name: matches
-          path: matches.json
+          # Get the list of directories from .gitattributes
+          directories=$(grep '^\S' .gitattributes | awk '{print $1}' | grep -v 'merge=ours')
+          
+          # Check each directory for specific words (modify 'pet|traker' as needed)
+          for dir in $directories; do
+            echo "Checking directory: $dir"
+            if find "$dir" -type f -exec grep -i -H -n -E 'word1|word2' {} +; then
+              echo "Error: Found forbidden words in files within $dir."
+              exit 1
+            fi
+          done
