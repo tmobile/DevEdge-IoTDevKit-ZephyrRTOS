@@ -1,6 +1,3 @@
-scripts/* scan-directory
-doc/* scan-directory
-
 # used to remove files from deployment using `git archive`
 # git files
 .gitattributes export-ignore
