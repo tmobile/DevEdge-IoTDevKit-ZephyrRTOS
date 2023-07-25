@@ -19,59 +19,40 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y powershell
 
-      - name: Get modified files and folders
-        id: changes
+      - name: Get directory paths from .gitattributes
         run: |
-          # Fetch the commit hash of the latest push
-          commit_hash=$(git rev-parse HEAD)
-          # Get the list of modified files and folders in the latest push
-          modified_files_folders=$(git diff-tree --no-commit-id --name-only -r $commit_hash)
-          echo "::set-output name=modified::$modified_files_folders"
+          directories=$(grep -E '^\S' .gitattributes | awk '{print $1}' | grep -v 'merge=ours')
+          echo "::set-output name=directories::$directories"
 
       - name: Run Word Exclusion script
-        if: steps.changes.outputs.modified != ''
         run: |
-          $Patterns = Get-Content .gitattributes | Select-String -Pattern '(?<=\s).*' -AllMatches | ForEach-Object { $_.Matches.Value }
-          $RootPath = $env:GITHUB_WORKSPACE
-          $WordExcludeList = @("pet", "traker") # Add the words you want to exclude here
+          $WordExcludeList = @("pet", "tracker") # Add the words you want to exclude here
           $Matches = @()
 
-          $ModifiedItems = $env:MODIFIED_ITEMS -split "`n"
+          $Directories = $env:DIRECTORIES -split "`n"
 
-          Get-ChildItem -Path $ModifiedItems -Recurse | ForEach-Object {
-              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
-              $Name = $_.FullName
+          foreach ($Directory in $Directories) {
+            if (Test-Path $Directory) {
+              Get-ChildItem -Path $Directory -Recurse | ForEach-Object {
+                $Type = if ($_.PSIsContainer) { "dir" } else { "file" }
+                $Name = $_.FullName
 
-              foreach ($Pattern in $Patterns) {
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if ($Name -like "*$Pattern*") {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = $Type
-                              Match = $Pattern
-                              Name = $Name
-                          }
-                      }
+                foreach ($Word in $WordExcludeList) {
+                  if (Select-String -Path $Name -Pattern $Word -Quiet) {
+                    $Matches += New-Object PSObject -Property @{
+                      Type = $Type
+                      Match = $Word
+                      Name = $Name
+                    }
                   }
+                }
               }
-          }
-
-          Get-ChildItem -Path $ModifiedItems -Recurse -File | ForEach-Object {
-              $FileName = $_.FullName
-
-              foreach ($Pattern in $Patterns) {
-                  if ($WordExcludeList -notcontains $Pattern) {
-                      if (Select-String -Path $FileName -Pattern $Pattern -Quiet) {
-                          $Matches += New-Object PSObject -Property @{
-                              Type = "file"
-                              Match = $Pattern
-                              Name = $FileName
-                          }
-                      }
-                  }
-              }
+            }
           }
 
           $Matches | ConvertTo-Json -Depth 100 | Out-File matches.json
+        env:
+          DIRECTORIES: ${{ steps.GetDirectories.outputs.directories }}
         shell: pwsh
 
       - name: Upload JSON output
