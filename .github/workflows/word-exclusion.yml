@@ -29,7 +29,7 @@ jobs:
 
       - name: Run Word Search script
         run: |
-          $WordList = @("private", "pets*", "tracker*") # Add the words you want to find here
+          $WordList = @("private", "pets", "tracker") # Add the words you want to find here
           $Matches = @()
 
           # Read the .gitattributes file starting from line 18
