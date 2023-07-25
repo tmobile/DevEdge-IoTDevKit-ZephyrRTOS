@@ -33,11 +33,11 @@ jobs:
         run: |
           modified_gitattributes=$(git diff-tree --no-commit-id --name-only -r $commit_hash | grep '.gitattributes')
           if [ -n "$modified_gitattributes" ]; then
-            directories=$(grep -E '^\S' .gitattributes | awk '{print $1}' | grep -v -E '^\s*#|merge=ours')
+            git show $commit_hash:.gitattributes | grep -E '^\S' | awk '{print $1}' | grep -v -E '^\s*#|merge=ours' > directories.txt
           else
-            directories=""
+            touch directories.txt
           fi
-          echo "::set-output name=directories::$directories"
+          echo "::set-output name=directories::$(cat directories.txt)"
 
       - name: Run Word Exclusion script
         if: steps.changes.outputs.modified != ''
