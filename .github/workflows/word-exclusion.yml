@@ -19,6 +19,47 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y powershell
 
+      - name: Get directory paths from .gitattributes
+        run: |
+          directories=$(grep -E '^\S' .gitattributes | awk '{print $1}' | grep -v -E '^\s*#|merge=ours')
+          echo "::set-output name=directories::$directories"
+
+      - name: Run Word Exclusion script
+        run: |
+          $WordList = @("pet", "tracker") # Add the words you want to find here
+          $Matches = @()
+
+          $Directories = $env:DIRECTORIES -split "`n"
+
+          foreach ($Directory in $Directories) {
+            if (Test-Path $Directory) {
+              Get-ChildItem -Path $Directory -Recurse -File | ForEach-Object {
+                $FileName = $_.FullName
+
+                foreach ($Word in $WordList) {
+                  if (Select-String -Path $FileName -Pattern $Word -Quiet) {
+                    $Matches += New-Object PSObject -Property @{
+                      Directory = $Directory
+                      Match = $Word
+                      File = $FileName
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          $Matches | ConvertTo-Json -Depth 100 | Out-File matches.json
+        env:
+          DIRECTORIES: ${{ steps.GetDirectories.outputs.directories }}
+        shell: pwsh
+
+      - name: Upload JSON output
+        uses: actions/upload-artifact@v2
+        with:
+          name: matches
+          path: matches.json
+
       - name: Get modified files and folders
         id: changes
         run: |
@@ -28,7 +69,7 @@ jobs:
           modified_files_folders=$(git diff-tree --no-commit-id --name-only -r $commit_hash)
           echo "::set-output name=modified::$modified_files_folders"
 
-      - name: Run Word Exclusion script
+      - name: Run Word Exclusion script on modified files and folders
         if: steps.changes.outputs.modified != ''
         run: |
           $Patterns = @("private", "pets*", "tracker*")
@@ -39,7 +80,7 @@ jobs:
           $ModifiedItems = $env:MODIFIED_ITEMS -split "`n"
 
           Get-ChildItem -Path $ModifiedItems -Recurse | ForEach-Object {
-              $Type = if ($_.PSIsContainer) { "dir" } else { "file" }
+              $Type = if ($_.PSIsContainer) { "dir" } else { "filename" }
               $Name = $_.FullName
 
               foreach ($Pattern in $Patterns) {
@@ -71,13 +112,14 @@ jobs:
               }
           }
 
-          $Matches | ConvertTo-Json -Depth 100 | Out-File matches.json
+          $Matches | ConvertTo-Json -Depth 100 | Out-File matches_modified.json
         env:
           MODIFIED_ITEMS: ${{ steps.changes.outputs.modified }}
         shell: pwsh
 
-      - name: Upload JSON output
+      - name: Upload JSON output for modified files and folders
+        if: steps.changes.outputs.modified != ''
         uses: actions/upload-artifact@v2
         with:
-          name: matches
-          path: matches.json
+          name: matches_modified
+          path: matches_modified.json
