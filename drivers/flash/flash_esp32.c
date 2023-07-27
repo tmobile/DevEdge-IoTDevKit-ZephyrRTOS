@@ -57,8 +57,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(flash_esp32, CONFIG_FLASH_LOG_LEVEL);
 
-#define FLASH_SEM_TIMEOUT (k_is_in_isr() ? K_NO_WAIT : K_FOREVER)
-
 struct flash_esp32_dev_config {
 	spi_dev_t *controller;
 };
@@ -79,7 +77,7 @@ static inline void flash_esp32_sem_take(const struct device *dev)
 {
 	struct flash_esp32_dev_data *data = dev->data;
 
-	k_sem_take(&data->sem, FLASH_SEM_TIMEOUT);
+	k_sem_take(&data->sem, K_FOREVER);
 }
 
 static inline void flash_esp32_sem_give(const struct device *dev)

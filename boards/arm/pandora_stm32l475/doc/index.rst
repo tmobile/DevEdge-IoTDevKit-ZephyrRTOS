@@ -1,7 +1,7 @@
 .. _stm32l475ve_pandora_board:
 
-Alientek STM32L475 Pandora
-##########################
+ST STM32L475 Pandora
+####################
 
 Overview
 ********

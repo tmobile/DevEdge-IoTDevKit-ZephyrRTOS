@@ -179,7 +179,7 @@
 /boards/riscv/adp_xc7k_ae350/             @cwshu @kevinwang821020 @jimmyzhe
 /boards/riscv/longan_nano/                @soburi
 /boards/riscv/neorv32/                    @henrikbrixandersen
-/boards/riscv/niosv*/                     @sweeaun
+/boards/riscv/niosv_m/                    @sweeaun
 /boards/shields/                          @erwango
 /boards/shields/atmel_rf2xx/              @nandojve
 /boards/shields/esp_8266/                 @nandojve
@@ -210,7 +210,6 @@
 /doc/develop/tools/coccinelle.rst                @himanshujha199640 @JuliaLawall
 /doc/services/device_mgmt/smp_protocol.rst  @de-nordic @nordicjm
 /doc/services/device_mgmt/smp_groups/       @de-nordic @nordicjm
-/doc/services/sensing/                      @lixuzha @ghu0510 @qianruh
 /doc/CMakeLists.txt                       @carlescufi
 /doc/_scripts/                            @carlescufi
 /doc/connectivity/bluetooth/                    @alwa-nordic @jhedberg @Vudentz
@@ -532,7 +531,7 @@
 /dts/riscv/riscv32-litex-vexriscv.dtsi    @mateusz-holenko @kgugala @pgielda
 /dts/riscv/starfive/                      @rajnesh-kanwal
 /dts/riscv/andes/andes_v5*                @cwshu @kevinwang821020 @jimmyzhe
-/dts/riscv/niosv/                         @sweeaun
+/dts/riscv/niosv/niosv-m.dtsi             @sweeaun
 /dts/arm/armv*m.dtsi                      @galak @ioannisg
 /dts/arm/armv7-a.dtsi                     @ibirnbaum
 /dts/arm/armv7-r.dtsi                     @bbolen @stephanosio
@@ -576,8 +575,6 @@
 /dts/bindings/sensor/*bme680*             @BoschSensortec
 /dts/bindings/sensor/*ina23*              @bbilas
 /dts/bindings/sensor/st*                  @avisconti
-/dts/bindings/sensor/zephyr,sensing.yaml    @lixuzha @ghu0510 @qianruh
-/dts/bindings/sensor/zephyr,sensing*.yaml   @lixuzha @ghu0510 @qianruh
 /dts/bindings/smbus/                      @finikorg
 /dts/bindings/sip_svc/                    @maheshraotm
 /dts/bindings/cpu/intel,niosv.yaml        @sweeaun
@@ -674,7 +671,6 @@
 /include/zephyr/pm/pm.h                          @nashif @ceolin
 /include/zephyr/drivers/ptp_clock.h              @tbursztyka
 /include/zephyr/rtio/                            @teburd
-/include/zephyr/sensing/                           @lixuzha @ghu0510 @qianruh
 /include/zephyr/shared_irq.h                     @dcpleung @nashif @andyross
 /include/zephyr/shell/                           @jakub-uC @nordic-krch
 /include/zephyr/shell/shell_mqtt.h               @ycsin
@@ -698,7 +694,6 @@
 /lib/posix/                               @cfriedt
 /lib/posix/getopt/                        @jakub-uC
 /subsys/portability/                      @nashif
-/subsys/sensing/                            @lixuzha @ghu0510 @qianruh
 /lib/libc/                                @nashif
 /lib/libc/arcmwdt/                        @abrodkin @ruuddw @evgeniy-paltsev
 /misc/                                    @tejlmand
@@ -745,7 +740,6 @@
 /samples/subsys/usb/                      @jfischer-no
 /samples/subsys/usb_c/                    @sambhurst
 /samples/subsys/pm/                       @nashif @ceolin
-/samples/subsys/sensing/                  @lixuzha @ghu0510 @qianruh
 /samples/tfm_integration/                 @microbuilder
 /samples/userspace/                       @dcpleung @nashif
 /scripts/release/bug_bash.py              @cfriedt

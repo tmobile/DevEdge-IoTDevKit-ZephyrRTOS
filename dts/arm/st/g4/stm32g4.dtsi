@@ -62,9 +62,8 @@
 
 		clk_lse: clk-lse {
 			#clock-cells = <0>;
-			compatible = "st,stm32-lse-clock";
+			compatible = "fixed-clock";
 			clock-frequency = <32768>;
-			driving-capability = <0>;
 			status = "disabled";
 		};
 

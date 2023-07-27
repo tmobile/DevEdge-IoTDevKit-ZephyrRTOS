@@ -1229,8 +1229,7 @@ static int id_create(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 	 */
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		bt_settings_save_id();
 	}
 
 	return 0;
@@ -1274,11 +1273,12 @@ int bt_id_create(bt_addr_le_t *addr, uint8_t *irk)
 		}
 	}
 
-	new_id = bt_dev.id_count++;
+	new_id = bt_dev.id_count;
 	err = id_create(new_id, addr, irk);
 	if (err) {
-		bt_dev.id_count--;
 		return err;
+	} else {
+		bt_dev.id_count++;
 	}
 
 	return new_id;
@@ -1378,8 +1378,7 @@ int bt_id_delete(uint8_t id)
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		bt_settings_save_id();
 	}
 
 	return 0;

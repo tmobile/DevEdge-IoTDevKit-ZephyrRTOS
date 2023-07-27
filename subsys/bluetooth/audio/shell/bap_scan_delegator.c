@@ -294,7 +294,6 @@ static void broadcast_code_cb(struct bt_conn *conn,
 	struct sync_state *state;
 
 	shell_info(ctx_shell, "Broadcast code received for %p", recv_state);
-	shell_hexdump(ctx_shell, broadcast_code, BT_AUDIO_BROADCAST_CODE_SIZE);
 
 	state = sync_state_get(recv_state);
 	if (state == NULL) {
@@ -381,15 +380,8 @@ static struct bt_le_per_adv_sync_cb pa_sync_cb =  {
 static int cmd_bap_scan_delegator_init(const struct shell *sh, size_t argc,
 				       char **argv)
 {
-	static bool registered;
-
-	if (!registered) {
-		bt_le_per_adv_sync_cb_register(&pa_sync_cb);
-		bt_bap_scan_delegator_register_cb(&scan_delegator_cb);
-
-		registered = true;
-	}
-
+	bt_le_per_adv_sync_cb_register(&pa_sync_cb);
+	bt_bap_scan_delegator_register_cb(&scan_delegator_cb);
 	return 0;
 }
 static int cmd_bap_scan_delegator_set_past_pref(const struct shell *sh,

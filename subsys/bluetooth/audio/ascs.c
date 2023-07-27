@@ -212,10 +212,10 @@ static void ascs_disconnect_stream_work_handler(struct k_work *work)
 		(void)k_work_cancel_delayable(&pair_ase->disconnect_work);
 	}
 
+
 	if (stream != NULL &&
 	    ep->iso != NULL &&
-	    (ep->iso->chan.state == BT_ISO_STATE_CONNECTED ||
-	     ep->iso->chan.state == BT_ISO_STATE_CONNECTING)) {
+	    ep->iso->chan.state == BT_ISO_STATE_CONNECTED) {
 		const int err = bt_bap_stream_disconnect(stream);
 
 		if (err != 0) {
@@ -2015,7 +2015,7 @@ static int ascs_ep_set_metadata(struct bt_bap_ep *ep, uint8_t *data, uint8_t len
 
 static void ase_metadata(struct bt_ascs_ase *ase, struct bt_ascs_metadata *meta)
 {
-	struct bt_codec_data metadata_backup[CONFIG_BT_CODEC_MAX_METADATA_COUNT];
+	struct bt_codec_data metadata_backup[CONFIG_BT_CODEC_MAX_DATA_COUNT];
 	struct bt_bap_stream *stream;
 	struct bt_bap_ep *ep;
 	struct bt_bap_ascs_rsp rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_SUCCESS,

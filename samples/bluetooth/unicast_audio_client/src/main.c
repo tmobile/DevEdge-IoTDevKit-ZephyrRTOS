@@ -963,11 +963,7 @@ static int set_stream_qos(void)
 
 	for (size_t i = 0U; i < configured_stream_count; i++) {
 		printk("QoS: waiting for %zu streams\n", configured_stream_count);
-		err = k_sem_take(&sem_stream_qos, K_FOREVER);
-		if (err != 0) {
-			printk("failed to take sem_stream_qos (err %d)\n", err);
-			return err;
-		}
+		k_sem_take(&sem_stream_qos, K_FOREVER);
 	}
 
 	return 0;

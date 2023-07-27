@@ -33,6 +33,21 @@ static bool failed_expectation;
 /* ZTEST_DMEM and ZTEST_BMEM are used for the application shared memory test  */
 
 /**
+ * @brief Each enum member represents a distinct phase of execution for the
+ *        test binary. TEST_PHASE_FRAMEWORK is active when internal ztest code
+ *        is executing; the rest refer to corresponding phases of user test
+ *        code.
+ */
+enum ztest_phase {
+	TEST_PHASE_SETUP,
+	TEST_PHASE_BEFORE,
+	TEST_PHASE_TEST,
+	TEST_PHASE_AFTER,
+	TEST_PHASE_TEARDOWN,
+	TEST_PHASE_FRAMEWORK
+};
+
+/**
  * @brief The current status of the test binary
  */
 enum ztest_status {
@@ -207,10 +222,18 @@ __maybe_unused static void run_test_rules(bool is_before, struct ztest_unit_test
 static void run_test_functions(struct ztest_suite_node *suite, struct ztest_unit_test *test,
 			       void *data)
 {
-	__ztest_set_test_phase(TEST_PHASE_TEST);
+	phase = TEST_PHASE_TEST;
 	test->test(data);
 }
 
+enum ztest_result {
+	ZTEST_RESULT_PENDING,
+	ZTEST_RESULT_PASS,
+	ZTEST_RESULT_FAIL,
+	ZTEST_RESULT_SKIP,
+	ZTEST_RESULT_SUITE_SKIP,
+	ZTEST_RESULT_SUITE_FAIL,
+};
 COND_CODE_1(KERNEL, (ZTEST_BMEM), ()) static enum ztest_result test_result;
 
 static int get_final_test_result(const struct ztest_unit_test *test, int ret)
@@ -370,7 +393,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 	int ret = TC_PASS;
 
 	TC_START(test->name);
-	__ztest_set_test_phase(TEST_PHASE_BEFORE);
+	phase = TEST_PHASE_BEFORE;
 
 	if (test_result == ZTEST_RESULT_SUITE_FAIL) {
 		ret = TC_FAIL;
@@ -403,14 +426,14 @@ out:
 		ret = TC_FAIL;
 	}
 
-	__ztest_set_test_phase(TEST_PHASE_AFTER);
+	phase = TEST_PHASE_AFTER;
 	if (test_result != ZTEST_RESULT_SUITE_FAIL) {
 		if (suite->after != NULL) {
 			suite->after(data);
 		}
 		run_test_rules(/*is_before=*/false, test, data);
 	}
-	__ztest_set_test_phase(TEST_PHASE_FRAMEWORK);
+	phase = TEST_PHASE_FRAMEWORK;
 	ret |= cleanup_test(test);
 
 	ret = get_final_test_result(test, ret);
@@ -447,11 +470,11 @@ void ztest_test_fail(void)
 {
 	switch (phase) {
 	case TEST_PHASE_SETUP:
-		__ztest_set_test_result(ZTEST_RESULT_SUITE_FAIL);
+		test_result = ZTEST_RESULT_SUITE_FAIL;
 		break;
 	case TEST_PHASE_BEFORE:
 	case TEST_PHASE_TEST:
-		__ztest_set_test_result(ZTEST_RESULT_FAIL);
+		test_result = ZTEST_RESULT_FAIL;
 		test_finalize();
 		break;
 	default:
@@ -466,7 +489,7 @@ void ztest_test_pass(void)
 {
 	switch (phase) {
 	case TEST_PHASE_TEST:
-		__ztest_set_test_result(ZTEST_RESULT_PASS);
+		test_result = ZTEST_RESULT_PASS;
 		test_finalize();
 		break;
 	default:
@@ -483,11 +506,11 @@ void ztest_test_skip(void)
 {
 	switch (phase) {
 	case TEST_PHASE_SETUP:
-		__ztest_set_test_result(ZTEST_RESULT_SUITE_SKIP);
+		test_result = ZTEST_RESULT_SUITE_SKIP;
 		break;
 	case TEST_PHASE_BEFORE:
 	case TEST_PHASE_TEST:
-		__ztest_set_test_result(ZTEST_RESULT_SKIP);
+		test_result = ZTEST_RESULT_SKIP;
 		test_finalize();
 		break;
 	default:
@@ -519,20 +542,14 @@ static void test_cb(void *a, void *b, void *c)
 {
 	struct ztest_suite_node *suite = a;
 	struct ztest_unit_test *test = b;
-	const bool config_user_mode = FIELD_GET(K_USER, test->thread_options) != 0;
 
-	if (!IS_ENABLED(CONFIG_USERSPACE) || !k_is_user_context()) {
-		__ztest_set_test_result(ZTEST_RESULT_PENDING);
-		run_test_rules(/*is_before=*/true, test, /*data=*/c);
-		if (suite->before) {
-			suite->before(/*data=*/c);
-		}
-		if (IS_ENABLED(CONFIG_USERSPACE) && config_user_mode) {
-			k_thread_user_mode_enter(test_cb, a, b, c);
-		}
+	test_result = ZTEST_RESULT_PENDING;
+	run_test_rules(/*is_before=*/true, test, /*data=*/c);
+	if (suite->before) {
+		suite->before(/*data=*/c);
 	}
 	run_test_functions(suite, test, c);
-	__ztest_set_test_result(ZTEST_RESULT_PASS);
+	test_result = ZTEST_RESULT_PASS;
 }
 
 static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test, void *data)
@@ -544,7 +561,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 #endif
 	TC_START(test->name);
 
-	__ztest_set_test_phase(TEST_PHASE_BEFORE);
+	phase = TEST_PHASE_BEFORE;
 
 	/* If the suite's setup function marked us as skipped, don't bother
 	 * running the tests.
@@ -555,7 +572,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 				K_THREAD_STACK_SIZEOF(ztest_thread_stack),
 				(k_thread_entry_t)test_cb, suite, test, data,
 				CONFIG_ZTEST_THREAD_PRIORITY,
-				K_INHERIT_PERMS, K_FOREVER);
+				test->thread_options | K_INHERIT_PERMS, K_FOREVER);
 
 		k_thread_access_grant(&ztest_thread, suite, test, suite->stats);
 		if (test->name != NULL) {
@@ -569,7 +586,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 		}
 	} else if (test_result != ZTEST_RESULT_SUITE_SKIP &&
 		   test_result != ZTEST_RESULT_SUITE_FAIL) {
-		__ztest_set_test_result(ZTEST_RESULT_PENDING);
+		test_result = ZTEST_RESULT_PENDING;
 		get_start_time_cyc();
 		run_test_rules(/*is_before=*/true, test, data);
 		if (suite->before) {
@@ -578,7 +595,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 		run_test_functions(suite, test, data);
 	}
 
-	__ztest_set_test_phase(TEST_PHASE_AFTER);
+	phase = TEST_PHASE_AFTER;
 	if (suite->after != NULL) {
 		suite->after(data);
 	}
@@ -589,7 +606,7 @@ static int run_test(struct ztest_suite_node *suite, struct ztest_unit_test *test
 		test->stats->duration_worst_ms = tc_spend_time;
 	}
 
-	__ztest_set_test_phase(TEST_PHASE_FRAMEWORK);
+	phase = TEST_PHASE_FRAMEWORK;
 
 	/* Flush all logs in case deferred mode and default logging thread are used. */
 	while (IS_ENABLED(CONFIG_TEST_LOGGING_FLUSH_AFTER_TEST) &&
@@ -697,11 +714,11 @@ static int z_ztest_run_test_suite_ptr(struct ztest_suite_node *suite)
 
 	TC_SUITE_START(suite->name);
 	current_test_failed_assumption = false;
-	__ztest_set_test_result(ZTEST_RESULT_PENDING);
-	__ztest_set_test_phase(TEST_PHASE_SETUP);
+	test_result = ZTEST_RESULT_PENDING;
+	phase = TEST_PHASE_SETUP;
 #ifndef KERNEL
 	if (setjmp(test_suite_fail)) {
-		__ztest_set_test_result(ZTEST_RESULT_SUITE_FAIL);
+		test_result = ZTEST_RESULT_SUITE_FAIL;
 	}
 #endif
 	if (test_result != ZTEST_RESULT_SUITE_FAIL && suite->setup != NULL) {
@@ -772,7 +789,7 @@ static int z_ztest_run_test_suite_ptr(struct ztest_suite_node *suite)
 	}
 
 	TC_SUITE_END(suite->name, (fail > 0 ? TC_FAIL : TC_PASS));
-	__ztest_set_test_phase(TEST_PHASE_TEARDOWN);
+	phase = TEST_PHASE_TEARDOWN;
 	if (suite->teardown != NULL) {
 		suite->teardown(data);
 	}
@@ -984,30 +1001,6 @@ int z_impl_ztest_run_test_suites(const void *state)
 
 	return count;
 }
-
-void z_impl___ztest_set_test_result(enum ztest_result new_result)
-{
-	test_result = new_result;
-}
-
-void z_impl___ztest_set_test_phase(enum ztest_phase new_phase)
-{
-	phase = new_phase;
-}
-
-#ifdef CONFIG_USERSPACE
-void z_vrfy___ztest_set_test_result(enum ztest_result new_result)
-{
-	z_impl___ztest_set_test_result(new_result);
-}
-#include <syscalls/__ztest_set_test_result_mrsh.c>
-
-void z_vrfy___ztest_set_test_phase(enum ztest_phase new_phase)
-{
-	z_impl___ztest_set_test_phase(new_phase);
-}
-#include <syscalls/__ztest_set_test_phase_mrsh.c>
-#endif /* CONFIG_USERSPACE */
 
 void ztest_verify_all_test_suites_ran(void)
 {

@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/spi.h)
-
 zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_SPI_TELINK_B91  spi_b91.c)

@@ -192,18 +192,6 @@ static int octets_per_frame;
 static int64_t lc3_start_time;
 static int32_t lc3_sdu_cnt;
 
-static void lc3_audio_send_data(struct k_work *work);
-static K_WORK_DEFINE(audio_send_work, lc3_audio_send_data);
-
-static void clear_lc3_sine_data(void)
-{
-	lc3_start_time = 0;
-	lc3_sdu_cnt = 0;
-	txing_stream = NULL;
-
-	(void)k_work_cancel(&audio_send_work);
-}
-
 /**
  * Use the math lib to generate a sine-wave using 16 bit samples into a buffer.
  *
@@ -334,7 +322,10 @@ static void lc3_audio_send_data(struct k_work *work)
 				lc3_sdu_cnt, tx_sdu_len);
 	}
 	lc3_sdu_cnt++;
+	seq_num++;
 }
+
+static K_WORK_DEFINE(audio_send_work, lc3_audio_send_data);
 
 void sdu_sent_cb(struct bt_bap_stream *stream)
 {
@@ -785,10 +776,6 @@ static void config_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rs
 {
 	shell_print(ctx_shell, "stream %p config operation rsp_code %u reason %u",
 		    stream, rsp_code, reason);
-
-	if (default_stream == NULL) {
-		default_stream = stream;
-	}
 }
 
 static void qos_cb(struct bt_bap_stream *stream, enum bt_bap_ascs_rsp_code rsp_code,
@@ -920,7 +907,6 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	enum bt_audio_location location = BT_AUDIO_LOCATION_PROHIBITED;
 	const struct named_lc3_preset *named_preset;
 	struct unicast_stream *uni_stream;
-	struct bt_bap_stream *bap_stream;
 	struct bt_bap_ep *ep = NULL;
 	unsigned long index;
 	uint8_t conn_index;
@@ -933,9 +919,7 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 	conn_index = bt_conn_index(default_conn);
 
 	if (default_stream == NULL) {
-		bap_stream = &unicast_streams[0].stream.bap_stream;
-	} else {
-		bap_stream = default_stream;
+		default_stream = &unicast_streams[0].stream.bap_stream;
 	}
 
 	index = shell_strtoul(argv[2], 0, &err);
@@ -1026,7 +1010,7 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 		}
 	}
 
-	uni_stream = CONTAINER_OF(bap_stream, struct unicast_stream, stream);
+	uni_stream = CONTAINER_OF(default_stream, struct unicast_stream, stream);
 	copy_unicast_stream_preset(uni_stream, named_preset);
 
 	/* If location has been modifed, we update the location in the codec configuration */
@@ -1046,14 +1030,14 @@ static int cmd_config(const struct shell *sh, size_t argc, char *argv[])
 		}
 	}
 
-	if (bap_stream->ep == ep) {
-		err = bt_bap_stream_reconfig(bap_stream, &uni_stream->codec);
+	if (default_stream->ep == ep) {
+		err = bt_bap_stream_reconfig(default_stream, &uni_stream->codec);
 		if (err != 0) {
 			shell_error(sh, "Unable reconfig stream: %d", err);
 			return -ENOEXEC;
 		}
 	} else {
-		err = bt_bap_stream_config(default_conn, bap_stream, ep, &uni_stream->codec);
+		err = bt_bap_stream_config(default_conn, default_stream, ep, &uni_stream->codec);
 		if (err != 0) {
 			shell_error(sh, "Unable to config stream: %d", err);
 			return err;
@@ -1477,7 +1461,7 @@ static int cmd_list(const struct shell *sh, size_t argc, char *argv[])
 	for (size_t i = 0U; i < ARRAY_SIZE(unicast_streams); i++) {
 		struct bt_bap_stream *stream = &unicast_streams[i].stream.bap_stream;
 
-		if (stream != NULL && stream->conn != NULL) {
+		if (stream->conn != NULL) {
 			shell_print(sh, "  %s#%u: stream %p dir 0x%02x group %p",
 				    stream == default_stream ? "*" : " ", i, stream,
 				    stream_dir(stream), stream->group);
@@ -1519,10 +1503,6 @@ static bool broadcast_scan_recv(const struct bt_le_scan_recv_info *info,
 				uint32_t broadcast_id)
 {
 	char le_addr[BT_ADDR_LE_STR_LEN];
-
-	if (!passes_scan_filter(info, ad)) {
-		return false;
-	}
 
 	bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
 
@@ -1736,7 +1716,10 @@ static void stream_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 
 #if defined(CONFIG_LIBLC3)
 	if (stream == default_stream) {
-		clear_lc3_sine_data();
+		lc3_start_time = 0;
+		lc3_sdu_cnt = 0;
+
+		k_work_cancel(&audio_send_work);
 	}
 #endif /* CONFIG_LIBLC3 */
 }
@@ -1785,7 +1768,10 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 #if defined(CONFIG_LIBLC3)
 	/* stop sending */
 	if (stream == default_stream) {
-		clear_lc3_sine_data();
+		lc3_start_time = 0;
+		lc3_sdu_cnt = 0;
+
+		k_work_cancel(&audio_send_work);
 	}
 #endif /* CONFIG_LIBLC3 */
 }
@@ -2417,7 +2403,12 @@ static int cmd_start_sine(const struct shell *sh, size_t argc, char *argv[])
 
 static int cmd_stop_sine(const struct shell *sh, size_t argc, char *argv[])
 {
-	clear_lc3_sine_data();
+	lc3_start_time = 0;
+	lc3_sdu_cnt = 0;
+
+	k_work_cancel(&audio_send_work);
+
+	txing_stream = NULL;
 
 	return 0;
 }
@@ -2631,7 +2622,9 @@ static ssize_t nonconnectable_ad_data_add(struct bt_data *data_array,
 			return -1;
 		}
 
-		sys_put_le24(broadcast_id, &ad_bap_broadcast_announcement[2]);
+		ad_bap_broadcast_announcement[2] = (uint8_t)(broadcast_id >> 16);
+		ad_bap_broadcast_announcement[3] = (uint8_t)(broadcast_id >> 8);
+		ad_bap_broadcast_announcement[4] = (uint8_t)(broadcast_id >> 0);
 		data_array[ad_len].type = BT_DATA_SVC_DATA16;
 		data_array[ad_len].data_len = ARRAY_SIZE(ad_bap_broadcast_announcement);
 		data_array[ad_len].data = ad_bap_broadcast_announcement;

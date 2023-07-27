@@ -35,7 +35,7 @@ enum bt_mesh_nonce_type;
 struct bt_mesh_node {
 	uint16_t addr;
 	uint16_t net_idx;
-	struct bt_mesh_key dev_key;
+	uint8_t  dev_key[16];
 	uint8_t  num_elem;
 };
 
@@ -229,10 +229,10 @@ struct bt_mesh_net {
 	/* Timer to track duration in current IV Update state */
 	struct k_work_delayable ivu_timer;
 
-	struct bt_mesh_key dev_key;
+	uint8_t dev_key[16];
 
 #if defined(CONFIG_BT_MESH_RPR_SRV)
-	struct bt_mesh_key dev_key_cand;
+	uint8_t dev_key_cand[16];
 #endif
 #if defined(CONFIG_BT_MESH_OD_PRIV_PROXY_SRV)
 	uint8_t on_demand_state;
@@ -283,7 +283,7 @@ extern struct bt_mesh_net bt_mesh;
 
 #define BT_MESH_NET_HDR_LEN 9
 
-int bt_mesh_net_create(uint16_t idx, uint8_t flags, const struct bt_mesh_key *key,
+int bt_mesh_net_create(uint16_t idx, uint8_t flags, const uint8_t key[16],
 		       uint32_t iv_index);
 
 bool bt_mesh_net_iv_update(uint32_t iv_index, bool iv_update);

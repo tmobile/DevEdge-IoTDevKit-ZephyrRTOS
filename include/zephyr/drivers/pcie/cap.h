@@ -6,13 +6,6 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_PCIE_CAP_H_
 #define ZEPHYR_INCLUDE_DRIVERS_PCIE_CAP_H_
 
-/**
- * @brief PCIe Capabilities
- * @defgroup pcie_capabilities PCIe Capabilities
- * @ingroup pcie_host_interface
- * @{
- */
-
 /*
  * PCI & PCI Express Capabilities
  * from PCI Code and ID Assignment Specification Revision 1.11
@@ -85,9 +78,5 @@
 #define PCIE_EXT_CAP_ID_PL_32GT	0x002AU	/* Physical Layer 32.0 GT/s */
 #define PCIE_EXT_CAP_ID_AP	0x002BU	/* Alternate Protocol */
 #define PCIE_EXT_CAP_ID_SFI	0x002CU	/* System Firmware Intermediary  */
-
-/**
- * @}
- */
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_PCIE_CAP_H_ */
