@@ -15,7 +15,6 @@
  *   -# k_event_set
  *   -# k_event_wait
  *   -# k_event_wait_all
- *   -# k_event_test
  *
  * @defgroup kernel_event_tests events
  * @ingroup all_tests

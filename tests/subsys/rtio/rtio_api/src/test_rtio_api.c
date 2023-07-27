@@ -96,7 +96,6 @@ void test_rtio_chain_(struct rtio *r)
 	uint32_t userdata[4] = {0, 1, 2, 3};
 	struct rtio_sqe *sqe;
 	struct rtio_cqe *cqe;
-	uintptr_t cq_count = atomic_get(&r->cq_count);
 
 	for (int i = 0; i < 4; i++) {
 		sqe = rtio_sqe_acquire(r);
@@ -111,11 +110,10 @@ void test_rtio_chain_(struct rtio *r)
 	sqe->flags = 0;
 
 	TC_PRINT("submitting\n");
-
 	res = rtio_submit(r, 4);
 	TC_PRINT("checking cq\n");
 	zassert_ok(res, "Should return ok from rtio_execute");
-	zassert_equal(atomic_get(&r->cq_count) - cq_count, 4, "Should have 4 pending completions");
+	zassert_equal(rtio_cqe_consumable(r), 4, "Should have 4 pending completions");
 
 	for (int i = 0; i < 4; i++) {
 		cqe = rtio_cqe_consume(r);
@@ -615,7 +613,6 @@ void test_rtio_transaction_(struct rtio *r)
 	struct rtio_sqe *sqe;
 	struct rtio_cqe *cqe;
 	bool seen[2] = { 0 };
-	uintptr_t cq_count = atomic_get(&r->cq_count);
 
 	sqe = rtio_sqe_acquire(r);
 	zassert_not_null(sqe, "Expected a valid sqe");
@@ -640,10 +637,9 @@ void test_rtio_transaction_(struct rtio *r)
 
 	TC_PRINT("submitting userdata 0 %p, userdata 1 %p\n", &userdata[0], &userdata[1]);
 	res = rtio_submit(r, 4);
-	TC_PRINT("checking cq, completions available, count at start %lu, current count %lu\n",
-		 cq_count, atomic_get(&r->cq_count));
+	TC_PRINT("checking cq, completions available %u\n", rtio_cqe_consumable(r));
 	zassert_ok(res, "Should return ok from rtio_execute");
-	zassert_equal(atomic_get(&r->cq_count) - cq_count, 4, "Should have 4 pending completions");
+	zassert_equal(rtio_cqe_consumable(r), 4, "Should have 4 pending completions");
 
 	for (int i = 0; i < 4; i++) {
 		TC_PRINT("consume %d\n", i);

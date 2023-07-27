@@ -213,7 +213,7 @@ __imr void pm_state_imr_restore(void)
 }
 #endif /* CONFIG_ADSP_IMR_CONTEXT_SAVE */
 
-void pm_state_set(enum pm_state state, uint8_t substate_id)
+__weak void pm_state_set(enum pm_state state, uint8_t substate_id)
 {
 	ARG_UNUSED(substate_id);
 	uint32_t cpu = arch_proc_id();
@@ -284,7 +284,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 	} else if (state == PM_STATE_RUNTIME_IDLE) {
 		DSPCS.bootctl[cpu].bctl &= ~DSPBR_BCTL_WAITIPPG;
 		DSPCS.bootctl[cpu].bctl &= ~DSPBR_BCTL_WAITIPCG;
-		soc_cpu_power_down(cpu);
+		ACE_PWRCTL->wpdsphpxpg &= ~BIT(cpu);
 		if (cpu == 0) {
 			uint32_t battr = DSPCS.bootctl[cpu].battr & (~LPSCTL_BATTR_MASK);
 
@@ -298,7 +298,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 }
 
 /* Handle SOC specific activity after Low Power Mode Exit */
-void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
+__weak void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 {
 	ARG_UNUSED(substate_id);
 	uint32_t cpu = arch_proc_id();
@@ -333,9 +333,9 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 			return;
 		}
 
-		soc_cpu_power_up(cpu);
+		ACE_PWRCTL->wpdsphpxpg |= BIT(cpu);
 
-		while (!soc_cpu_is_powered(cpu)) {
+		while ((ACE_PWRSTS->dsphpxpgs & BIT(cpu)) == 0) {
 			k_busy_wait(HW_STATE_CHECK_DELAY);
 		}
 

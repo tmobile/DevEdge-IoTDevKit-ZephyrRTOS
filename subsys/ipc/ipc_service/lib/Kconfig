@@ -11,13 +11,12 @@ config IPC_SERVICE_STATIC_VRINGS
 	help
 	  "Static VRINGs library"
 
-config IPC_SERVICE_STATIC_VRINGS_MEM_ALIGNMENT
+config IPC_SERVICE_STATIC_VRINGS_ALIGNMENT
 	int "VRINGs alignment"
 	depends on IPC_SERVICE_STATIC_VRINGS
 	default 4
 	help
-	  Static VRINGs alignment. This should take into account the cache line
-	  alignment if the cache is enabled.
+	  Static VRINGs alignment
 
 menuconfig IPC_SERVICE_ICMSG
 	bool "icmsg IPC library"

@@ -3,6 +3,7 @@
 zephyr_library()
 
 zephyr_library_sources(
+  soc.c
   soc_config.c
   reboot.S
   sys_arch_reboot.c

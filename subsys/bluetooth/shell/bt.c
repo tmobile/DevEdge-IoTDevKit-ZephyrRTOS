@@ -381,11 +381,6 @@ static void scan_recv(const struct bt_le_scan_recv_info *info,
 		return;
 	}
 
-	(void)memset(name, 0, sizeof(name));
-
-	bt_data_parse(buf, data_cb, name);
-	bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
-
 	shell_print(ctx_shell, "%s%s, AD evt type %u, RSSI %i %s "
 		    "C:%u S:%u D:%d SR:%u E:%u Prim: %s, Secn: %s, "
 		    "Interval: 0x%04x (%u us), SID: 0x%x",
@@ -545,8 +540,6 @@ void conn_addr_str(struct bt_conn *conn, char *addr, size_t len)
 #endif
 	case BT_CONN_TYPE_LE:
 		bt_addr_le_to_str(info.le.dst, addr, len);
-		break;
-	default:
 		break;
 	}
 }
@@ -825,22 +818,22 @@ struct bt_le_per_adv_sync *per_adv_syncs[CONFIG_BT_PER_ADV_SYNC_MAX];
 static void per_adv_sync_sync_cb(struct bt_le_per_adv_sync *sync,
 				 struct bt_le_per_adv_sync_synced_info *info)
 {
-	const bool is_past_peer = info->conn != NULL;
 	char le_addr[BT_ADDR_LE_STR_LEN];
 	char past_peer[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(info->addr, le_addr, sizeof(le_addr));
 
-	if (is_past_peer) {
+	if (info->conn) {
 		conn_addr_str(info->conn, past_peer, sizeof(past_peer));
+	} else {
+		memset(past_peer, 0, sizeof(past_peer));
 	}
 
 	shell_print(ctx_shell, "PER_ADV_SYNC[%u]: [DEVICE]: %s synced, "
 		    "Interval 0x%04x (%u us), PHY %s, SD 0x%04X, PAST peer %s",
 		    bt_le_per_adv_sync_get_index(sync), le_addr,
 		    info->interval, BT_CONN_INTERVAL_TO_US(info->interval),
-		    phy2str(info->phy), info->service_data,
-		    is_past_peer ? past_peer : "not present");
+		    phy2str(info->phy), info->service_data, past_peer);
 
 	if (info->conn) { /* if from PAST */
 		for (int i = 0; i < ARRAY_SIZE(per_adv_syncs); i++) {
@@ -3255,8 +3248,6 @@ static void connection_info(struct bt_conn *conn, void *user_data)
 		shell_print(ctx_shell, " #%u [ISO][%s] %s", info.id, role_str(info.role), addr);
 		break;
 #endif
-	default:
-		break;
 	}
 
 	(*conn_count)++;

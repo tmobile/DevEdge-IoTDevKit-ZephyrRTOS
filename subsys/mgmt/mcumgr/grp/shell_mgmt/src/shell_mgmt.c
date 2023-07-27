@@ -83,6 +83,9 @@ shell_mgmt_exec(struct smp_streamer *ctxt)
 
 		ok = zcbor_tstr_decode(zsd, &value);
 		if (ok) {
+			/* TODO: This is original error when failed to collect command line
+			 * to buffer, but should be rather MGMT_ERR_ENOMEM.
+			 */
 			if ((len + value.len) >= (ARRAY_SIZE(line) - 1)) {
 				ok = smp_add_cmd_ret(zse, MGMT_GROUP_ID_SHELL,
 						     SHELL_MGMT_RET_RC_COMMAND_TOO_LONG);
@@ -92,7 +95,7 @@ shell_mgmt_exec(struct smp_streamer *ctxt)
 			memcpy(&line[len], value.value, value.len);
 			len += value.len + 1;
 			line[len - 1] = ' ';
-		} else if (len > 0) {
+		} else {
 			line[len - 1] = 0;
 			/* Implicit break by while condition */
 		}
@@ -128,15 +131,25 @@ end:
 	return ok ? MGMT_ERR_EOK : MGMT_ERR_EMSGSIZE;
 }
 
+static struct mgmt_handler shell_mgmt_handlers[] = {
+	[SHELL_MGMT_ID_EXEC] = { NULL, shell_mgmt_exec },
+};
+
+#define SHELL_MGMT_HANDLER_CNT ARRAY_SIZE(shell_mgmt_handlers)
+
+static struct mgmt_group shell_mgmt_group = {
+	.mg_handlers = shell_mgmt_handlers,
+	.mg_handlers_count = SHELL_MGMT_HANDLER_CNT,
+	.mg_group_id = MGMT_GROUP_ID_SHELL,
+};
+
+static void shell_mgmt_register_group(void)
+{
+	mgmt_register_group(&shell_mgmt_group);
+}
+
 #ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-/*
- * @brief	Translate shell mgmt group error code into MCUmgr error code
- *
- * @param ret	#shell_mgmt_ret_code_t error code
- *
- * @return	#mcumgr_err_t error code
- */
-static int shell_mgmt_translate_error_code(uint16_t ret)
+int shell_mgmt_translate_error_code(uint16_t ret)
 {
 	int rc;
 
@@ -153,25 +166,5 @@ static int shell_mgmt_translate_error_code(uint16_t ret)
 	return rc;
 }
 #endif
-
-static struct mgmt_handler shell_mgmt_handlers[] = {
-	[SHELL_MGMT_ID_EXEC] = { NULL, shell_mgmt_exec },
-};
-
-#define SHELL_MGMT_HANDLER_CNT ARRAY_SIZE(shell_mgmt_handlers)
-
-static struct mgmt_group shell_mgmt_group = {
-	.mg_handlers = shell_mgmt_handlers,
-	.mg_handlers_count = SHELL_MGMT_HANDLER_CNT,
-	.mg_group_id = MGMT_GROUP_ID_SHELL,
-#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-	.mg_translate_error = shell_mgmt_translate_error_code,
-#endif
-};
-
-static void shell_mgmt_register_group(void)
-{
-	mgmt_register_group(&shell_mgmt_group);
-}
 
 MCUMGR_HANDLER_DEFINE(shell_mgmt, shell_mgmt_register_group);

@@ -26,54 +26,6 @@ extern "C" {
  * @{
  */
 
-/* See section 6.1: "Some of the timing parameters in definition of the MAC are in units of PHY
- * symbols. For PHYs that have multiple symbol periods, the duration to be used for the MAC
- * parameters is defined in that PHY clause."
- */
-#define IEEE802154_PHY_SUN_FSK_863MHZ_915MHZ_SYMBOL_PERIOD_US 20U /* see section 19.1, table 19-1 */
-#define IEEE802154_PHY_OQPSK_2450MHZ_SYMBOL_PERIOD_US         16U /* see section 12.3.3 */
-
-/* TODO: Get PHY-specific symbol period from radio API. Requires an attribute getter, see
- *       https://github.com/zephyrproject-rtos/zephyr/issues/50336#issuecomment-1251122582.
- *       For now we assume PHYs that current drivers actually implement.
- */
-#define IEEE802154_PHY_SYMBOL_PERIOD_US(is_subg_phy)                                               \
-	((is_subg_phy) ? IEEE802154_PHY_SUN_FSK_863MHZ_915MHZ_SYMBOL_PERIOD_US                     \
-		       : IEEE802154_PHY_OQPSK_2450MHZ_SYMBOL_PERIOD_US)
-
-/* The inverse of the symbol period as defined in section 6.1. This is not necessarily the true
- * physical symbol period, so take care to use this macro only when either the symbol period used
- * for MAC timing is the same as the physical symbol period or if you actually mean the MAC timing
- * symbol period.
- */
-#define IEEE802154_PHY_SYMBOLS_PER_SECOND(symbol_period) (USEC_PER_SEC / symbol_period)
-
-/* see section 19.2.4 */
-#define IEEE802154_PHY_SUN_FSK_PHR_LEN 2
-
-/* Default PHY PIB attribute aTurnaroundTime, in PHY symbols, see section 11.3, table 11-1. */
-#define IEEE802154_PHY_A_TURNAROUND_TIME_DEFAULT 12U
-
-/* PHY PIB attribute aTurnaroundTime for SUN, RS-GFSK, TVWS, and LECIM FSK PHY,
- * in PHY symbols, see section 11.3, table 11-1.
- */
-#define IEEE802154_PHY_A_TURNAROUND_TIME_1MS(symbol_period)                                        \
-	DIV_ROUND_UP(USEC_PER_MSEC, symbol_period)
-
-/* TODO: Get PHY-specific turnaround time from radio API, see
- *       https://github.com/zephyrproject-rtos/zephyr/issues/50336#issuecomment-1251122582.
- *       For now we assume PHYs that current drivers actually implement.
- */
-#define IEEE802154_PHY_A_TURNAROUND_TIME(is_subg_phy)                                              \
-	((is_subg_phy) ? IEEE802154_PHY_A_TURNAROUND_TIME_1MS(                                     \
-				 IEEE802154_PHY_SYMBOL_PERIOD_US(is_subg_phy))                     \
-		       : IEEE802154_PHY_A_TURNAROUND_TIME_DEFAULT)
-
-/* PHY PIB attribute aCcaTime, in PHY symbols, all PHYs except for SUN O-QPSK,
- * see section 11.3, table 11-1.
- */
-#define IEEE802154_PHY_A_CCA_TIME 8U
-
 /**
  * @brief IEEE 802.15.4 Channel assignments
  *
@@ -93,34 +45,19 @@ enum ieee802154_channel {
 };
 
 enum ieee802154_hw_caps {
-	IEEE802154_HW_FCS = BIT(0),            /* Frame Check-Sum supported */
-	IEEE802154_HW_PROMISC = BIT(1),        /* Promiscuous mode supported */
-	IEEE802154_HW_FILTER = BIT(2),         /* Filter PAN ID, long/short addr */
-	IEEE802154_HW_CSMA = BIT(3),           /* Executes CSMA-CA procedure on TX */
-	IEEE802154_HW_RETRANSMISSION = BIT(4), /* Handles retransmission on TX ACK timeout */
-	IEEE802154_HW_TX_RX_ACK = BIT(5),      /* Waits for ACK on TX if AR bit is set in TX pkt */
-	IEEE802154_HW_RX_TX_ACK = BIT(6),      /* Sends ACK on RX if AR bit is set in RX pkt */
-	IEEE802154_HW_ENERGY_SCAN = BIT(7),    /* Energy scan supported */
-	IEEE802154_HW_TXTIME = BIT(8),         /* TX at specified time supported */
-	IEEE802154_HW_SLEEP_TO_TX = BIT(9),    /* TX directly from sleep supported */
-	IEEE802154_HW_TX_SEC = BIT(10),        /* TX security handling supported */
-	IEEE802154_HW_RXTIME = BIT(11),        /* RX at specified time supported */
-	IEEE802154_HW_2_4_GHZ = BIT(12),       /* 2.4Ghz radio supported
-						* TODO: Replace with channel page attribute.
-						*/
-	IEEE802154_HW_SUB_GHZ = BIT(13),       /* Sub-GHz radio supported
-						* TODO: Replace with channel page attribute.
-						*/
-	/* Note: Update also IEEE802154_HW_CAPS_BITS_COMMON_COUNT when changing
-	 * the ieee802154_hw_caps type.
-	 */
+	IEEE802154_HW_FCS	  = BIT(0), /* Frame Check-Sum supported */
+	IEEE802154_HW_PROMISC	  = BIT(1), /* Promiscuous mode supported */
+	IEEE802154_HW_FILTER	  = BIT(2), /* Filter PAN ID, long/short addr */
+	IEEE802154_HW_CSMA	  = BIT(3), /* CSMA-CA supported */
+	IEEE802154_HW_2_4_GHZ	  = BIT(4), /* 2.4Ghz radio supported */
+	IEEE802154_HW_TX_RX_ACK	  = BIT(5), /* Handles ACK request on TX */
+	IEEE802154_HW_SUB_GHZ	  = BIT(6), /* Sub-GHz radio supported */
+	IEEE802154_HW_ENERGY_SCAN = BIT(7), /* Energy scan supported */
+	IEEE802154_HW_TXTIME	  = BIT(8), /* TX at specified time supported */
+	IEEE802154_HW_SLEEP_TO_TX = BIT(9), /* TX directly from sleep supported */
+	IEEE802154_HW_TX_SEC	  = BIT(10), /* TX security handling supported */
+	IEEE802154_HW_RXTIME	  = BIT(11), /* RX at specified time supported */
 };
-
-/** @brief Number of bits used by ieee802154_hw_caps type. */
-#define IEEE802154_HW_CAPS_BITS_COMMON_COUNT (14)
-
-/** @brief This and higher values are specific to the protocol- or driver-specific extensions. */
-#define IEEE802154_HW_CAPS_BITS_PRIV_START IEEE802154_HW_CAPS_BITS_COMMON_COUNT
 
 enum ieee802154_filter_type {
 	IEEE802154_FILTER_TYPE_IEEE_ADDR,
@@ -184,12 +121,6 @@ enum ieee802154_tx_mode {
 
 	/** Transmit packet in the future, perform CCA before transmission. */
 	IEEE802154_TX_MODE_TXTIME_CCA,
-
-	/** Number of modes defined in ieee802154_tx_mode. */
-	IEEE802154_TX_MODE_COMMON_COUNT,
-
-	/** This and higher values are specific to the protocol- or driver-specific extensions. */
-	IEEE802154_TX_MODE_PRIV_START = IEEE802154_TX_MODE_COMMON_COUNT,
 };
 
 /** IEEE802.15.4 Frame Pending Bit table address matching mode. */
@@ -295,12 +226,6 @@ enum ieee802154_config_type {
 	 *  should disable it for all enabled addresses.
 	 */
 	IEEE802154_CONFIG_ENH_ACK_HEADER_IE,
-
-	/** Number of types defined in ieee802154_config_type. */
-	IEEE802154_CONFIG_COMMON_COUNT,
-
-	/** This and higher values are specific to the protocol- or driver-specific extensions. */
-	IEEE802154_CONFIG_PRIV_START = IEEE802154_CONFIG_COMMON_COUNT,
 };
 
 /** IEEE802.15.4 driver configuration data. */
@@ -381,23 +306,6 @@ struct ieee802154_config {
 	};
 };
 
-/** IEEE 802.15.4 attributes. */
-enum ieee802154_attr {
-	/** Number of attributes defined in ieee802154_attr. */
-	IEEE802154_ATTR_COMMON_COUNT,
-
-	/** This and higher values are specific to the protocol- or driver-specific extensions. */
-	IEEE802154_ATTR_PRIV_START = IEEE802154_ATTR_COMMON_COUNT,
-};
-
-/** IEEE 802.15.4 attribute value data. */
-struct ieee802154_attr_value {
-	union {
-		/* TODO: Please remove when first attribute is added. */
-		uint8_t dummy;
-	};
-};
-
 /**
  * @brief IEEE 802.15.4 radio interface API.
  *
@@ -470,15 +378,6 @@ struct ieee802154_radio_api {
 	 *  conditions (i.e.: temperature).
 	 */
 	uint8_t (*get_sch_acc)(const struct device *dev);
-
-	/** Get the value of an attribute.
-	 *  If the requested attribute is supported by implementation, this function returns 0
-	 *  and fills appropriate version of union in `value`.
-	 *  If requested attribute is not supported, this function returns -ENOENT.
-	 */
-	int (*attr_get)(const struct device *dev,
-			enum ieee802154_attr attr,
-			struct ieee802154_attr_value *value);
 };
 
 /* Make sure that the network interface API is properly setup inside

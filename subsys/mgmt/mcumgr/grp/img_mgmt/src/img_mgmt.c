@@ -40,40 +40,13 @@
 #endif
 
 #define FIXED_PARTITION_IS_RUNNING_APP_PARTITION(label)	\
-	 (FIXED_PARTITION_OFFSET(label) == CONFIG_FLASH_LOAD_OFFSET)
+	(FIXED_PARTITION_OFFSET(label) == CONFIG_FLASH_LOAD_OFFSET)
 
-#if FIXED_PARTITION_EXISTS(slot0_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot0_ns_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot1_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot2_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot2_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 1
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot3_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot3_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 1
-#endif
-#endif
-
-#ifndef NUMBER_OF_ACTIVE_IMAGE
-#error "Unsupported code parition is set as active application partition"
+#if !(FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot2_partition))
+#error "Unsupported chosen zephyr,code-partition for boot application."
 #endif
 
 LOG_MODULE_REGISTER(mcumgr_img_grp, CONFIG_MCUMGR_GRP_IMG_LOG_LEVEL);
@@ -133,7 +106,14 @@ int img_mgmt_active_slot(int image)
 
 int img_mgmt_active_image(void)
 {
-	return NUMBER_OF_ACTIVE_IMAGE;
+#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER == 2
+	if (!(FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition) ||
+	      FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition) ||
+	      FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition))) {
+		return 1;
+	}
+#endif
+	return 0;
 }
 /*
  * Reads the version and build hash from the specified image slot.
@@ -297,13 +277,13 @@ img_mgmt_get_other_slot(void)
 	switch (slot) {
 	case 1:
 		return 0;
-#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER > 2
+#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER
 	case 2:
 		return 3;
 	case 3:
 		return 2;
-#endif
 	}
+#endif
 	return 1;
 }
 
@@ -662,10 +642,6 @@ img_mgmt_upload(struct smp_streamer *ctxt)
 #if defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS)
 			(void)mgmt_callback_notify(MGMT_EVT_OP_IMG_MGMT_DFU_PENDING, NULL, 0,
 						   &ret_rc, &ret_group);
-		} else {
-			/* Notify that the write has completed */
-			(void)mgmt_callback_notify(MGMT_EVT_OP_IMG_MGMT_DFU_CHUNK_WRITE_COMPLETE,
-						   NULL, 0, &ret_rc, &ret_group);
 #endif
 		}
 	}
@@ -715,15 +691,42 @@ int img_mgmt_my_version(struct image_version *ver)
 				  ver, NULL, NULL);
 }
 
+static const struct mgmt_handler img_mgmt_handlers[] = {
+	[IMG_MGMT_ID_STATE] = {
+		.mh_read = img_mgmt_state_read,
+#ifdef CONFIG_MCUBOOT_BOOTLOADER_MODE_DIRECT_XIP
+		.mh_write = NULL
+#else
+		.mh_write = img_mgmt_state_write,
+#endif
+	},
+	[IMG_MGMT_ID_UPLOAD] = {
+		.mh_read = NULL,
+		.mh_write = img_mgmt_upload
+	},
+	[IMG_MGMT_ID_ERASE] = {
+		.mh_read = NULL,
+		.mh_write = img_mgmt_erase
+	},
+};
+
+static const struct mgmt_handler img_mgmt_handlers[];
+
+#define IMG_MGMT_HANDLER_CNT ARRAY_SIZE(img_mgmt_handlers)
+
+static struct mgmt_group img_mgmt_group = {
+	.mg_handlers = (struct mgmt_handler *)img_mgmt_handlers,
+	.mg_handlers_count = IMG_MGMT_HANDLER_CNT,
+	.mg_group_id = MGMT_GROUP_ID_IMAGE,
+};
+
+static void img_mgmt_register_group(void)
+{
+	mgmt_register_group(&img_mgmt_group);
+}
+
 #ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-/*
- * @brief	Translate IMG mgmt group error code into MCUmgr error code
- *
- * @param ret	#img_mgmt_ret_code_t error code
- *
- * @return	#mcumgr_err_t error code
- */
-static int img_mgmt_translate_error_code(uint16_t ret)
+int img_mgmt_translate_error_code(uint16_t ret)
 {
 	int rc;
 
@@ -776,42 +779,5 @@ static int img_mgmt_translate_error_code(uint16_t ret)
 	return rc;
 }
 #endif
-
-static const struct mgmt_handler img_mgmt_handlers[] = {
-	[IMG_MGMT_ID_STATE] = {
-		.mh_read = img_mgmt_state_read,
-#ifdef CONFIG_MCUBOOT_BOOTLOADER_MODE_DIRECT_XIP
-		.mh_write = NULL
-#else
-		.mh_write = img_mgmt_state_write,
-#endif
-	},
-	[IMG_MGMT_ID_UPLOAD] = {
-		.mh_read = NULL,
-		.mh_write = img_mgmt_upload
-	},
-	[IMG_MGMT_ID_ERASE] = {
-		.mh_read = NULL,
-		.mh_write = img_mgmt_erase
-	},
-};
-
-static const struct mgmt_handler img_mgmt_handlers[];
-
-#define IMG_MGMT_HANDLER_CNT ARRAY_SIZE(img_mgmt_handlers)
-
-static struct mgmt_group img_mgmt_group = {
-	.mg_handlers = (struct mgmt_handler *)img_mgmt_handlers,
-	.mg_handlers_count = IMG_MGMT_HANDLER_CNT,
-	.mg_group_id = MGMT_GROUP_ID_IMAGE,
-#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-	.mg_translate_error = img_mgmt_translate_error_code,
-#endif
-};
-
-static void img_mgmt_register_group(void)
-{
-	mgmt_register_group(&img_mgmt_group);
-}
 
 MCUMGR_HANDLER_DEFINE(img_mgmt, img_mgmt_register_group);

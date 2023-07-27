@@ -29,6 +29,24 @@
 		kscan0 = &kscan0;
 		watchdog0 = &wdog;
 	};
+
+	power-states {
+		idle: idle {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1000000>;
+		};
+
+		suspend_to_ram: suspend_to_ram {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-ram";
+			min-residency-us = <2000000>;
+		};
+	};
+};
+
+&cpu0 {
+	cpu-power-states = <&idle &suspend_to_ram>;
 };
 
 &pcr {
@@ -83,15 +101,13 @@
 &ps2_0 {
 	status = "okay";
 	pinctrl-0 = <&ps2_clk0b_gpio007 &ps2_dat0b_gpio010>;
-	pinctrl-1 = <&ps2_clk0b_gpio007_sleep &ps2_dat0b_gpio010_sleep>;
-	pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 };
 
 &ps2_1 {
 	status = "okay";
 	pinctrl-0 = <&ps2_clk1b_gpio154 &ps2_dat1b_gpio155>;
-	pinctrl-1 = <&ps2_clk1b_gpio154_sleep &ps2_dat1b_gpio155_sleep>;
-	pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 };
 
 &pwm0 {

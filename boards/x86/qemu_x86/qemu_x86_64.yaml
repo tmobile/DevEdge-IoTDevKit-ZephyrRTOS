@@ -9,7 +9,6 @@ simulation: qemu
 supported:
   - can
   - smp
-  - smbus
 testing:
   default: true
   ignore_tags:

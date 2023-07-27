@@ -2122,15 +2122,6 @@ static void le_create_cis(struct net_buf *buf, struct net_buf **evt)
 	uint8_t i;
 
 	/*
-	 * Only create a CIS if the Isochronous Channels (Host Support) feature bit
-	 * is set. Refer to BT Spec v5.4 Vol 6 Part B Section 4.6.33.1.
-	 */
-	if (!(ll_feat_get() & BIT64(BT_LE_FEAT_BIT_ISO_CHANNELS))) {
-		*evt = cmd_status(BT_HCI_ERR_CMD_DISALLOWED);
-		return;
-	}
-
-	/*
 	 * Creating new CISes is disallowed until all previous CIS
 	 * established events have been generated
 	 */
@@ -3508,6 +3499,7 @@ static void le_set_ext_adv_enable(struct net_buf *buf, struct net_buf **evt)
 	struct bt_hci_cp_le_set_ext_adv_enable *cmd = (void *)buf->data;
 	struct bt_hci_ext_adv_set *s;
 	uint8_t set_num;
+	uint8_t enable;
 	uint8_t status;
 	uint8_t handle;
 
@@ -3530,6 +3522,7 @@ static void le_set_ext_adv_enable(struct net_buf *buf, struct net_buf **evt)
 	}
 
 	s = (void *) cmd->s;
+	enable = cmd->enable;
 	do {
 		status = ll_adv_set_by_hci_handle_get(s->handle, &handle);
 		if (status) {
@@ -3830,8 +3823,7 @@ static void le_set_ext_scan_enable(struct net_buf *buf, struct net_buf **evt)
 	}
 #endif /* CONFIG_BT_CTLR_DUP_FILTER_LEN > 0 */
 
-	status = ll_scan_enable(cmd->enable, sys_le16_to_cpu(cmd->duration),
-				sys_le16_to_cpu(cmd->period));
+	status = ll_scan_enable(cmd->enable, cmd->duration, cmd->period);
 
 	/* NOTE: As filter duplicates is implemented here in HCI source code,
 	 *       enabling of already enabled scanning shall succeed after
@@ -6886,14 +6878,7 @@ static void le_ext_adv_report(struct pdu_data *pdu_data,
 			uint8_t aux_phy;
 
 			aux_ptr = (void *)ptr;
-
-			/* Don't report if invalid phy or AUX_ADV_IND was not received
-			 * See BT Core 5.4, Vol 6, Part B, Section 4.4.3.5:
-			 * If the Controller does not listen for or does not receive the
-			 * AUX_ADV_IND PDU, no report shall be generated
-			 */
-			if ((node_rx_curr == node_rx && !node_rx_next) ||
-			    PDU_ADV_AUX_PTR_PHY_GET(aux_ptr) > EXT_ADV_AUX_PHY_LE_CODED) {
+			if (PDU_ADV_AUX_PTR_PHY_GET(aux_ptr) > EXT_ADV_AUX_PHY_LE_CODED) {
 				struct node_rx_ftr *ftr;
 
 				ftr = &node_rx->hdr.rx_ftr;

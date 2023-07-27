@@ -131,7 +131,7 @@ static int cmd_vlist(const struct shell *sh, size_t argc, char **argv)
 {
 	const struct device *dev;
 	unsigned int volt_cnt;
-	int32_t last_volt_uv = 0;
+	int32_t last_volt_uv;
 
 	ARG_UNUSED(argc);
 

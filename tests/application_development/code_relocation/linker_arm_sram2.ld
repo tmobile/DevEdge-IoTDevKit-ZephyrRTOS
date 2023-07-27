@@ -36,5 +36,4 @@ MEMORY
 #endif
     }
 
-/* Include the SoC-specific linker file */
-#include <linker.ld>
+#include <zephyr/arch/arm/aarch32/cortex_m/scripts/linker.ld>

@@ -72,7 +72,7 @@
 /soc/arm64/intel_socfpga/*                @siclim
 /soc/Kconfig                              @tejlmand @galak @nashif @nordicjm
 /submanifests/*                           @mbolivar-nordic
-/arch/x86/                                @jhedberg @nashif
+/arch/x86/                                @jhedberg @nashif @aasthagr
 /arch/nios2/                              @nashif
 /arch/posix/                              @aescolar @daor-oti
 /arch/riscv/                              @kgugala @pgielda
@@ -84,7 +84,7 @@
 /soc/riscv/riscv-privileged/neorv32/       @henrikbrixandersen
 /soc/riscv/riscv-privileged/gd32vf103/     @soburi
 /soc/riscv/riscv-privileged/niosv/         @sweeaun
-/soc/x86/                                 @dcpleung @nashif
+/soc/x86/                                 @dcpleung @nashif @aasthagr
 /arch/xtensa/                             @dcpleung @andyross @nashif
 /soc/xtensa/                              @dcpleung @andyross @nashif
 /arch/sparc/                              @julius-barendt
@@ -184,7 +184,7 @@
 /boards/shields/atmel_rf2xx/              @nandojve
 /boards/shields/esp_8266/                 @nandojve
 /boards/shields/inventek_eswifi/          @nandojve
-/boards/x86/                              @dcpleung @nashif
+/boards/x86/                              @dcpleung @nashif @aasthagr
 /boards/x86/acrn/                         @enjiamai
 /boards/xtensa/                           @nashif @dcpleung
 /boards/xtensa/odroid_go/                 @ydamigos
@@ -235,7 +235,6 @@
 /drivers/adc/adc_ads1x1x.c                @XenuIsWatching
 /drivers/adc/adc_stm32.c                  @cybertale
 /drivers/audio/*nrfx*                     @anangl
-/drivers/auxdisplay/*pt6314*              @xingrz
 /drivers/auxdisplay/*                      @thedjnK
 /drivers/bbram/*                          @yperess @sjg20 @jackrosenthal
 /drivers/bluetooth/                       @alwa-nordic @jhedberg @Vudentz
@@ -345,7 +344,6 @@
 /drivers/ipm/ipm_stm32_ipcc.c             @arnopo
 /drivers/ipm/ipm_stm32_hsem.c             @cameled
 /drivers/ipm/ipm_esp32.c                  @uLipe
-/drivers/ipm/ipm_ivshmem.c                @uLipe
 /drivers/kscan/                           @VenkatKotakonda @franciscomunoz @sjvasanth1
 /drivers/kscan/*xec*                      @franciscomunoz @sjvasanth1
 /drivers/kscan/*ft5336*                   @MaureenHelm
@@ -404,7 +402,7 @@
 /drivers/serial/*b91*                     @andy-liu-telink
 /drivers/serial/uart_altera_jtag.c        @nashif @gohshunjing
 /drivers/serial/uart_altera.c             @gohshunjing
-/drivers/serial/*ns16550*                 @dcpleung @nashif
+/drivers/serial/*ns16550*                 @dcpleung @nashif @aasthagr
 /drivers/serial/*nrfx*                    @anangl
 /drivers/serial/uart_liteuart.c           @mateusz-holenko @kgugala @pgielda
 /drivers/serial/Kconfig.mcux_iuart        @Mani-Sadhasivam
@@ -446,7 +444,7 @@
 /drivers/timer/*riscv_machine*            @kgugala @pgielda
 /drivers/timer/*ite_it8xxx2*              @ite
 /drivers/timer/*xlnx_psttc*               @wjliang @stephanosio
-/drivers/timer/*cc13xx_cc26xx_rtc*        @vanti
+/drivers/timer/*cc13x2_cc26x2_rtc*        @vanti
 /drivers/timer/*cavs*                     @dcpleung
 /drivers/timer/*stm32_lptim*              @FRASTM
 /drivers/timer/*leon_gptimer*             @julius-barendt
@@ -572,7 +570,6 @@
 /dts/bindings/i3c/                        @dcpleung
 /dts/bindings/pm_cpu_ops/*                @carlocaione
 /dts/bindings/ethernet/*gem.yaml          @ibirnbaum
-/dts/bindings/auxdisplay/*pt6314.yaml     @xingrz
 /dts/bindings/auxdisplay/*                 @thedjnK
 /dts/posix/                               @aescolar @daor-oti
 /dts/bindings/sensor/*bme680*             @BoschSensortec
@@ -752,7 +749,6 @@
 /scripts/footprint/                       @nashif
 /scripts/kconfig/                         @ulfalizer
 /scripts/logging/dictionary/              @dcpleung
-/scripts/native_simulator/                @aescolar
 /scripts/pylib/twister/expr_parser.py     @nashif
 /scripts/schemas/twister/                 @nashif
 /scripts/build/gen_app_partitions.py            @dcpleung @nashif
@@ -772,6 +768,7 @@ scripts/build/gen_image_info.py           @tejlmand
 /scripts/build/gen_relocate_app.py        @dcpleung
 /scripts/generate_usb_vif/                @madhurimaparuchuri
 /scripts/requirements*.txt                @mbolivar-nordic @galak @nashif
+/scripts/tests/twister/                   @aasthagr
 /scripts/tests/build/test_subfolder_list.py @rmstoi
 /scripts/tracing/                         @nashif
 /scripts/pylib/twister/                   @nashif

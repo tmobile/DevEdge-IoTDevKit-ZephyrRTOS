@@ -762,6 +762,20 @@ static bool is_blocking(int sock, int flags)
 	return !((flags & ZSOCK_MSG_DONTWAIT) || (sock_flags & O_NONBLOCK));
 }
 
+static void timeout_recalc(uint64_t end, k_timeout_t *timeout)
+{
+	if (!K_TIMEOUT_EQ(*timeout, K_NO_WAIT) &&
+	    !K_TIMEOUT_EQ(*timeout, K_FOREVER)) {
+		int64_t remaining = end - sys_clock_tick_get();
+
+		if (remaining <= 0) {
+			*timeout = K_NO_WAIT;
+		} else {
+			*timeout = Z_TIMEOUT_TICKS(remaining);
+		}
+	}
+}
+
 static int timeout_to_ms(k_timeout_t *timeout)
 {
 	if (K_TIMEOUT_EQ(*timeout, K_NO_WAIT)) {
@@ -1148,12 +1162,12 @@ static int tls_mbedtls_reset(struct tls_context *context)
 static int tls_mbedtls_handshake(struct tls_context *context,
 				 k_timeout_t timeout)
 {
-	k_timepoint_t end;
+	uint64_t end;
 	int ret;
 
 	context->handshake_in_progress = true;
 
-	end = sys_timepoint_calc(timeout);
+	end = sys_clock_timeout_end_calc(timeout);
 
 	while ((ret = mbedtls_ssl_handshake(&context->ssl)) != 0) {
 		if (ret == MBEDTLS_ERR_SSL_WANT_READ ||
@@ -1163,7 +1177,7 @@ static int tls_mbedtls_handshake(struct tls_context *context,
 			int timeout_ms;
 
 			/* Blocking timeout. */
-			timeout = sys_timepoint_timeout(end);
+			timeout_recalc(end, &timeout);
 			if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 				ret = -EAGAIN;
 				break;
@@ -1999,7 +2013,7 @@ static ssize_t send_tls(struct tls_context *ctx, const void *buf,
 {
 	const bool is_block = is_blocking(ctx->sock, flags);
 	k_timeout_t timeout;
-	k_timepoint_t end;
+	uint64_t end;
 	int ret;
 
 	if (!is_block) {
@@ -2008,7 +2022,7 @@ static ssize_t send_tls(struct tls_context *ctx, const void *buf,
 		timeout = ctx->options.timeout_tx;
 	}
 
-	end = sys_timepoint_calc(timeout);
+	end = sys_clock_timeout_end_calc(timeout);
 
 	do {
 		ret = mbedtls_ssl_write(&ctx->ssl, buf, len);
@@ -2028,7 +2042,7 @@ static ssize_t send_tls(struct tls_context *ctx, const void *buf,
 			}
 
 			/* Blocking timeout. */
-			timeout = sys_timepoint_timeout(end);
+			timeout_recalc(end, &timeout);
 			if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 				errno = EAGAIN;
 				break;
@@ -2211,7 +2225,7 @@ static ssize_t recv_tls(struct tls_context *ctx, void *buf,
 	const bool waitall = flags & ZSOCK_MSG_WAITALL;
 	const bool is_block = is_blocking(ctx->sock, flags);
 	k_timeout_t timeout;
-	k_timepoint_t end;
+	uint64_t end;
 	int ret;
 
 	if (!is_block) {
@@ -2220,7 +2234,7 @@ static ssize_t recv_tls(struct tls_context *ctx, void *buf,
 		timeout = ctx->options.timeout_rx;
 	}
 
-	end = sys_timepoint_calc(timeout);
+	end = sys_clock_timeout_end_calc(timeout);
 
 	do {
 		size_t read_len = max_len - recv_len;
@@ -2255,7 +2269,7 @@ static ssize_t recv_tls(struct tls_context *ctx, void *buf,
 				}
 
 				/* Blocking timeout. */
-				timeout = sys_timepoint_timeout(end);
+				timeout_recalc(end, &timeout);
 				if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 					ret = -EAGAIN;
 					goto err;
@@ -2300,7 +2314,7 @@ static ssize_t recvfrom_dtls_common(struct tls_context *ctx, void *buf,
 	int ret;
 	bool is_block = is_blocking(ctx->sock, flags);
 	k_timeout_t timeout;
-	k_timepoint_t end;
+	uint64_t end;
 
 	if (!is_block) {
 		timeout = K_NO_WAIT;
@@ -2308,7 +2322,7 @@ static ssize_t recvfrom_dtls_common(struct tls_context *ctx, void *buf,
 		timeout = ctx->options.timeout_rx;
 	}
 
-	end = sys_timepoint_calc(timeout);
+	end = sys_clock_timeout_end_calc(timeout);
 
 	do {
 		size_t remaining;
@@ -2326,7 +2340,7 @@ static ssize_t recvfrom_dtls_common(struct tls_context *ctx, void *buf,
 				}
 
 				/* Blocking timeout. */
-				timeout = sys_timepoint_timeout(end);
+				timeout_recalc(end, &timeout);
 				if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 					return ret;
 				}

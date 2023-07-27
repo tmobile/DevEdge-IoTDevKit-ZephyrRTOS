@@ -16,7 +16,6 @@ add_library(mocks STATIC
   src/iso.c
   src/kernel.c
   src/mem_slab.c
-  src/net_buf.c
   src/pacs.c
 )
 

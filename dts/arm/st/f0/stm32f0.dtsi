@@ -51,13 +51,6 @@
 			status = "disabled";
 		};
 
-		clk_hsi14: clk-hsi14 {
-			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <DT_FREQ_M(14)>;
-			status = "disabled";
-		};
-
 		clk_lse: clk-lse {
 			#clock-cells = <0>;
 			compatible = "st,stm32-lse-clock";

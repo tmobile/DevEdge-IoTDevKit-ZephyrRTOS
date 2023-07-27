@@ -201,7 +201,6 @@ static int prepare_cb_common(struct lll_prepare_param *p)
 	struct ull_hdr *ull;
 	uint32_t remainder;
 	uint32_t hcto;
-	uint32_t ret;
 	uint8_t phy;
 
 	DEBUG_RADIO_START_O(1);
@@ -369,25 +368,24 @@ static int prepare_cb_common(struct lll_prepare_param *p)
 				 HAL_RADIO_GPIO_LNA_OFFSET);
 #endif /* HAL_RADIO_GPIO_HAVE_LNA_PIN */
 
+	if (0) {
 #if defined(CONFIG_BT_CTLR_XTAL_ADVANCED) && \
 	(EVENT_OVERHEAD_PREEMPT_US <= EVENT_OVERHEAD_PREEMPT_MIN_US)
-	uint32_t overhead;
-
-	overhead = lll_preempt_calc(ull, (TICKER_ID_SCAN_SYNC_ISO_BASE +
-					  ull_sync_iso_lll_handle_get(lll)), ticks_at_event);
 	/* check if preempt to start has changed */
-	if (overhead) {
-		LL_ASSERT_OVERHEAD(overhead);
-
+	} else if (lll_preempt_calc(ull, (TICKER_ID_SCAN_SYNC_ISO_BASE +
+					  ull_sync_iso_lll_handle_get(lll)),
+				    ticks_at_event)) {
 		radio_isr_set(lll_isr_abort, lll);
 		radio_disable();
 
 		return -ECANCELED;
-	}
 #endif /* CONFIG_BT_CTLR_XTAL_ADVANCED */
+	} else {
+		uint32_t ret;
 
-	ret = lll_prepare_done(lll);
-	LL_ASSERT(!ret);
+		ret = lll_prepare_done(lll);
+		LL_ASSERT(!ret);
+	}
 
 	/* Calculate ahead the next subevent channel index */
 	next_chan_calc(lll, event_counter, data_chan_id);

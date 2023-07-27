@@ -4,6 +4,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#if defined(CONFIG_SOC_SERIES_NRF51X) || defined(CONFIG_SOC_COMPATIBLE_NRF52X)
+
+#include <hal/nrf_ppi.h>
+
+#include "radio_nrf5_ppi_resources.h"
 
 static inline void hal_radio_nrf_ppi_channels_enable(uint32_t mask)
 {
@@ -721,3 +726,4 @@ static inline void hal_radio_sw_switch_ppi_group_setup(void)
 }
 
 #endif /* !CONFIG_BT_CTLR_TIFS_HW */
+#endif /* CONFIG_SOC_SERIES_NRF51X || CONFIG_SOC_COMPATIBLE_NRF52X */

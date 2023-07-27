@@ -196,21 +196,6 @@ struct bt_conn_le_data_len_param {
 	BT_CONN_LE_DATA_LEN_PARAM(BT_GAP_DATA_LEN_MAX, \
 				  BT_GAP_DATA_TIME_MAX)
 
-/** Connection Type */
-enum __packed bt_conn_type {
-	/** LE Connection Type */
-	BT_CONN_TYPE_LE = BIT(0),
-	/** BR/EDR Connection Type */
-	BT_CONN_TYPE_BR = BIT(1),
-	/** SCO Connection Type */
-	BT_CONN_TYPE_SCO = BIT(2),
-	/** ISO Connection Type */
-	BT_CONN_TYPE_ISO = BIT(3),
-	/** All Connection Type */
-	BT_CONN_TYPE_ALL = BT_CONN_TYPE_LE | BT_CONN_TYPE_BR |
-			   BT_CONN_TYPE_SCO | BT_CONN_TYPE_ISO,
-};
-
 /** @brief Increment a connection's reference count.
  *
  *  Increment the reference count of a connection object.
@@ -248,8 +233,7 @@ void bt_conn_unref(struct bt_conn *conn);
  * @param func  Function to call for each connection.
  * @param data  Data to pass to the callback function.
  */
-void bt_conn_foreach(enum bt_conn_type type,
-		     void (*func)(struct bt_conn *conn, void *data),
+void bt_conn_foreach(int type, void (*func)(struct bt_conn *conn, void *data),
 		     void *data);
 
 /** @brief Look up an existing connection by address.
@@ -285,6 +269,21 @@ const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn);
  *          The range of the returned value is 0..CONFIG_BT_MAX_CONN-1
  */
 uint8_t bt_conn_index(const struct bt_conn *conn);
+
+/** Connection Type */
+enum {
+	/** LE Connection Type */
+	BT_CONN_TYPE_LE = BIT(0),
+	/** BR/EDR Connection Type */
+	BT_CONN_TYPE_BR = BIT(1),
+	/** SCO Connection Type */
+	BT_CONN_TYPE_SCO = BIT(2),
+	/** ISO Connection Type */
+	BT_CONN_TYPE_ISO = BIT(3),
+	/** All Connection Type */
+	BT_CONN_TYPE_ALL = BT_CONN_TYPE_LE | BT_CONN_TYPE_BR |
+			   BT_CONN_TYPE_SCO | BT_CONN_TYPE_ISO,
+};
 
 /** LE Connection Info Structure */
 struct bt_conn_le_info {
@@ -391,7 +390,7 @@ struct bt_security_info {
 /** Connection Info Structure */
 struct bt_conn_info {
 	/** Connection Type. */
-	enum bt_conn_type type;
+	uint8_t type;
 	/** Connection Role. */
 	uint8_t role;
 	/** Which local identity the connection was created with */
@@ -745,7 +744,7 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
 			     const struct bt_conn_le_create_synced_param *synced_param,
 			     const struct bt_le_conn_param *conn_param, struct bt_conn **conn);
 
-/** @brief Automatically connect to remote devices in the filter accept list.
+/** @brief Automatically connect to remote devices in the filter accept list..
  *
  *  This uses the Auto Connection Establishment procedure.
  *  The procedure will continue until a single connection is established or the
@@ -1081,26 +1080,6 @@ void bt_conn_cb_register(struct bt_conn_cb *cb);
  *  @param enable Value allowing/disallowing to be bondable.
  */
 void bt_set_bondable(bool enable);
-
-/** @brief Set/clear the bonding flag for a given connection.
- *
- *  Set/clear the Bonding flag in the Authentication Requirements of
- *  SMP Pairing Request/Response data for a given connection.
- *
- *  The bonding flag for a given connection cannot be set/cleared if
- *  security procedures in the SMP module have already started.
- *  This function can be called only once per connection.
- *
- *  If the bonding flag is not set/cleared for a given connection,
- *  the value will depend on global configuration which is set using
- *  bt_set_bondable.
- *  The default value of the global configuration is defined using
- *  CONFIG_BT_BONDABLE Kconfig option.
- *
- *  @param conn Connection object.
- *  @param enable Value allowing/disallowing to be bondable.
- */
-int bt_conn_set_bondable(struct bt_conn *conn, bool enable);
 
 /** @brief Allow/disallow remote LE SC OOB data to be used for pairing.
  *

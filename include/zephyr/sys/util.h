@@ -225,17 +225,19 @@ extern "C" {
 	((type *)(((char *)(ptr)) - offsetof(type, field)))
 
 /**
- * @brief Value of @p x rounded up to the next multiple of @p align.
+ * @brief Value of @p x rounded up to the next multiple of @p align,
+ *        which must be a power of 2.
  */
 #define ROUND_UP(x, align)                                   \
-	((((unsigned long)(x) + ((unsigned long)(align) - 1)) / \
-	  (unsigned long)(align)) * (unsigned long)(align))
+	(((unsigned long)(x) + ((unsigned long)(align) - 1)) & \
+	 ~((unsigned long)(align) - 1))
 
 /**
- * @brief Value of @p x rounded down to the previous multiple of @p align.
+ * @brief Value of @p x rounded down to the previous multiple of @p
+ *        align, which must be a power of 2.
  */
 #define ROUND_DOWN(x, align)                                 \
-	(((unsigned long)(x) / (unsigned long)(align)) * (unsigned long)(align))
+	((unsigned long)(x) & ~((unsigned long)(align) - 1))
 
 /** @brief Value of @p x rounded up to the next word boundary. */
 #define WB_UP(x) ROUND_UP(x, sizeof(void *))
@@ -258,25 +260,6 @@ extern "C" {
  * @return The result of @p n / @p d, rounded up.
  */
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-
-/**
- * @brief Divide and round to the nearest integer.
- *
- * Example:
- * @code{.c}
- * DIV_ROUND_CLOSEST(5, 2); // 3
- * DIV_ROUND_CLOSEST(5, -2); // -3
- * DIV_ROUND_CLOSEST(5, 3); // 2
- * @endcode
- *
- * @param n Numerator.
- * @param d Denominator.
- *
- * @return The result of @p n / @p d, rounded to the nearest integer.
- */
-#define DIV_ROUND_CLOSEST(n, d)	\
-	((((n) < 0) ^ ((d) < 0)) ? ((n) - ((d) / 2)) / (d) : \
-	((n) + ((d) / 2)) / (d))
 
 /**
  * @brief Ceiling function applied to @p numerator / @p divider as a fraction.

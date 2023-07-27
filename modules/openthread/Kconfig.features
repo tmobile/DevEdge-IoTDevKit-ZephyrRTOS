@@ -209,10 +209,6 @@ config OPENTHREAD_NEIGHBOR_DISCOVERY_AGENT
 config OPENTHREAD_NETDATA_PUBLISHER
 	bool "Thread Network Data publisher"
 
-config OPENTHREAD_OPERATIONAL_DATASET_AUTO_INIT
-	bool "Operational dataset auto init"
-	default y
-
 config OPENTHREAD_OTNS
 	bool "OTNS support"
 
@@ -285,9 +281,6 @@ config OPENTHREAD_TREL
 
 config OPENTHREAD_TX_BEACON_PAYLOAD
 	bool "TX beacon payload support"
-
-config OPENTHREAD_TX_QUEUE_STATISTICS
-	bool "TX queue statistics support"
 
 config OPENTHREAD_UDP_FORWARD
 	bool "UDP forward support"

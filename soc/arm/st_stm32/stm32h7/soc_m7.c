@@ -12,12 +12,15 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/init.h>
+#include <zephyr/irq.h>
 #include <soc.h>
 #include <stm32_ll_bus.h>
 #include <stm32_ll_pwr.h>
 #include <stm32_ll_rcc.h>
 #include <stm32_ll_system.h>
+#include <zephyr/arch/cpu.h>
 #include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
+#include <zephyr/arch/arm/aarch32/nmi.h>
 #include "stm32_hsem.h"
 
 #if defined(CONFIG_STM32H7_DUAL_CORE)
@@ -53,6 +56,11 @@ static int stm32h7_m4_wakeup(void)
  */
 static int stm32h7_init(void)
 {
+	uint32_t key;
+
+
+	key = irq_lock();
+
 	SCB_EnableICache();
 
 	if (IS_ENABLED(CONFIG_DCACHE)) {
@@ -60,6 +68,13 @@ static int stm32h7_init(void)
 			SCB_EnableDCache();
 		}
 	}
+
+	/* Install default handler that simply resets the CPU
+	 * if configured in the kernel, NOP otherwise
+	 */
+	NMI_INIT();
+
+	irq_unlock(key);
 
 	/* Update CMSIS SystemCoreClock variable (HCLK) */
 	/* At reset, system core clock is set to 64 MHz from HSI */

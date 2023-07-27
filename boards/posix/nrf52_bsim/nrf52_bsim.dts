@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020 Linaro Limited.
- * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,6 +24,8 @@
 		/delete-property/ uart-0;
 		/delete-property/ uart-1;
 		/delete-property/ adc-0;
+		/delete-property/ gpio-1;
+		/delete-property/ gpiote-0;
 		/delete-property/ wdt-0;
 		/delete-property/ pwm-0;
 		/delete-property/ pwm-1;
@@ -43,6 +44,8 @@
 		/delete-node/ adc@40007000;
 		/delete-node/ uart@40002000;
 		/delete-node/ uart@40028000;
+		/delete-node/ gpiote@40006000;
+		/delete-node/ gpio@50000300;
 		/delete-node/ i2c@40003000;
 		/delete-node/ i2c@40004000;
 		/delete-node/ pwm@4001c000;
@@ -68,19 +71,14 @@
 	/delete-property/ ble-coded-phy-supported;
 };
 
-&gpiote {
+&ieee802154 {
 	status = "okay";
 };
 
 &gpio0 {
-	status = "okay";
-};
-
-&gpio1 {
-	status = "okay";
-};
-
-&ieee802154 {
+	/* Needed by
+	 * modules/hal_nordic/nrf_802154/sl_opensource/platform/nrf_802154_gpiote_zephyr.c
+	 */
 	status = "okay";
 };
 

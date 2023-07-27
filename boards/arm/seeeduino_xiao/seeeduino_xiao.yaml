@@ -10,7 +10,6 @@ toolchain:
   - xtools
 supported:
   - dma
-  - dac
   - gpio
   - hwinfo
   - spi

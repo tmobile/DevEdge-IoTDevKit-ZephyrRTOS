@@ -451,7 +451,6 @@ class DeviceHandler(Handler):
                 logger.error("{} timed out".format(script))
 
     def get_hardware(self):
-        hardware = None
         try:
             hardware = self.device_is_available(self.instance)
             while not hardware:

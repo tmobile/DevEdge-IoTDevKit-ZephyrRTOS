@@ -620,8 +620,8 @@ Documentation Infrastructure:
 Release Notes:
   status: maintained
   maintainers:
-    - jhedberg
-    - fabiobaltieri
+    - nashif
+    - jgl-meta
   files:
     - doc/releases/release-notes-*
   labels:
@@ -671,8 +671,6 @@ Release Notes:
   status: maintained
   maintainers:
     - thedjnK
-  collaborators:
-    - xingrz
   files:
     - include/zephyr/drivers/auxdisplay.h
     - drivers/auxdisplay/*
@@ -938,6 +936,7 @@ Release Notes:
   status: odd fixes
   collaborators:
     - henrikbrixandersen
+    - cfriedt
     - mnkp
   files:
     - doc/hardware/peripherals/gpio.rst
@@ -1018,7 +1017,6 @@ Release Notes:
     - jciupis
   files:
     - drivers/ieee802154/
-    - include/zephyr/net/ieee802154_radio.h
   labels:
     - "area: IEEE 802.15.4"
 
@@ -1071,8 +1069,6 @@ Release Notes:
   maintainers:
     - Mani-Sadhasivam
     - simonguinot
-  collaborators:
-    - bbilas
   files:
     - drivers/led/
     - include/zephyr/drivers/led/
@@ -1593,7 +1589,6 @@ Kconfig:
   files:
     - scripts/kconfig/
     - doc/build/kconfig/
-    - Kconfig.zephyr
   labels:
     - "area: Kconfig"
   description: >-
@@ -1609,7 +1604,6 @@ Kernel:
     - ceolin
     - dcpleung
     - peter-mitsis
-    - cfriedt
   files:
     - doc/kernel/
     - include/zephyr/kernel*.h
@@ -1675,6 +1669,7 @@ Logging:
   maintainers:
     - nordic-krch
   collaborators:
+    - aasthagr
     - dcpleung
   files:
     - include/zephyr/logging/
@@ -1779,29 +1774,26 @@ hawkBit:
   description: >-
     UpdateHub embedded Firmware Over-The-Air (FOTA) upgrade agent
 
-Native POSIX/Sim and POSIX arch:
+Native POSIX and POSIX arch:
   status: maintained
   maintainers:
     - aescolar
   files:
     - arch/posix/
-    - boards/posix/native_*/
+    - boards/posix/native_posix/
     - boards/posix/doc/
     - boards/posix/*.rst
-    - drivers/*/*posix*
-    - drivers/*/*native*
-    - drivers/*/*/*posix*
-    - drivers/*/*/*native*
+    - drivers/*/*native_posix*
+    - drivers/*/*/*native_posix*
     - dts/posix/
     - include/zephyr/arch/posix/
-    - scripts/native_simulator/
     - scripts/valgrind.supp
     - soc/posix/
     - tests/boards/native_posix/
   labels:
     - "area: native port"
   description: >-
-    POSIX architecture and SOC, native_posix & native_sim boards, and related drivers
+    POSIX architecture and SOC, native_posix board, and related drivers
 
 Networking:
   status: maintained
@@ -1903,24 +1895,6 @@ Networking:
   labels:
     - "area: Networking"
 
-"Networking: Native IEEE 802.15.4":
-  status: maintained
-  maintainers:
-    - tbursztyka
-  collaborators:
-    - rlubos
-    - fgrandel
-  files:
-    - doc/connectivity/networking/api/ieee802154.rst
-    - include/zephyr/net/ieee802154.h
-    - include/zephyr/net/ieee802154_pkt.h
-    - include/zephyr/net/ieee802154_mgmt.h
-    - subsys/net/l2/ieee802154/
-    - subsys/net/lib/config/ieee802154_*
-    - tests/net/ieee802154/
-  labels:
-    - "area: IEEE 802.15.4"
-
 "Networking: OpenThread":
   status: maintained
   maintainers:
@@ -1985,7 +1959,6 @@ Power management:
     - gmarull
     - teburd
     - tmleman
-    - JordanYates
   files:
     - include/zephyr/pm/
     - samples/subsys/pm/
@@ -2049,6 +2022,8 @@ Twister:
 
 Settings:
   status: odd fixes
+  collaborators:
+    - de-nordic
   files:
     - include/zephyr/settings/
     - subsys/settings/
@@ -2228,7 +2203,9 @@ Intel Platforms (X86):
     - jhedberg
   collaborators:
     - tbursztyka
+    - aasthagr
     - laurenmurphyx64
+    - MaureenHelm
   files:
     - boards/x86/
     - dts/x86/intel/
@@ -2248,6 +2225,7 @@ Intel Platforms (Xtensa):
     - lgirdwood
     - marc-hb
     - kv2019i
+    - MaureenHelm
     - ceolin
     - aborisovich
     - tmleman
@@ -2381,20 +2359,6 @@ Renesas R-Car Platforms:
     Renesas R-Car SOCs, dts files and related drivers. Renesas boards based
     on R-Car SOCs.
 
-Renesas R-Car ARM64 Platforms:
-  status: maintained
-  maintainers:
-    - lorc
-  files:
-    - boards/arm64/rcar_*/
-    - dts/arm64/renesas/
-    - soc/arm64/renesas_rcar/
-  labels:
-    - "platform: Renesas R-Car ARM64"
-  description: >-
-    Renesas R-Car SOCs and dts files, ARMv8 side. Zephyr running on ARMv8 CPUs on Renesas
-    boards based on R-Car SOCs.
-
 STM32 Platforms:
   status: maintained
   maintainers:
@@ -2494,21 +2458,18 @@ TI SimpleLink Platforms:
   labels:
     - "platform: TI SimpleLink"
 
-TI K3 Platforms:
+TI Sitara Platforms:
   status: maintained
   maintainers:
     - vaishnavachath
   collaborators:
     - gramsay0
   files:
-    - boards/*/*phycore_am6*/
-    - boards/*/*ti_am6*/
-    - drivers/*/*ti_k3*/
-    - dts/*/ti/*ti_am6*/
-    - dts/bindings/*/ti,k3*
-    - soc/*/ti_k3/
+    - boards/arm64/phycore*/
+    - dts/arm64/ti/
+    - soc/arm64/ti_sitara/
   labels:
-    - "platform: TI K3"
+    - "platform: TI Sitara"
 
 Xilinx Platforms:
   status: odd fixes
@@ -2603,7 +2564,7 @@ Task Watchdog:
 TF-M Integration:
   status: maintained
   maintainers:
-    - d3zd3z
+    - microbuilder
   collaborators:
     - joerchan
   files:
@@ -2892,12 +2853,10 @@ West:
   collaborators:
     - mmahadevan108
     - danieldegrasse
-    - manuargue
   files:
     - modules/hal_nxp/
     - modules/Kconfig.imx
     - modules/Kconfig.mcux
-    - modules/Kconfig.s32
   labels:
     - manifest-hal_nxp
 
@@ -2983,9 +2942,7 @@ West:
     - manifest-hal_telink
 
 "West project: hal_ti":
-  status: maintained
-  maintainers:
-    - vaishnavachath
+  status: odd fixes
   collaborators:
     - cfriedt
   files: []
@@ -3231,10 +3188,11 @@ West:
 "West project: trusted-firmware-m":
   status: maintained
   maintainers:
-    - d3zd3z
+    - microbuilder
   collaborators:
     - joerchan
     - SebastianBoe
+    - theotherjimmy
   files:
     - modules/trusted-firmware-m/
   labels:
@@ -3243,10 +3201,11 @@ West:
 "West project: tf-m-tests":
   status: maintained
   maintainers:
-    - d3zd3z
+    - microbuilder
   collaborators:
     - joerchan
     - SebastianBoe
+    - theotherjimmy
   files: []
   labels:
     - manifest-tf-m-tests
@@ -3266,10 +3225,11 @@ West:
 "West project: psa-arch-tests":
   status: maintained
   maintainers:
-    - d3zd3z
+    - microbuilder
   collaborators:
     - joerchan
     - SebastianBoe
+    - theotherjimmy
   files: []
   labels:
     - manifest-psa-arch-tests
@@ -3327,6 +3287,7 @@ x86 arch:
     - nashif
     - dcpleung
     - ceolin
+    - aasthagr
     - laurenmurphyx64
   files:
     - arch/x86/

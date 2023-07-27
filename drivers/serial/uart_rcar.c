@@ -17,7 +17,7 @@
 #include <zephyr/spinlock.h>
 
 struct uart_rcar_cfg {
-	DEVICE_MMIO_ROM; /* Must be first */
+	uint32_t reg_addr;
 	const struct device *clock_dev;
 	struct rcar_cpg_clk mod_clk;
 	struct rcar_cpg_clk bus_clk;
@@ -28,7 +28,6 @@ struct uart_rcar_cfg {
 };
 
 struct uart_rcar_data {
-	DEVICE_MMIO_RAM; /* Must be first */
 	struct uart_config current_config;
 	uint32_t clk_rate;
 	struct k_spinlock lock;
@@ -104,36 +103,38 @@ struct uart_rcar_data {
 #define SCLSR_TO        BIT(2)  /* Timeout */
 #define SCLSR_ORER      BIT(0)  /* Overrun Error */
 
-static void uart_rcar_write_8(const struct device *dev,
+static void uart_rcar_write_8(const struct uart_rcar_cfg *config,
 			      uint32_t offs, uint8_t value)
 {
-	sys_write8(value, DEVICE_MMIO_GET(dev) + offs);
+	sys_write8(value, config->reg_addr + offs);
 }
 
-static uint16_t uart_rcar_read_16(const struct device *dev,
+static uint16_t uart_rcar_read_16(const struct uart_rcar_cfg *config,
 				  uint32_t offs)
 {
-	return sys_read16(DEVICE_MMIO_GET(dev) + offs);
+	return sys_read16(config->reg_addr + offs);
 }
 
-static void uart_rcar_write_16(const struct device *dev,
+static void uart_rcar_write_16(const struct uart_rcar_cfg *config,
 			       uint32_t offs, uint16_t value)
 {
-	sys_write16(value, DEVICE_MMIO_GET(dev) + offs);
+	sys_write16(value, config->reg_addr + offs);
 }
 
 static void uart_rcar_set_baudrate(const struct device *dev,
 				   uint32_t baud_rate)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 	uint8_t reg_val;
 
 	reg_val = ((data->clk_rate + 16 * baud_rate) / (32 * baud_rate) - 1);
-	uart_rcar_write_8(dev, SCBRR, reg_val);
+	uart_rcar_write_8(config, SCBRR, reg_val);
 }
 
 static int uart_rcar_poll_in(const struct device *dev, unsigned char *p_char)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 	uint16_t reg_val;
 	int ret = 0;
@@ -141,16 +142,16 @@ static int uart_rcar_poll_in(const struct device *dev, unsigned char *p_char)
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	/* Receive FIFO empty */
-	if (!((uart_rcar_read_16(dev, SCFSR)) & SCFSR_RDF)) {
+	if (!((uart_rcar_read_16(config, SCFSR)) & SCFSR_RDF)) {
 		ret = -1;
 		goto unlock;
 	}
 
-	*p_char = uart_rcar_read_16(dev, SCFRDR);
+	*p_char = uart_rcar_read_16(config, SCFRDR);
 
-	reg_val = uart_rcar_read_16(dev, SCFSR);
+	reg_val = uart_rcar_read_16(config, SCFSR);
 	reg_val &= ~SCFSR_RDF;
-	uart_rcar_write_16(dev, SCFSR, reg_val);
+	uart_rcar_write_16(config, SCFSR, reg_val);
 
 unlock:
 	k_spin_unlock(&data->lock, key);
@@ -160,19 +161,20 @@ unlock:
 
 static void uart_rcar_poll_out(const struct device *dev, unsigned char out_char)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	/* Wait for empty space in transmit FIFO */
-	while (!(uart_rcar_read_16(dev, SCFSR) & SCFSR_TDFE)) {
+	while (!(uart_rcar_read_16(config, SCFSR) & SCFSR_TDFE)) {
 	}
 
-	uart_rcar_write_8(dev, SCFTDR, out_char);
+	uart_rcar_write_8(config, SCFTDR, out_char);
 
-	reg_val = uart_rcar_read_16(dev, SCFSR);
+	reg_val = uart_rcar_read_16(config, SCFSR);
 	reg_val &= ~(SCFSR_TDFE | SCFSR_TEND);
-	uart_rcar_write_16(dev, SCFSR, reg_val);
+	uart_rcar_write_16(config, SCFSR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
@@ -180,6 +182,7 @@ static void uart_rcar_poll_out(const struct device *dev, unsigned char out_char)
 static int uart_rcar_configure(const struct device *dev,
 			       const struct uart_config *cfg)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
@@ -195,50 +198,50 @@ static int uart_rcar_configure(const struct device *dev,
 	key = k_spin_lock(&data->lock);
 
 	/* Disable Transmit and Receive */
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val &= ~(SCSCR_TE | SCSCR_RE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	/* Emptying Transmit and Receive FIFO */
-	reg_val = uart_rcar_read_16(dev, SCFCR);
+	reg_val = uart_rcar_read_16(config, SCFCR);
 	reg_val |= (SCFCR_TFRST | SCFCR_RFRST);
-	uart_rcar_write_16(dev, SCFCR, reg_val);
+	uart_rcar_write_16(config, SCFCR, reg_val);
 
 	/* Resetting Errors Registers */
-	reg_val = uart_rcar_read_16(dev, SCFSR);
+	reg_val = uart_rcar_read_16(config, SCFSR);
 	reg_val &= ~(SCFSR_ER | SCFSR_DR | SCFSR_BRK | SCFSR_RDF);
-	uart_rcar_write_16(dev, SCFSR, reg_val);
+	uart_rcar_write_16(config, SCFSR, reg_val);
 
-	reg_val = uart_rcar_read_16(dev, SCLSR);
+	reg_val = uart_rcar_read_16(config, SCLSR);
 	reg_val &= ~(SCLSR_TO | SCLSR_ORER);
-	uart_rcar_write_16(dev, SCLSR, reg_val);
+	uart_rcar_write_16(config, SCLSR, reg_val);
 
 	/* Select internal clock */
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val &= ~(SCSCR_CKE1 | SCSCR_CKE0);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	/* Serial Configuration (8N1) & Clock divider selection */
-	reg_val = uart_rcar_read_16(dev, SCSMR);
+	reg_val = uart_rcar_read_16(config, SCSMR);
 	reg_val &= ~(SCSMR_C_A | SCSMR_CHR | SCSMR_PE | SCSMR_O_E | SCSMR_STOP |
 		     SCSMR_CKS1 | SCSMR_CKS0);
-	uart_rcar_write_16(dev, SCSMR, reg_val);
+	uart_rcar_write_16(config, SCSMR, reg_val);
 
 	/* Set baudrate */
 	uart_rcar_set_baudrate(dev, cfg->baudrate);
 
 	/* FIFOs data count trigger configuration */
-	reg_val = uart_rcar_read_16(dev, SCFCR);
+	reg_val = uart_rcar_read_16(config, SCFCR);
 	reg_val &= ~(SCFCR_RTRG1 | SCFCR_RTRG0 | SCFCR_TTRG1 | SCFCR_TTRG0 |
 		     SCFCR_MCE | SCFCR_TFRST | SCFCR_RFRST);
-	uart_rcar_write_16(dev, SCFCR, reg_val);
+	uart_rcar_write_16(config, SCFCR, reg_val);
 
 	/* Enable Transmit & Receive + disable Interrupts */
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val |= (SCSCR_TE | SCSCR_RE);
 	reg_val &= ~(SCSCR_TIE | SCSCR_RIE | SCSCR_TEIE | SCSCR_REIE |
 		     SCSCR_TOIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	data->current_config = *cfg;
 
@@ -288,8 +291,6 @@ static int uart_rcar_init(const struct device *dev)
 		return ret;
 	}
 
-	DEVICE_MMIO_MAP(dev, K_MEM_CACHE_NONE);
-
 	ret = uart_rcar_configure(dev, &data->current_config);
 	if (ret != 0) {
 		return ret;
@@ -307,26 +308,29 @@ static int uart_rcar_init(const struct device *dev)
 static bool uart_rcar_irq_is_enabled(const struct device *dev,
 				     uint32_t irq)
 {
-	return !!(uart_rcar_read_16(dev, SCSCR) & irq);
+	const struct uart_rcar_cfg *config = dev->config;
+
+	return !!(uart_rcar_read_16(config, SCSCR) & irq);
 }
 
 static int uart_rcar_fifo_fill(const struct device *dev,
 			       const uint8_t *tx_data,
 			       int len)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 	int num_tx = 0;
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	while (((len - num_tx) > 0) &&
-	       (uart_rcar_read_16(dev, SCFSR) & SCFSR_TDFE)) {
+	       (uart_rcar_read_16(config, SCFSR) & SCFSR_TDFE)) {
 		/* Send current byte */
-		uart_rcar_write_8(dev, SCFTDR, tx_data[num_tx]);
+		uart_rcar_write_8(config, SCFTDR, tx_data[num_tx]);
 
-		reg_val = uart_rcar_read_16(dev, SCFSR);
+		reg_val = uart_rcar_read_16(config, SCFSR);
 		reg_val &= ~(SCFSR_TDFE | SCFSR_TEND);
-		uart_rcar_write_16(dev, SCFSR, reg_val);
+		uart_rcar_write_16(config, SCFSR, reg_val);
 
 		num_tx++;
 	}
@@ -339,19 +343,20 @@ static int uart_rcar_fifo_fill(const struct device *dev,
 static int uart_rcar_fifo_read(const struct device *dev, uint8_t *rx_data,
 			       const int size)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 	int num_rx = 0;
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
 	while (((size - num_rx) > 0) &&
-	       (uart_rcar_read_16(dev, SCFSR) & SCFSR_RDF)) {
+	       (uart_rcar_read_16(config, SCFSR) & SCFSR_RDF)) {
 		/* Receive current byte */
-		rx_data[num_rx++] = uart_rcar_read_16(dev, SCFRDR);
+		rx_data[num_rx++] = uart_rcar_read_16(config, SCFRDR);
 
-		reg_val = uart_rcar_read_16(dev, SCFSR);
+		reg_val = uart_rcar_read_16(config, SCFSR);
 		reg_val &= ~(SCFSR_RDF);
-		uart_rcar_write_16(dev, SCFSR, reg_val);
+		uart_rcar_write_16(config, SCFSR, reg_val);
 
 	}
 
@@ -362,94 +367,104 @@ static int uart_rcar_fifo_read(const struct device *dev, uint8_t *rx_data,
 
 static void uart_rcar_irq_tx_enable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val |= (SCSCR_TIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
 
 static void uart_rcar_irq_tx_disable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val &= ~(SCSCR_TIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
 
 static int uart_rcar_irq_tx_ready(const struct device *dev)
 {
-	return !!(uart_rcar_read_16(dev, SCFSR) & SCFSR_TDFE);
+	const struct uart_rcar_cfg *config = dev->config;
+
+	return !!(uart_rcar_read_16(config, SCFSR) & SCFSR_TDFE);
 }
 
 static void uart_rcar_irq_rx_enable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val |= (SCSCR_RIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
 
 static void uart_rcar_irq_rx_disable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val &= ~(SCSCR_RIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
 
 static int uart_rcar_irq_rx_ready(const struct device *dev)
 {
-	return !!(uart_rcar_read_16(dev, SCFSR) & SCFSR_RDF);
+	const struct uart_rcar_cfg *config = dev->config;
+
+	return !!(uart_rcar_read_16(config, SCFSR) & SCFSR_RDF);
 }
 
 static void uart_rcar_irq_err_enable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val |= (SCSCR_REIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
 
 static void uart_rcar_irq_err_disable(const struct device *dev)
 {
+	const struct uart_rcar_cfg *config = dev->config;
 	struct uart_rcar_data *data = dev->data;
 
 	uint16_t reg_val;
 	k_spinlock_key_t key = k_spin_lock(&data->lock);
 
-	reg_val = uart_rcar_read_16(dev, SCSCR);
+	reg_val = uart_rcar_read_16(config, SCSCR);
 	reg_val &= ~(SCSCR_REIE);
-	uart_rcar_write_16(dev, SCSCR, reg_val);
+	uart_rcar_write_16(config, SCSCR, reg_val);
 
 	k_spin_unlock(&data->lock, key);
 }
@@ -521,7 +536,7 @@ static const struct uart_driver_api uart_rcar_driver_api = {
 #define UART_RCAR_DECLARE_CFG(n, IRQ_FUNC_INIT)			    \
 	PINCTRL_DT_INST_DEFINE(n);				    \
 	static const struct uart_rcar_cfg uart_rcar_cfg_##n = {	    \
-		DEVICE_MMIO_ROM_INIT(DT_DRV_INST(n)),		    \
+		.reg_addr = DT_INST_REG_ADDR(n),		    \
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(n)), \
 		.mod_clk.module =				    \
 			DT_INST_CLOCKS_CELL_BY_IDX(n, 0, module),   \

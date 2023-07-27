@@ -141,7 +141,7 @@ ZTEST_SUITE(coap_client, NULL, suite_setup, test_setup, NULL, NULL);
 ZTEST(coap_client, test_get_request)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -170,7 +170,7 @@ ZTEST(coap_client, test_get_request)
 ZTEST(coap_client, test_get_no_path)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -195,7 +195,7 @@ ZTEST(coap_client, test_get_no_path)
 ZTEST(coap_client, test_send_large_data)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -224,7 +224,7 @@ ZTEST(coap_client, test_send_large_data)
 ZTEST(coap_client, test_no_response)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -251,7 +251,7 @@ ZTEST(coap_client, test_no_response)
 ZTEST(coap_client, test_separate_response)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -285,7 +285,7 @@ ZTEST(coap_client, test_separate_response)
 ZTEST(coap_client, test_multiple_requests)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -324,7 +324,7 @@ ZTEST(coap_client, test_multiple_requests)
 ZTEST(coap_client, test_unmatching_tokens)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,

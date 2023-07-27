@@ -34,10 +34,10 @@ properties:
       while keeping a good measurement resolution. The units are in uA/LSB
       so that low maximum currents can be measured with enough resolution.
 
-  rshunt-micro-ohms:
+  rshunt-milliohms:
     type: int
     required: true
-    description: Shunt resistor value in microOhms
+    description: Shunt resistor value in milliohms
 
   alert-gpios:
     type: phandle-array

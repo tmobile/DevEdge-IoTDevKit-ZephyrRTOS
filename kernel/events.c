@@ -119,13 +119,12 @@ static int event_walk_op(struct k_thread *thread, void *data)
 	return 0;
 }
 
-static uint32_t k_event_post_internal(struct k_event *event, uint32_t events,
+static void k_event_post_internal(struct k_event *event, uint32_t events,
 				  uint32_t events_mask)
 {
 	k_spinlock_key_t  key;
 	struct k_thread  *thread;
 	struct event_walk_data data;
-	uint32_t previous_events;
 
 	data.head = NULL;
 	key = k_spin_lock(&event->lock);
@@ -133,7 +132,6 @@ static uint32_t k_event_post_internal(struct k_event *event, uint32_t events,
 	SYS_PORT_TRACING_OBJ_FUNC_ENTER(k_event, post, event, events,
 					events_mask);
 
-	previous_events = event->events & events_mask;
 	events = (event->events & ~events_mask) |
 		 (events & events_mask);
 	event->events = events;
@@ -166,64 +164,62 @@ static uint32_t k_event_post_internal(struct k_event *event, uint32_t events,
 
 	SYS_PORT_TRACING_OBJ_FUNC_EXIT(k_event, post, event, events,
 				       events_mask);
-
-	return previous_events;
 }
 
-uint32_t z_impl_k_event_post(struct k_event *event, uint32_t events)
+void z_impl_k_event_post(struct k_event *event, uint32_t events)
 {
-	return k_event_post_internal(event, events, events);
+	k_event_post_internal(event, events, events);
 }
 
 #ifdef CONFIG_USERSPACE
-uint32_t z_vrfy_k_event_post(struct k_event *event, uint32_t events)
+void z_vrfy_k_event_post(struct k_event *event, uint32_t events)
 {
 	Z_OOPS(Z_SYSCALL_OBJ(event, K_OBJ_EVENT));
-	return z_impl_k_event_post(event, events);
+	z_impl_k_event_post(event, events);
 }
 #include <syscalls/k_event_post_mrsh.c>
 #endif
 
-uint32_t z_impl_k_event_set(struct k_event *event, uint32_t events)
+void z_impl_k_event_set(struct k_event *event, uint32_t events)
 {
-	return k_event_post_internal(event, events, ~0);
+	k_event_post_internal(event, events, ~0);
 }
 
 #ifdef CONFIG_USERSPACE
-uint32_t z_vrfy_k_event_set(struct k_event *event, uint32_t events)
+void z_vrfy_k_event_set(struct k_event *event, uint32_t events)
 {
 	Z_OOPS(Z_SYSCALL_OBJ(event, K_OBJ_EVENT));
-	return z_impl_k_event_set(event, events);
+	z_impl_k_event_set(event, events);
 }
 #include <syscalls/k_event_set_mrsh.c>
 #endif
 
-uint32_t z_impl_k_event_set_masked(struct k_event *event, uint32_t events,
+void z_impl_k_event_set_masked(struct k_event *event, uint32_t events,
 			       uint32_t events_mask)
 {
-	return k_event_post_internal(event, events, events_mask);
+	k_event_post_internal(event, events, events_mask);
 }
 
 #ifdef CONFIG_USERSPACE
-uint32_t z_vrfy_k_event_set_masked(struct k_event *event, uint32_t events,
+void z_vrfy_k_event_set_masked(struct k_event *event, uint32_t events,
 			       uint32_t events_mask)
 {
 	Z_OOPS(Z_SYSCALL_OBJ(event, K_OBJ_EVENT));
-	return z_impl_k_event_set_masked(event, events, events_mask);
+	z_impl_k_event_set_masked(event, events, events_mask);
 }
 #include <syscalls/k_event_set_masked_mrsh.c>
 #endif
 
-uint32_t z_impl_k_event_clear(struct k_event *event, uint32_t events)
+void z_impl_k_event_clear(struct k_event *event, uint32_t events)
 {
-	return k_event_post_internal(event, 0, events);
+	k_event_post_internal(event, 0, events);
 }
 
 #ifdef CONFIG_USERSPACE
-uint32_t z_vrfy_k_event_clear(struct k_event *event, uint32_t events)
+void z_vrfy_k_event_clear(struct k_event *event, uint32_t events)
 {
 	Z_OOPS(Z_SYSCALL_OBJ(event, K_OBJ_EVENT));
-	return z_impl_k_event_clear(event, events);
+	z_impl_k_event_clear(event, events);
 }
 #include <syscalls/k_event_clear_mrsh.c>
 #endif

@@ -403,7 +403,7 @@ static const struct pcie_ctrl_driver_api pcie_ecam_api = {
 			      &pcie_ecam_data##n,				\
 			      &pcie_ecam_config##n,				\
 			      PRE_KERNEL_1,					\
-			      CONFIG_PCIE_INIT_PRIORITY,			\
+			      CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,		\
 			      &pcie_ecam_api);
 
 DT_INST_FOREACH_STATUS_OKAY(PCIE_ECAM_INIT)

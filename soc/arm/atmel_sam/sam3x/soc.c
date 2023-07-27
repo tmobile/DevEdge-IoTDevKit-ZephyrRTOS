@@ -17,7 +17,9 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <soc.h>
+#include <zephyr/arch/cpu.h>
 #include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
+#include <zephyr/irq.h>
 
 /*
  * PLL clock = Main * (MULA + 1) / DIVA
@@ -202,6 +204,11 @@ static ALWAYS_INLINE void clock_init(void)
  */
 static int atmel_sam3x_init(void)
 {
+	uint32_t key;
+
+
+	key = irq_lock();
+
 	/*
 	 * Set FWS (Flash Wait State) value before increasing Master Clock
 	 * (MCK) frequency.
@@ -213,6 +220,13 @@ static int atmel_sam3x_init(void)
 
 	/* Setup system clocks */
 	clock_init();
+
+	/* Install default handler that simply resets the CPU
+	 * if configured in the kernel, NOP otherwise
+	 */
+	NMI_INIT();
+
+	irq_unlock(key);
 
 	return 0;
 }

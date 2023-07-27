@@ -21,7 +21,7 @@ to ADC channel 8, when voltages cross upper/lower limits, detection messages
 will be printed.
 
 .. zephyr-app-commands::
-   :zephyr-app: samples/sensor/adc_cmp_npcx
+   :zephyr-app: samples/sensor/adc_cmp
    :board: npcx9m6f_evb
    :goals: flash
    :compact:

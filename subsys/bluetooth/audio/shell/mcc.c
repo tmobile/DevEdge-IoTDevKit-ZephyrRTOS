@@ -1448,16 +1448,9 @@ static int cmd_mcc_send_search_raw(const struct shell *sh, size_t argc,
 				   char *argv[])
 {
 	int result;
-	size_t len;
 	struct mpl_search search;
 
-	len = strlen(argv[1]);
-	if (len > sizeof(search.search)) {
-		shell_print(sh, "Fail: Invalid argument");
-		return -EINVAL;
-	}
-
-	search.len = len;
+	search.len = strlen(argv[1]);
 	memcpy(search.search, argv[1], search.len);
 	LOG_DBG("Search string: %s", argv[1]);
 

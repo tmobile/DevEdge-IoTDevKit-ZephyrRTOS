@@ -6,9 +6,7 @@
 
 #ifndef __STACK_SIZE_ANALYZER_H
 #define __STACK_SIZE_ANALYZER_H
-
 #include <stddef.h>
-#include <zephyr/kernel/thread.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -24,9 +24,16 @@ static inline int csma_ca_radio_send(struct net_if *iface,
 				     struct net_pkt *pkt,
 				     struct net_buf *frag)
 {
-	uint32_t turnaround_time = ieee802154_radio_get_a_turnaround_time(iface);
-	uint32_t symbol_period = ieee802154_radio_get_symbol_period_us(iface);
+	const uint8_t max_bo = CONFIG_NET_L2_IEEE802154_RADIO_CSMA_CA_MAX_BO;
+	const uint8_t max_be = CONFIG_NET_L2_IEEE802154_RADIO_CSMA_CA_MAX_BE;
+	uint8_t retries = CONFIG_NET_L2_IEEE802154_RADIO_TX_RETRIES;
+	struct ieee802154_context *ctx = net_if_l2_data(iface);
+	bool ack_required = prepare_for_ack(ctx, pkt, frag);
 	uint8_t be = CONFIG_NET_L2_IEEE802154_RADIO_CSMA_CA_MIN_BE;
+	uint8_t nb = 0U;
+	int ret = -EIO;
+
+	NET_DBG("frag %p", frag);
 
 loop:
 	while (retries) {
@@ -51,13 +58,10 @@ loop:
 			}
 		}
 
-		ret = ieee802154_radio_cca(iface);
-		if (ret == 0) {
-			/* Channel is idle -> CSMA Success */
-			return 0;
-		} else if (ret != -EBUSY) {
-			/* CCA exited with failure code -> CSMA Abort */
-			return -EIO;
+		ret = ieee802154_tx(iface, IEEE802154_TX_MODE_DIRECT,
+				    pkt, frag);
+		if (ret) {
+			continue;
 		}
 
 		ret = wait_for_ack(iface, ack_required);

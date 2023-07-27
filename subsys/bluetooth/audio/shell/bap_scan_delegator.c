@@ -178,7 +178,6 @@ static int pa_sync_no_past(struct sync_state *state,
 	recv_state = state->recv_state;
 
 	bt_addr_le_copy(&param.addr, &recv_state->addr);
-	param.options = BT_LE_PER_ADV_SYNC_OPT_FILTER_DUPLICATE;
 	param.sid = recv_state->adv_sid;
 	param.skip = PA_SYNC_SKIP;
 	param.timeout = interval_to_sync_timeout(pa_interval);

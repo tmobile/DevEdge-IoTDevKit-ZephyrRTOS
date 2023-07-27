@@ -360,11 +360,6 @@ static void uart_xmc4xxx_irq_callback_set(const struct device *dev,
 
 	data->user_cb = cb;
 	data->user_data = user_data;
-
-#if defined(CONFIG_UART_EXCLUSIVE_API_CALLBACKS)
-	data->async_cb = NULL;
-	data->async_user_data = NULL;
-#endif
 }
 
 #define NVIC_ISPR_BASE 0xe000e200u
@@ -604,12 +599,6 @@ static int uart_xmc4xxx_async_callback_set(const struct device *dev, uart_callba
 
 	data->async_cb = callback;
 	data->async_user_data = user_data;
-
-#if defined(CONFIG_UART_EXCLUSIVE_API_CALLBACKS)
-	data->user_cb = NULL;
-	data->user_data = NULL;
-#endif
-
 	return 0;
 }
 

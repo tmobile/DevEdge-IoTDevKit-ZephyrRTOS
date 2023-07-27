@@ -34,7 +34,6 @@ enum npm1300_gpio_type {
 /* nPM1300 regulator base addresses */
 #define BUCK_BASE 0x04U
 #define LDSW_BASE 0x08U
-#define SHIP_BASE 0x0BU
 
 /* nPM1300 regulator register offsets */
 #define BUCK_OFFSET_EN_SET    0x00U
@@ -59,11 +58,8 @@ enum npm1300_gpio_type {
 #define LDSW_OFFSET_LDOSEL  0x08U
 #define LDSW_OFFSET_VOUTSEL 0x0CU
 
-/* nPM1300 ship register offsets */
-#define SHIP_OFFSET_SHIP 0x02U
-
 struct regulator_npm1300_pconfig {
-	const struct device *mfd;
+	struct i2c_dt_spec i2c;
 	struct gpio_dt_spec dvs_state_pins[5];
 	uint8_t pad_val;
 };
@@ -472,16 +468,8 @@ int regulator_npm1300_dvs_state_set(const struct device *dev, regulator_dvs_stat
 	return 0;
 }
 
-int regulator_npm1300_ship_mode(const struct device *dev)
-{
-	const struct regulator_npm1300_pconfig *pconfig = dev->config;
-
-	return mfd_npm1300_reg_write(pconfig->mfd, SHIP_BASE, SHIP_OFFSET_SHIP, 1U);
-}
-
 static const struct regulator_parent_driver_api parent_api = {
 	.dvs_state_set = regulator_npm1300_dvs_state_set,
-	.ship_mode = regulator_npm1300_ship_mode,
 };
 
 int regulator_npm1300_common_init(const struct device *dev)
@@ -581,7 +569,7 @@ static const struct regulator_driver_api api = {.enable = regulator_npm1300_enab
 
 #define REGULATOR_NPM1300_DEFINE_ALL(inst)                                                         \
 	static const struct regulator_npm1300_pconfig config_##inst = {                            \
-		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
+		.i2c = I2C_DT_SPEC_GET(DT_INST_PARENT(inst)),                                      \
 		.dvs_state_pins = {GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 0, {0}),       \
 				   GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 1, {0}),       \
 				   GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 2, {0}),       \

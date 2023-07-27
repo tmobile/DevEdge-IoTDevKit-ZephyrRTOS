@@ -469,7 +469,7 @@ out:
 	return ret;
 }
 
-#else
+#endif
 
 static int transceive(const struct device *dev,
 		      const struct spi_config *spi_cfg,
@@ -502,8 +502,6 @@ out:
 	return ret;
 }
 
-#endif /*CONFIG_SPI_MCUX_LPSPI_DMA */
-
 static int spi_mcux_transceive(const struct device *dev,
 			       const struct spi_config *spi_cfg,
 			       const struct spi_buf_set *tx_bufs,
@@ -511,9 +509,8 @@ static int spi_mcux_transceive(const struct device *dev,
 {
 #ifdef CONFIG_SPI_MCUX_LPSPI_DMA
 	return transceive_dma(dev, spi_cfg, tx_bufs, rx_bufs, false, NULL, NULL);
-#else
-	return transceive(dev, spi_cfg, tx_bufs, rx_bufs, false, NULL, NULL);
 #endif /* CONFIG_SPI_MCUX_LPSPI_DMA */
+	return transceive(dev, spi_cfg, tx_bufs, rx_bufs, false, NULL, NULL);
 }
 
 #ifdef CONFIG_SPI_ASYNC

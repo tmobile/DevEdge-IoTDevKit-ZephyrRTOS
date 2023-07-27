@@ -398,15 +398,6 @@ int eventfd(unsigned int initval, int flags)
 	efd->flags = EFD_IN_USE_INTERNAL | flags;
 	efd->cnt = initval;
 
-	k_poll_signal_init(&efd->write_sig);
-	k_poll_signal_init(&efd->read_sig);
-
-	if (initval != 0) {
-		k_poll_signal_raise(&efd->read_sig, 0);
-	}
-
-	k_poll_signal_raise(&efd->write_sig, 0);
-
 	z_finalize_fd(fd, efd, &eventfd_fd_vtable);
 
 	return fd;

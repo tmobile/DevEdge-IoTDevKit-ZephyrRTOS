@@ -71,7 +71,7 @@ int ec_host_cmd_backend_sim_data_received(const uint8_t *buffer, size_t len)
 	memcpy(hc_sim->rx_ctx->buf, buffer, len);
 	hc_sim->rx_ctx->len = len;
 
-	ec_host_cmd_rx_notify();
+	k_sem_give(&hc_sim->rx_ctx->handler_owns);
 
 	return 0;
 }
