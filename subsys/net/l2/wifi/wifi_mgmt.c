@@ -73,8 +73,10 @@ static void scan_result_cb(struct net_if *iface, int status,
 		return;
 	}
 
+#ifndef CONFIG_WIFI_MGMT_RAW_SCAN_RESULTS_ONLY
 	net_mgmt_event_notify_with_info(NET_EVENT_WIFI_SCAN_RESULT, iface,
 					entry, sizeof(struct wifi_scan_result));
+#endif /* CONFIG_WIFI_MGMT_RAW_SCAN_RESULTS_ONLY */
 }
 
 static int wifi_scan(uint32_t mgmt_request, struct net_if *iface,

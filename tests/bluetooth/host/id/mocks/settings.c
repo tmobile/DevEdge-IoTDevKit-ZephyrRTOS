@@ -8,7 +8,4 @@
 
 #include <zephyr/kernel.h>
 
-DEFINE_FAKE_VOID_FUNC(bt_settings_store_id);
-DEFINE_FAKE_VOID_FUNC(bt_settings_delete_id);
-DEFINE_FAKE_VOID_FUNC(bt_settings_store_irk);
-DEFINE_FAKE_VOID_FUNC(bt_settings_delete_irk);
+DEFINE_FAKE_VOID_FUNC(bt_settings_save_id);

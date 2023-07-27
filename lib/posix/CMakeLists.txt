@@ -1,8 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(
-  ${ZEPHYR_BASE}/include/zephyr/posix/time.h
-)
 
 zephyr_interface_library_named(posix_subsys)
 

@@ -870,7 +870,7 @@ struct net_pkt *ieee802154_create_mac_cmd_frame(struct net_if *iface, enum ieee8
 		&p_buf, type == IEEE802154_CFI_BEACON_REQUEST ? false : ctx->ack_requested);
 
 	fs->fc.frame_type = IEEE802154_FRAME_TYPE_MAC_COMMAND;
-	fs->sequence = ctx->sequence++;
+	fs->sequence = ctx->sequence;
 
 	if (!cfi_to_fs_settings(type, fs, params)) {
 		goto error;
@@ -903,6 +903,7 @@ void ieee802154_mac_cmd_finalize(struct net_pkt *pkt, enum ieee802154_cfi type)
 
 #endif /* CONFIG_NET_L2_IEEE802154_RFD */
 
+#ifdef CONFIG_NET_L2_IEEE802154_ACK_REPLY
 bool ieee802154_create_ack_frame(struct net_if *iface, struct net_pkt *pkt, uint8_t seq)
 {
 	uint8_t *p_buf = net_pkt_data(pkt);
@@ -924,6 +925,7 @@ bool ieee802154_create_ack_frame(struct net_if *iface, struct net_pkt *pkt, uint
 
 	return true;
 }
+#endif /* CONFIG_NET_L2_IEEE802154_ACK_REPLY */
 
 #ifdef CONFIG_NET_L2_IEEE802154_SECURITY
 bool ieee802154_decipher_data_frame(struct net_if *iface, struct net_pkt *pkt,

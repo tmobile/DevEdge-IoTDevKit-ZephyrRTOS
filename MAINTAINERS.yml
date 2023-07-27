@@ -1015,8 +1015,6 @@ Release Notes:
   collaborators:
     - rlubos
     - jciupis
-    - cfriedt
-    - fgrandel
   files:
     - drivers/ieee802154/
   labels:
@@ -2004,24 +2002,6 @@ Retention:
   labels:
     - "area: Retention"
 
-Sensor Subsystem:
-  status: maintained
-  maintainers:
-    - lixuzha
-    - ghu0510
-    - yperess
-  collaborators:
-    - qianruh
-  files:
-    - dts/bindings/sensor/zephyr,sensing.yaml
-    - dts/bindings/sensor/zephyr,sensing*.yaml
-    - include/zephyr/sensing/
-    - doc/services/sensing/
-    - subsys/sensing/
-    - samples/subsys/sensing/
-  labels:
-    - "area: Sensor Subsystem"
-
 Twister:
   status: maintained
   maintainers:
@@ -2639,7 +2619,7 @@ USB:
     - subsys/usb/
     - tests/subsys/usb/
     - tests/drivers/udc/
-    - doc/connectivity/usb/
+    - doc/services/usb/
   labels:
     - "area: USB"
 
@@ -2656,7 +2636,7 @@ USB-C:
     - include/zephyr/usb_c/
     - samples/subsys/usb_c/
     - subsys/usb/usb_c/
-    - doc/connectivity/usb/pd/
+    - doc/connectivity/usb_c/
   labels:
     - "area: USB-C"
 

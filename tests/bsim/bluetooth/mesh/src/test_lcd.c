@@ -123,15 +123,10 @@ static void prov_and_conf(struct bt_mesh_test_cfg cfg)
 static void target_node_alloc(struct bt_mesh_comp comp, struct bt_mesh_test_cfg cfg)
 {
 	struct bt_mesh_cdb_node *node;
-	int err;
 
 	node = bt_mesh_cdb_node_alloc(test_va_uuid, cfg.addr, comp.elem_count, 0);
 	ASSERT_TRUE(node);
-
-	err = bt_mesh_cdb_node_key_import(node, cfg.dev_key);
-	if (err) {
-		FAIL("Unable to import the target node device key (err: %d)", err);
-	}
+	memcpy(node->dev_key, cfg.dev_key, 16);
 }
 
 /* Assert equality between local data and merged sample data */

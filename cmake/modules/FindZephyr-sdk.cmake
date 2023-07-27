@@ -34,8 +34,7 @@ zephyr_get(ZEPHYR_SDK_INSTALL_DIR)
 # Until we completely deprecate it
 if(("zephyr" STREQUAL ${ZEPHYR_TOOLCHAIN_VARIANT}) OR
    (NOT DEFINED ZEPHYR_TOOLCHAIN_VARIANT) OR
-   (DEFINED ZEPHYR_SDK_INSTALL_DIR) OR
-   (Zephyr-sdk_FIND_REQUIRED))
+   (DEFINED ZEPHYR_SDK_INSTALL_DIR))
 
   # No toolchain was specified, so inform user that we will be searching.
   if (NOT DEFINED ZEPHYR_SDK_INSTALL_DIR AND
