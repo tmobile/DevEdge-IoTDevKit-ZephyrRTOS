@@ -4,7 +4,6 @@ config BOARD_NATIVE_POSIX
 	bool
 	select NATIVE_POSIX_TIMER
 	select POSIX_ARCH_CONSOLE
-	select NATIVE_APPLICATION
 
 if BOARD_NATIVE_POSIX
 
@@ -22,6 +21,23 @@ config NATIVE_POSIX_SLOWDOWN_TO_REAL_TIME
 	  case the zephyr kernel and application cannot tell the difference unless they
 	  interact with some other driver/device which runs at real time.
 
-source "boards/$(ARCH)/common/sdl/Kconfig"
+config HAS_SDL
+	bool
+	help
+	  This option specifies that the target board has SDL support
+
+config SDL_THREAD_INTERVAL
+	int "SDL thread sleep interval"
+	default 10
+	depends on HAS_SDL
+	help
+	  Sleep interval time of SDL thread to handle events in milliseconds.
+
+config SDL_THREAD_PRIORITY
+	int "SDL thread priority"
+	default 0
+	depends on HAS_SDL
+	help
+	  Priority of SDL thread to handle events.
 
 endif # BOARD_NATIVE_POSIX

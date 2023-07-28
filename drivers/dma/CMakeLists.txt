@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/dma.h)
-
 zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_DMA_SAM_XDMAC	dma_sam_xdmac.c)
@@ -31,4 +29,3 @@ zephyr_library_sources_ifdef(CONFIG_DMA_ESP32		dma_esp32_gdma.c)
 zephyr_library_sources_ifdef(CONFIG_DMA_MCHP_XEC	dma_mchp_xec.c)
 zephyr_library_sources_ifdef(CONFIG_DMA_XMC4XXX		dma_xmc4xxx.c)
 zephyr_library_sources_ifdef(CONFIG_DMA_RPI_PICO	dma_rpi_pico.c)
-zephyr_library_sources_ifdef(CONFIG_MCUX_PXP		dma_mcux_pxp.c)

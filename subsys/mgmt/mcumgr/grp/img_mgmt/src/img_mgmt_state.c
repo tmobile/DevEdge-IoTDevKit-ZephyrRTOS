@@ -19,6 +19,7 @@
 #include <zephyr/mgmt/mcumgr/mgmt/mgmt.h>
 #include <zephyr/mgmt/mcumgr/smp/smp.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
+#include <zephyr/mgmt/mcumgr/grp/img_mgmt/image.h>
 
 #include <mgmt/mcumgr/util/zcbor_bulk.h>
 #include <mgmt/mcumgr/grp/img_mgmt/img_mgmt_priv.h>
@@ -244,8 +245,6 @@ img_mgmt_state_read(struct smp_streamer *ctxt)
 	ok = zcbor_tstr_put_lit(zse, "images") &&
 	     zcbor_list_start_encode(zse, 2 * CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER);
 
-	img_mgmt_take_lock();
-
 	for (i = 0; ok && i < 2 * CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER; i++) {
 		int rc = img_mgmt_read_info(i, &ver, hash, &flags);
 		if (rc != 0) {
@@ -291,8 +290,6 @@ img_mgmt_state_read(struct smp_streamer *ctxt)
 		ok = zcbor_tstr_put_lit(zse, "splitStatus") &&
 		     zcbor_int32_put(zse, 0);
 	}
-
-	img_mgmt_release_lock();
 
 	return ok ? MGMT_ERR_EOK : MGMT_ERR_EMSGSIZE;
 }
@@ -388,8 +385,6 @@ img_mgmt_state_write(struct smp_streamer *ctxt)
 		return MGMT_ERR_EINVAL;
 	}
 
-	img_mgmt_take_lock();
-
 	/* Determine which slot is being operated on. */
 	if (zhash.len == 0) {
 		if (confirm) {
@@ -428,13 +423,10 @@ img_mgmt_state_write(struct smp_streamer *ctxt)
 	/* Send the current image state in the response. */
 	rc = img_mgmt_state_read(ctxt);
 	if (rc != 0) {
-		img_mgmt_release_lock();
 		return rc;
 	}
 
 end:
-	img_mgmt_release_lock();
-
 	if (!ok) {
 		return MGMT_ERR_EMSGSIZE;
 	}

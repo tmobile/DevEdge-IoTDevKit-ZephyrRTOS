@@ -14,7 +14,7 @@
 
 / {
 	model = "STM32L475 Pandora Development Board";
-	compatible = "alientek,pandora_stm32l475";
+	compatible = "st,pandora_stm32l475";
 
 	aliases {
 		led0 = &red_led;

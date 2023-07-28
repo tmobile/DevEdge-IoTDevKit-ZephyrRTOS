@@ -13,5 +13,6 @@ config SOC_LS1046A
 	select ARM64
 	select CPU_CORTEX_A72
 	select ARM_ARCH_TIMER
+	select GIC_V2
 
 endchoice

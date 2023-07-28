@@ -536,11 +536,11 @@ static inline bool read_rxfifo_content(const struct device *dev,
 	return true;
 }
 
-static inline void insert_radio_noise_details(struct net_pkt *pkt, uint8_t *status)
+static inline void insert_radio_noise_details(struct net_pkt *pkt, uint8_t *buf)
 {
 	uint8_t lqi;
 
-	net_pkt_set_ieee802154_rssi_dbm(pkt, (int8_t) status[0]);
+	net_pkt_set_ieee802154_rssi(pkt, buf[0]);
 
 	/**
 	 * CC2520 does not provide an LQI but a correlation factor.
@@ -552,7 +552,7 @@ static inline void insert_radio_noise_details(struct net_pkt *pkt, uint8_t *stat
 	 * else:
 	 * lqi = (lqi - 50) * 4
 	 */
-	lqi = status[1] & CC2520_FCS_CORRELATION;
+	lqi = buf[1] & CC2520_FCS_CORRELATION;
 	if (lqi <= 50U) {
 		lqi = 0U;
 	} else if (lqi >= 110U) {
@@ -566,17 +566,17 @@ static inline void insert_radio_noise_details(struct net_pkt *pkt, uint8_t *stat
 
 static inline bool verify_crc(const struct device *dev, struct net_pkt *pkt)
 {
-	uint8_t status[2];
+	uint8_t fcs[2];
 
-	if (!z_cc2520_access(dev, true, CC2520_INS_RXBUF, 0, &status, 2)) {
+	if (!z_cc2520_access(dev, true, CC2520_INS_RXBUF, 0, &fcs, 2)) {
 		return false;
 	}
 
-	if (!(status[1] & CC2520_FCS_CRC_OK)) {
+	if (!(fcs[1] & CC2520_FCS_CRC_OK)) {
 		return false;
 	}
 
-	insert_radio_noise_details(pkt, status);
+	insert_radio_noise_details(pkt, fcs);
 
 	return true;
 }
@@ -637,7 +637,7 @@ static void cc2520_rx(void *arg)
 			goto out;
 		}
 
-		if (ieee802154_handle_ack(cc2520->iface, pkt) == NET_OK) {
+		if (ieee802154_radio_handle_ack(cc2520->iface, pkt) == NET_OK) {
 			LOG_DBG("ACK packet handled");
 			goto out;
 		}
@@ -667,9 +667,10 @@ out:
  *******************/
 static enum ieee802154_hw_caps cc2520_get_capabilities(const struct device *dev)
 {
-	/* TODO: Add support for IEEE802154_HW_PROMISC */
-	return IEEE802154_HW_FCS | IEEE802154_HW_2_4_GHZ | IEEE802154_HW_FILTER |
-	       IEEE802154_HW_RX_TX_ACK;
+	/* ToDo: Add support for IEEE802154_HW_PROMISC */
+	return IEEE802154_HW_FCS |
+		IEEE802154_HW_2_4_GHZ |
+		IEEE802154_HW_FILTER;
 }
 
 static int cc2520_cca(const struct device *dev)
@@ -816,7 +817,6 @@ static int cc2520_tx(const struct device *dev,
 			goto error;
 		}
 
-		/* TODO: Implement standard conforming CSMA/CA or use the soft MAC's default. */
 		k_sem_take(&cc2520->tx_sync, K_MSEC(10));
 
 		retry--;

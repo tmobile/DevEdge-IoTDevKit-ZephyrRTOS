@@ -1,6 +1,6 @@
 .. _boards-nios2:
 
-Nios II Boards
+NIOS II Boards
 ##############
 
 .. toctree::

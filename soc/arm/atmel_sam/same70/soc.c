@@ -16,6 +16,7 @@
 #include <soc.h>
 #include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/irq.h>
 
 #define LOG_LEVEL CONFIG_SOC_LOG_LEVEL
 LOG_MODULE_REGISTER(soc);
@@ -233,6 +234,11 @@ static ALWAYS_INLINE void clock_init(void)
  */
 static int atmel_same70_init(void)
 {
+	uint32_t key;
+
+
+	key = irq_lock();
+
 	SCB_EnableICache();
 
 	if (!(SCB->CCR & SCB_CCR_DC_Msk)) {
@@ -249,6 +255,13 @@ static int atmel_same70_init(void)
 
 	/* Setup system clocks */
 	clock_init();
+
+	/* Install default handler that simply resets the CPU
+	 * if configured in the kernel, NOP otherwise
+	 */
+	NMI_INIT();
+
+	irq_unlock(key);
 
 	/* Check that the CHIP CIDR matches the HAL one */
 	if (CHIPID->CHIPID_CIDR != CHIP_CIDR) {

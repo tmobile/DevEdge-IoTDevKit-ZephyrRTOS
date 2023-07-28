@@ -337,8 +337,6 @@ int net_context_get(sa_family_t family, enum net_sock_type type, uint16_t proto,
 			*context = NULL;
 			return ret;
 		}
-
-		net_context_set_iface(*context, net_if_get_default());
 	}
 
 	return 0;

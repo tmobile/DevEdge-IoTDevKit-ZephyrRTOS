@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/ipm.h)
-
 zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_IPM_MCUX   ipm_mcux.c)
@@ -15,4 +13,3 @@ zephyr_library_sources_ifdef(CONFIG_IPM_STM32_HSEM ipm_stm32_hsem.c)
 zephyr_library_sources_ifdef(CONFIG_IPM_CAVS_HOST ipm_cavs_host.c)
 zephyr_library_sources_ifdef(CONFIG_ESP32_SOFT_IPM ipm_esp32.c)
 zephyr_library_sources_ifdef(CONFIG_USERSPACE   ipm_handlers.c)
-zephyr_library_sources_ifdef(CONFIG_IPM_IVSHMEM ipm_ivshmem.c)

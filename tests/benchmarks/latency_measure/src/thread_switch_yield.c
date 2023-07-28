@@ -49,10 +49,6 @@ void thread_switch_yield(void)
 	timing_t timestamp_start;
 	timing_t timestamp_end;
 	uint32_t ts_diff;
-	const char *notes = "";
-	char error_string[80];
-	bool failed = false;
-	int  end;
 
 	timing_start();
 	bench_test_start();
@@ -75,7 +71,6 @@ void thread_switch_yield(void)
 
 	/* get the number of cycles it took to do the test */
 	timestamp_end = timing_counter_get();
-	end = bench_test_end();
 
 	/* Ensure both helper and this routine were context switching back &
 	 * forth.
@@ -85,29 +80,23 @@ void thread_switch_yield(void)
 	 * back and forth.
 	 */
 	delta = iterations - helper_thread_iterations;
-	if (abs(delta) > 1) {
+	if (bench_test_end() < 0) {
+		error_count++;
+		PRINT_OVERFLOW_ERROR();
+	} else if (abs(delta) > 1) {
 		/* expecting even alternating context switch, seems one routine
 		 * called yield without the other having chance to execute
 		 */
 		error_count++;
-		snprintk(error_string, 78,
-			 "Error: iteration:%u : helper iteration:%u",
-			 iterations, helper_thread_iterations);
-		notes = error_string;
-		failed = true;
-	} else if (end != 0) {
-		error_count++;
-		notes = TICK_OCCURRENCE_ERROR;
+		printk(" Error, iteration:%u, helper iteration:%u",
+			     iterations, helper_thread_iterations);
+	} else {
+		/* thread_yield is called (iterations + helper_thread_iterations)
+		 * times in total.
+		 */
+		ts_diff = timing_cycles_get(&timestamp_start, &timestamp_end);
+		PRINT_STATS_AVG("Average thread context switch using yield", ts_diff, (iterations + helper_thread_iterations));
 	}
-
-	/*
-	 * thread_yield is called (iterations + helper_thread_iterations)
-	 * times in total.
-	 */
-
-	ts_diff = timing_cycles_get(&timestamp_start, &timestamp_end);
-	PRINT_STATS_AVG("Average thread context switch using yield", ts_diff,
-			(iterations + helper_thread_iterations), failed, notes);
 
 	timing_stop();
 }

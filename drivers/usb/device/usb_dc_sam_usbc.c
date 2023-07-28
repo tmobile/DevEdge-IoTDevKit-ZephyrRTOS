@@ -1109,7 +1109,7 @@ int usb_dc_ep_flush(uint8_t ep)
 
 	dev_data.ep_data[ep_idx].out_at = 0U;
 
-	/* Re-enable interrupts */
+	/* Reenable interrupts */
 	usb_dc_ep_enable_interrupts(ep_idx);
 
 	irq_unlock(key);

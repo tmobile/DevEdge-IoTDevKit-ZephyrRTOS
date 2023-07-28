@@ -26,21 +26,6 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-m4";
 			reg = <0>;
-			cpu-power-states = <&idle &suspend_to_ram>;
-		};
-
-		power-states {
-			idle: idle {
-				compatible = "zephyr,power-state";
-				power-state-name = "suspend-to-idle";
-				min-residency-us = <1000000>;
-			};
-
-			suspend_to_ram: suspend_to_ram {
-				compatible = "zephyr,power-state";
-				power-state-name = "suspend-to-ram";
-				min-residency-us = <2000000>;
-			};
 		};
 	};
 
@@ -580,7 +565,7 @@
 			compatible = "microchip,xec-ps2";
 			reg = <0x40009000 0x40>;
 			interrupts = <100 1>;
-			girqs = <18 10>, <21 18>;
+			girqs = <18 10>;
 			pcrs = <3 5>;
 			#address-cells = <1>;
 			#size-cells = <0>;

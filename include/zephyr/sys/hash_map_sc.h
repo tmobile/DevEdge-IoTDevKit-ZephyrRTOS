@@ -6,7 +6,6 @@
 
 /**
  * @file
- * @ingroup hashmap_implementations
  * @brief Separate Chaining Hashmap Implementation
  *
  * @note Enable with @kconfig{CONFIG_SYS_HASH_MAP_SC}

@@ -5,6 +5,7 @@
  */
 
 #include <zephyr/devicetree.h>
+#include <zephyr/linker/devicetree_regions.h>
 #include "../../common/cortex_m/arm_mpu_mem_cfg.h"
 
 static const struct arm_mpu_region mpu_regions[] = {
@@ -31,7 +32,7 @@ static const struct arm_mpu_region mpu_regions[] = {
 #endif
 
 	/* DT-defined regions */
-	DT_MEMORY_ATTR_APPLY(ARM_MPU_REGION_INIT)
+	LINKER_DT_REGION_MPU(ARM_MPU_REGION_INIT)
 };
 
 const struct arm_mpu_config mpu_config = {

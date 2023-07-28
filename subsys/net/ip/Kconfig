@@ -508,7 +508,6 @@ config NET_TCP_PKT_ALLOC_TIMEOUT
 
 config NET_TCP_WORKQ_STACK_SIZE
 	int "TCP work queue thread stack size"
-	default 1200 if X86
 	default 1024
 	depends on NET_TCP
 	help
@@ -828,10 +827,6 @@ config NET_DEFAULT_IF_CANBUS_RAW
 config NET_DEFAULT_IF_PPP
 	bool "PPP interface"
 	depends on NET_L2_PPP
-
-config NET_DEFAULT_IF_WIFI
-	bool "WiFi interface"
-	depends on NET_L2_ETHERNET
 
 endchoice
 

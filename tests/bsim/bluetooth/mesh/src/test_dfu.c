@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "mesh_test.h"
+#include "settings_test_backend.h"
 #include "mesh/dfd_srv_internal.h"
 #include "mesh/dfu_slot.h"
 #include "mesh/adv.h"
@@ -416,7 +417,7 @@ static void dist_self_update_prov_and_conf(uint16_t addr)
 
 static void target_prov_and_conf(uint16_t addr, struct bind_params *params, size_t len)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	provision(addr);
 	common_configure(addr);
 
@@ -518,7 +519,7 @@ static void test_dist_dfu(void)
 {
 	enum bt_mesh_dfd_status status;
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 	bt_mesh_device_setup(&prov, &dist_comp);
 	dist_prov_and_conf(DIST_ADDR);
@@ -543,7 +544,7 @@ static void test_dist_dfu_self_update(void)
 
 	ASSERT_TRUE(dfu_targets_cnt > 0);
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 	bt_mesh_device_setup(&prov, &dist_comp_self_update);
 	dist_self_update_prov_and_conf(DIST_ADDR);
@@ -583,7 +584,7 @@ static void test_dist_dfu_slot_create(void)
 	ASSERT_TRUE(CONFIG_BT_MESH_DFU_SLOT_CNT >= 3,
 		    "CONFIG_BT_MESH_DFU_SLOT_CNT must be at least 3");
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 
 	bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 	bt_mesh_device_setup(&prov, &dist_comp);
@@ -751,7 +752,7 @@ static void target_test_effect(enum bt_mesh_dfu_effect effect)
 {
 	dfu_target_effect = effect;
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 	bt_mesh_device_setup(&prov, &target_comp);
 	target_prov_and_conf_default();
@@ -913,7 +914,7 @@ static void cli_common_fail_on_init(void)
 {
 	const struct bt_mesh_dfu_slot *slot;
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_cfg_set(NULL, 300);
 	bt_mesh_device_setup(&prov, &cli_comp);
 	dist_prov_and_conf(DIST_ADDR);
@@ -1406,7 +1407,7 @@ static void target_prov_and_conf_with_imposer(void)
 
 static void common_fail_on_target_init(const struct bt_mesh_comp *comp)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_cfg_set(NULL, 300);
 	bt_mesh_device_setup(&prov, comp);
 
@@ -1506,7 +1507,7 @@ static void test_target_dfu_stop(void)
 	dfu_target_effect = BT_MESH_DFU_EFFECT_NONE;
 
 	if (!recover) {
-		bt_mesh_test_host_files_remove();
+		settings_test_backend_clear();
 		bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 
 		common_fail_on_target_init(expected_stop_phase == BT_MESH_DFU_PHASE_VERIFY_FAIL ?

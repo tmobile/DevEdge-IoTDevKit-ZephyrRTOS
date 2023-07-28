@@ -1,7 +1,7 @@
 .. _boards-riscv:
 
-RISC-V Boards
-#############
+RISCV Boards
+##############
 
 .. toctree::
    :maxdepth: 1

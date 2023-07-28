@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "mesh_test.h"
+#include "settings_test_backend.h"
 #include "mesh/mesh.h"
 #include "mesh/net.h"
 #include "mesh/rpl.h"
@@ -124,7 +125,7 @@ static void rx_sar_conf(void)
 
 static void test_tx_immediate_replay_attack(void)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_setup();
 	tx_sar_conf();
 
@@ -173,7 +174,7 @@ static void test_tx_immediate_replay_attack(void)
 
 static void test_rx_immediate_replay_attack(void)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_setup();
 	rx_sar_conf();
 	bt_mesh_test_ra_cb_setup(rx_ended);
@@ -187,7 +188,7 @@ static void test_rx_immediate_replay_attack(void)
 
 static void test_tx_power_replay_attack(void)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_setup();
 	tx_sar_conf();
 
@@ -320,7 +321,7 @@ static bool ivi_update_toggle(void)
 
 static void test_rx_rpl_frag(void)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_setup();
 
 	k_sleep(K_SECONDS(10));
@@ -386,7 +387,7 @@ static void test_rx_rpl_frag(void)
 
 static void test_tx_rpl_frag(void)
 {
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 	bt_mesh_test_setup();
 
 	k_sleep(K_SECONDS(10));

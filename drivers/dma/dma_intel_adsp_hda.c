@@ -212,7 +212,6 @@ int intel_adsp_hda_dma_status(const struct device *dev, uint32_t channel,
 			intel_adsp_hda_underrun_clear(cfg->base, cfg->regblock_size, channel);
 			return -EPIPE;
 		}
-		break;
 	case PERIPHERAL_TO_MEMORY:
 		xrun_det = intel_adsp_hda_is_buffer_overrun(cfg->base, cfg->regblock_size,
 							    channel);
@@ -220,7 +219,6 @@ int intel_adsp_hda_dma_status(const struct device *dev, uint32_t channel,
 			intel_adsp_hda_overrun_clear(cfg->base, cfg->regblock_size, channel);
 			return -EPIPE;
 		}
-		break;
 	default:
 		break;
 	}

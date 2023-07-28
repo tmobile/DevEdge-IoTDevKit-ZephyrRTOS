@@ -564,9 +564,7 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
 
 	case MQTT_EVT_PUBLISH: {
 		const struct mqtt_publish_param *pub = &evt->param.publish;
-		uint32_t payload_left;
-		size_t size;
-		int rc;
+		uint32_t size, payload_left;
 
 		payload_left = pub->message.payload.len;
 
@@ -583,19 +581,18 @@ static void mqtt_evt_handler(struct mqtt_client *const client, const struct mqtt
 
 		while (payload_left > 0) {
 			/* Attempt to claim `payload_left` bytes of buffer in rb */
-			size = (size_t)ring_buf_put_claim(&sh_mqtt->rx_rb, &sh_mqtt->rx_rb_ptr,
-							  payload_left);
+			size = ring_buf_put_claim(&sh_mqtt->rx_rb, &sh_mqtt->rx_rb_ptr,
+						  payload_left);
 			/* Read `size` bytes of payload from mqtt */
-			rc = mqtt_read_publish_payload_blocking(client, sh_mqtt->rx_rb_ptr, size);
+			size = mqtt_read_publish_payload_blocking(client, sh_mqtt->rx_rb_ptr, size);
 
 			/* errno value, return */
-			if (rc < 0) {
+			if (size < 0) {
 				(void)ring_buf_put_finish(&sh_mqtt->rx_rb, 0U);
 				sh_mqtt_rx_rb_flush();
 				return;
 			}
 
-			size = (size_t)rc;
 			/* Indicate that `size` bytes of payload has been written into rb */
 			(void)ring_buf_put_finish(&sh_mqtt->rx_rb, size);
 			/* Update `payload_left` */

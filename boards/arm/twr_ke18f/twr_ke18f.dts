@@ -140,6 +140,7 @@
 
 &cpu0 {
 	clock-frequency = <120000000>;
+	cpu-power-states = <&idle &stop>;
 };
 
 &idle {

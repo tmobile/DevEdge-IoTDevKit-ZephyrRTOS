@@ -16,6 +16,7 @@
 
 #include <zephyr/mgmt/mcumgr/mgmt/mgmt.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
+#include <zephyr/mgmt/mcumgr/grp/img_mgmt/image.h>
 
 #include <mgmt/mcumgr/grp/img_mgmt/img_mgmt_priv.h>
 
@@ -615,7 +616,7 @@ int img_mgmt_upload_inspect(const struct img_mgmt_upload_req *req,
 		}
 
 #if defined(CONFIG_MCUMGR_GRP_IMG_REJECT_DIRECT_XIP_MISMATCHED_SLOT)
-		if (hdr->ih_flags & IMAGE_F_ROM_FIXED) {
+		if (hdr->ih_flags & IMAGE_F_ROM_FIXED_ADDR) {
 			const struct flash_area *fa;
 
 			rc = flash_area_open(action->area_id, &fa);

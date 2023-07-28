@@ -63,6 +63,12 @@
 		};
 	};
 
+	cpus {
+		cpu@0 {
+			cpu-power-states = <&stop0 &stop1>;
+		};
+	};
+
 	aliases {
 		led0 = &blue_led_2;
 		led1 = &orange_led_3;

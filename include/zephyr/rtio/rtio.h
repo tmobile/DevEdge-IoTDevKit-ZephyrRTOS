@@ -115,6 +115,25 @@ extern "C" {
 
 
 /**
+ * @brief Equivalent to the I2C_MSG_STOP flag
+ */
+#define RTIO_IODEV_I2C_STOP BIT(0)
+
+/**
+ * @brief Equivalent to the I2C_MSG_RESTART flag
+ */
+#define RTIO_IODEV_I2C_RESTART BIT(1)
+
+/**
+ * @brief Equivalent to the I2C_MSG_10_BITS
+ */
+#define RTIO_IODEV_I2C_10_BITS BIT(2)
+
+/**
+ * @brief Equivalent to the I2C_MSG_ADDR_10_BITS
+ */
+
+/**
  * @brief The buffer should be allocated by the RTIO mempool
  *
  * This flag can only exist if the CONFIG_RTIO_SYS_MEM_BLOCKS Kconfig was
@@ -140,11 +159,6 @@ extern "C" {
  * complete. It should be placed back in queue until canceled.
  */
 #define RTIO_SQE_MULTISHOT BIT(4)
-
-/**
- * @brief The SQE does not produce a CQE.
- */
-#define RTIO_SQE_NO_RESPONSE BIT(5)
 
 /**
  * @}
@@ -197,21 +211,6 @@ extern "C" {
 /**
  * @}
  */
-
-/**
- * @brief Equivalent to the I2C_MSG_STOP flag
- */
-#define RTIO_IODEV_I2C_STOP BIT(0)
-
-/**
- * @brief Equivalent to the I2C_MSG_RESTART flag
- */
-#define RTIO_IODEV_I2C_RESTART BIT(1)
-
-/**
- * @brief Equivalent to the I2C_MSG_ADDR_10_BITS
- */
-#define RTIO_IODEV_I2C_10_BITS BIT(2)
 
 /** @cond ignore */
 struct rtio;
@@ -353,9 +352,6 @@ struct rtio {
 	 */
 	struct k_sem *consume_sem;
 #endif
-
-	/* Total number of completions */
-	atomic_t cq_count;
 
 	/* Number of completions that were unable to be submitted with results
 	 * due to the cq spsc being full
@@ -764,7 +760,6 @@ static inline void rtio_block_pool_free(struct rtio_block_pool *pool, void *buf,
 		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_sem = &_submit_sem_##name,))           \
 		IF_ENABLED(CONFIG_RTIO_SUBMIT_SEM, (.submit_count = 0,))                           \
 		IF_ENABLED(CONFIG_RTIO_CONSUME_SEM, (.consume_sem = &_consume_sem_##name,))        \
-		.cq_count = ATOMIC_INIT(0),                                                        \
 		.xcqcnt = ATOMIC_INIT(0),                                                          \
 		.sqe_pool = _sqe_pool,                                                             \
 		.cqe_pool = _cqe_pool,                                                             \
@@ -815,6 +810,18 @@ static inline void rtio_block_pool_free(struct rtio_block_pool *pool, void *buf,
 static inline uint32_t rtio_sqe_acquirable(struct rtio *r)
 {
 	return r->sqe_pool->pool_free;
+}
+
+/**
+ * @brief Count of likely, but not gauranteed, consumable completion queue events
+ *
+ * @param r RTIO context
+ *
+ * @return Likely count of consumable completion queue events
+ */
+static inline uint32_t rtio_cqe_consumable(struct rtio *r)
+{
+	return (r->cqe_pool->pool_size - r->cqe_pool->pool_free);
 }
 
 /**
@@ -1007,6 +1014,8 @@ static inline uint32_t rtio_cqe_compute_flags(struct rtio_iodev_sqe *iodev_sqe)
 {
 	uint32_t flags = 0;
 
+	ARG_UNUSED(iodev_sqe);
+
 #ifdef CONFIG_RTIO_SYS_MEM_BLOCKS
 	if (iodev_sqe->sqe.op == RTIO_OP_RX && iodev_sqe->sqe.flags & RTIO_SQE_MEMPOOL_BUFFER) {
 		struct rtio *r = iodev_sqe->r;
@@ -1017,8 +1026,6 @@ static inline uint32_t rtio_cqe_compute_flags(struct rtio_iodev_sqe *iodev_sqe)
 
 		flags = RTIO_CQE_FLAG_PREP_MEMPOOL(blk_index, blk_count);
 	}
-#else
-	ARG_UNUSED(iodev_sqe);
 #endif
 
 	return flags;
@@ -1140,8 +1147,6 @@ static inline void rtio_cqe_submit(struct rtio *r, int result, void *userdata, u
 		cqe->flags = flags;
 		rtio_cqe_produce(r, cqe);
 	}
-
-	atomic_inc(&r->cq_count);
 #ifdef CONFIG_RTIO_SUBMIT_SEM
 	if (r->submit_count > 0) {
 		r->submit_count--;
@@ -1197,10 +1202,7 @@ static inline int rtio_sqe_rx_buf(const struct rtio_iodev_sqe *iodev_sqe, uint32
 
 		return -ENOMEM;
 	}
-#else
-	ARG_UNUSED(max_buf_len);
 #endif
-
 	if (sqe->buf_len < min_buf_len) {
 		return -ENOMEM;
 	}
@@ -1234,10 +1236,6 @@ static inline void z_impl_rtio_release_buffer(struct rtio *r, void *buff, uint32
 	}
 
 	rtio_block_pool_free(r->block_pool, buff, buff_len);
-#else
-	ARG_UNUSED(r);
-	ARG_UNUSED(buff);
-	ARG_UNUSED(buff_len);
 #endif
 }
 
@@ -1369,7 +1367,7 @@ static inline int z_impl_rtio_cqe_copy_out(struct rtio *r,
 {
 	size_t copied = 0;
 	struct rtio_cqe *cqe;
-	k_timepoint_t end = sys_timepoint_calc(timeout);
+	int64_t end = sys_clock_timeout_end_calc(timeout);
 
 	do {
 		cqe = K_TIMEOUT_EQ(timeout, K_FOREVER) ? rtio_cqe_consume_block(r)
@@ -1385,7 +1383,7 @@ static inline int z_impl_rtio_cqe_copy_out(struct rtio *r,
 		}
 		cqes[copied++] = *cqe;
 		rtio_cqe_release(r, cqe);
-	} while (copied < cqe_count && !sys_timepoint_expired(end));
+	} while (copied < cqe_count && end > k_uptime_ticks());
 
 	return copied;
 }
@@ -1419,8 +1417,6 @@ static inline int z_impl_rtio_submit(struct rtio *r, uint32_t wait_count)
 		k_sem_reset(r->submit_sem);
 		r->submit_count = wait_count;
 	}
-#else
-	uintptr_t cq_count = atomic_get(&r->cq_count) + wait_count;
 #endif
 
 	/* Submit the queue to the executor which consumes submissions
@@ -1440,7 +1436,7 @@ static inline int z_impl_rtio_submit(struct rtio *r, uint32_t wait_count)
 			 "semaphore was reset or timed out while waiting on completions!");
 	}
 #else
-	while (atomic_get(&r->cq_count) < cq_count) {
+	while (rtio_cqe_consumable(r) < wait_count) {
 		Z_SPIN_DELAY(10);
 		k_yield();
 	}

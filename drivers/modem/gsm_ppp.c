@@ -614,8 +614,8 @@ static struct net_if *ppp_net_if(void)
 
 static void set_ppp_carrier_on(struct gsm_modem *gsm)
 {
+	static const struct ppp_api *api;
 	const struct device *ppp_dev = device_get_binding(CONFIG_NET_PPP_DRV_NAME);
-	const struct ppp_api *api;
 	struct net_if *iface = gsm->iface;
 	int ret;
 
@@ -624,15 +624,21 @@ static void set_ppp_carrier_on(struct gsm_modem *gsm)
 		return;
 	}
 
-	api = (const struct ppp_api *)ppp_dev->api;
+	if (api == NULL) {
+		api = (const struct ppp_api *)ppp_dev->api;
 
-	ret = api->start(ppp_dev);
-
-	if (ret < 0) {
-		LOG_ERR("ppp start returned %d", ret);
+		/* For the first call, we want to call ppp_start()... */
+		ret = api->start(ppp_dev);
+		if (ret < 0) {
+			LOG_ERR("ppp start returned %d", ret);
+		}
+	} else {
+		/* ...but subsequent calls should be to ppp_enable() */
+		ret = net_if_l2(iface)->enable(iface, true);
+		if (ret < 0) {
+			LOG_ERR("ppp l2 enable returned %d", ret);
+		}
 	}
-
-	net_if_up(iface);
 }
 
 static void query_rssi(struct gsm_modem *gsm, bool lock)
@@ -1171,8 +1177,6 @@ unlock:
 
 void gsm_ppp_stop(const struct device *dev)
 {
-	const struct device *ppp_dev = device_get_binding(CONFIG_NET_PPP_DRV_NAME);
-	const struct ppp_api *api = (const struct ppp_api *)ppp_dev->api;
 	struct gsm_modem *gsm = dev->data;
 	struct net_if *iface = gsm->iface;
 	struct k_work_sync work_sync;
@@ -1187,13 +1191,11 @@ void gsm_ppp_stop(const struct device *dev)
 		(void)k_work_cancel_delayable_sync(&gsm->rssi_work_handle, &work_sync);
 	}
 
-	api->stop(ppp_dev);
-
 	gsm_ppp_lock(gsm);
 
 	/* wait for the interface to be properly down */
 	if (net_if_is_up(iface)) {
-		net_if_down(ppp_net_if());
+		(void)(net_if_l2(iface)->enable(iface, false));
 		(void)k_sem_take(&gsm->sem_if_down, K_FOREVER);
 	}
 

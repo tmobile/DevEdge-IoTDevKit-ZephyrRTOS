@@ -233,14 +233,15 @@ SECTIONS
  */
 #include <snippets-ram-sections.ld>
 
+     _image_ram_end = .;
+     _end = .; /* end of image */
+
+     GROUP_END(RAM)
+
 /* Located in generated directory. This file is populated by the
  * zephyr_linker_sources() Cmake function.
  */
 #include <snippets-sections.ld>
-
-#include <zephyr/linker/ram-end.ld>
-
-    GROUP_END(RAMABLE_REGION)
 
 #ifdef CONFIG_GEN_ISR_TABLES
 /* Bogus section, post-processed during the build to initialize interrupts. */

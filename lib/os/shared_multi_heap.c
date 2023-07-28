@@ -12,19 +12,17 @@
 #include <zephyr/multi_heap/shared_multi_heap.h>
 
 static struct sys_multi_heap shared_multi_heap;
+static struct sys_heap heap_pool[MAX_SHARED_MULTI_HEAP_ATTR][MAX_MULTI_HEAPS];
 
-static struct {
-	struct sys_heap heap_pool[MAX_MULTI_HEAPS];
-	unsigned int heap_cnt;
-} smh_data[MAX_SHARED_MULTI_HEAP_ATTR];
+static unsigned int attr_cnt[MAX_SHARED_MULTI_HEAP_ATTR];
 
 static void *smh_choice(struct sys_multi_heap *mheap, void *cfg, size_t align, size_t size)
 {
 	struct sys_heap *h;
-	enum shared_multi_heap_attr attr;
+	unsigned int attr;
 	void *block;
 
-	attr = (enum shared_multi_heap_attr)(long) cfg;
+	attr = (unsigned int)(long) cfg;
 
 	if (attr >= MAX_SHARED_MULTI_HEAP_ATTR || size == 0) {
 		return NULL;
@@ -33,8 +31,8 @@ static void *smh_choice(struct sys_multi_heap *mheap, void *cfg, size_t align, s
 	/* Set in case the user requested a non-existing attr */
 	block = NULL;
 
-	for (size_t hdx = 0; hdx < smh_data[attr].heap_cnt; hdx++) {
-		h = &smh_data[attr].heap_pool[hdx];
+	for (size_t hdx = 0; hdx < attr_cnt[attr]; hdx++) {
+		h = &heap_pool[attr][hdx];
 
 		if (h->heap == NULL) {
 			return NULL;
@@ -51,28 +49,26 @@ static void *smh_choice(struct sys_multi_heap *mheap, void *cfg, size_t align, s
 
 int shared_multi_heap_add(struct shared_multi_heap_region *region, void *user_data)
 {
-	enum shared_multi_heap_attr attr;
+	static int n_heaps;
 	struct sys_heap *h;
 	unsigned int slot;
 
-	attr = region->attr;
-
-	if (attr >= MAX_SHARED_MULTI_HEAP_ATTR) {
+	if (region->attr >= MAX_SHARED_MULTI_HEAP_ATTR) {
 		return -EINVAL;
 	}
 
 	/* No more heaps available */
-	if (smh_data[attr].heap_cnt >= MAX_MULTI_HEAPS) {
+	if (n_heaps++ >= MAX_MULTI_HEAPS) {
 		return -ENOMEM;
 	}
 
-	slot = smh_data[attr].heap_cnt;
-	h = &smh_data[attr].heap_pool[slot];
+	slot = attr_cnt[region->attr];
+	h = &heap_pool[region->attr][slot];
 
 	sys_heap_init(h, (void *) region->addr, region->size);
 	sys_multi_heap_add_heap(&shared_multi_heap, h, user_data);
 
-	smh_data[attr].heap_cnt++;
+	attr_cnt[region->attr]++;
 
 	return 0;
 }
@@ -82,7 +78,7 @@ void shared_multi_heap_free(void *block)
 	sys_multi_heap_free(&shared_multi_heap, block);
 }
 
-void *shared_multi_heap_alloc(enum shared_multi_heap_attr attr, size_t bytes)
+void *shared_multi_heap_alloc(unsigned int attr, size_t bytes)
 {
 	if (attr >= MAX_SHARED_MULTI_HEAP_ATTR) {
 		return NULL;
@@ -91,8 +87,7 @@ void *shared_multi_heap_alloc(enum shared_multi_heap_attr attr, size_t bytes)
 	return sys_multi_heap_alloc(&shared_multi_heap, (void *)(long) attr, bytes);
 }
 
-void *shared_multi_heap_aligned_alloc(enum shared_multi_heap_attr attr,
-				      size_t align, size_t bytes)
+void *shared_multi_heap_aligned_alloc(unsigned int attr, size_t align, size_t bytes)
 {
 	if (attr >= MAX_SHARED_MULTI_HEAP_ATTR) {
 		return NULL;

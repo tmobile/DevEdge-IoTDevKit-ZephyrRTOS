@@ -75,6 +75,21 @@
 			reg = <0x41>;
 		};
 	};
+
+	power-states {
+		idle: idle {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1000>;
+		};
+
+		standby: standby {
+			compatible = "zephyr,power-state";
+			power-state-name = "standby";
+			min-residency-us = <5000>;
+			exit-latency-us = <240>;
+		};
+	};
 };
 
 &flash0 {
@@ -99,6 +114,7 @@
 
 &cpu0 {
 	clock-frequency = <48000000>;
+	cpu-power-states = <&idle &standby>;
 };
 
 &trng {
@@ -183,6 +199,10 @@
 			};
 		};
 	};
+};
+
+&rtc {
+	status = "okay";
 };
 
 &ieee802154 {

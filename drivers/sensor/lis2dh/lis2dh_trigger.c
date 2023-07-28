@@ -387,8 +387,6 @@ static void lis2dh_thread_cb(const struct device *dev)
 				LOG_ERR("clearing interrupt 2 failed: %d", status);
 				return;
 			}
-
-			LOG_DBG("@tick=%u int2_src=0x%x", k_cycle_get_32(), reg_val);
 		}
 
 		if (likely(lis2dh->handler_anymotion != NULL)) {
@@ -401,6 +399,9 @@ static void lis2dh_thread_cb(const struct device *dev)
 		if (lis2dh->handler_anymotion != NULL) {
 			setup_int2(dev, true);
 		}
+
+		LOG_DBG("@tick=%u int2_src=0x%x", k_cycle_get_32(),
+			    reg_val);
 
 		return;
 	}

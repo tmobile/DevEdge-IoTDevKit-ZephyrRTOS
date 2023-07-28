@@ -370,16 +370,9 @@ extern "C" {
  * @brief UTIL_INC(x) for an integer literal x from 0 to 255 expands to an
  * integer literal whose value is x+1.
  *
- * @see UTIL_DEC(x)
+ * Similarly, UTIL_DEC(x) is (x-1) as an integer literal.
  */
 #define UTIL_INC(x) UTIL_PRIMITIVE_CAT(UTIL_INC_, x)
-
-/**
- * @brief UTIL_DEC(x) for an integer literal x from 0 to 255 expands to an
- * integer literal whose value is x-1.
- *
- * @see UTIL_INC(x)
- */
 #define UTIL_DEC(x) UTIL_PRIMITIVE_CAT(UTIL_DEC_, x)
 
 /**

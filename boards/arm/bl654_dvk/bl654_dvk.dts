@@ -11,7 +11,7 @@
 
 / {
 	model = "Laird BL654 Dev Kit";
-	compatible = "lairdconnect,bl654_dvk";
+	compatible = "nordic,pca10056-dk";
 
 	chosen {
 		zephyr,console = &uart0;

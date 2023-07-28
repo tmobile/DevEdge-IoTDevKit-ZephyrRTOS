@@ -14,8 +14,6 @@
 	aliases {
 		led0 = &led0;
 		sw0 = &sw0;
-		i2c0 = &i2c0;
-		i2c1 = &i2c1;
 	};
 
 	chosen {
@@ -60,13 +58,5 @@
 };
 
 &gpio2 {
-	status = "okay";
-};
-
-&i2c0 {
-	status = "okay";
-};
-
-&i2c1 {
 	status = "okay";
 };

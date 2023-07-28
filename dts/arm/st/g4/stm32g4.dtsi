@@ -32,22 +32,6 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-m4f";
 			reg = <0>;
-			cpu-power-states = <&stop0 &stop1>;
-		};
-
-		power-states {
-			stop0: state0 {
-					compatible = "zephyr,power-state";
-					power-state-name = "suspend-to-idle";
-					substate-id = <1>;
-					min-residency-us = <20>;
-				};
-			stop1: state1 {
-					compatible = "zephyr,power-state";
-					power-state-name = "suspend-to-idle";
-					substate-id = <2>;
-					min-residency-us = <100>;
-				};
 		};
 	};
 
@@ -78,9 +62,8 @@
 
 		clk_lse: clk-lse {
 			#clock-cells = <0>;
-			compatible = "st,stm32-lse-clock";
+			compatible = "fixed-clock";
 			clock-frequency = <32768>;
-			driving-capability = <0>;
 			status = "disabled";
 		};
 
@@ -96,6 +79,21 @@
 			compatible = "st,stm32g4-pll-clock";
 			status = "disabled";
 		};
+	};
+
+	power-states {
+		stop0: state0 {
+				compatible = "zephyr,power-state";
+				power-state-name = "suspend-to-idle";
+				substate-id = <1>;
+				min-residency-us = <20>;
+			};
+		stop1: state1 {
+				compatible = "zephyr,power-state";
+				power-state-name = "suspend-to-idle";
+				substate-id = <2>;
+				min-residency-us = <100>;
+			};
 	};
 
 	soc {

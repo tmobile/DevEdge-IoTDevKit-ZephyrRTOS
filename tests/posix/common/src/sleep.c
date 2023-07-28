@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <unistd.h>
-
+#include <zephyr/posix/unistd.h>
 #include <zephyr/ztest.h>
 
 struct waker_work {

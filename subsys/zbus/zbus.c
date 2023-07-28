@@ -9,6 +9,13 @@
 #include <zephyr/zbus/zbus.h>
 LOG_MODULE_REGISTER(zbus, CONFIG_ZBUS_LOG_LEVEL);
 
+k_timeout_t _zbus_timeout_remainder(uint64_t end_ticks)
+{
+	int64_t now_ticks = sys_clock_tick_get();
+
+	return K_TICKS((k_ticks_t)MAX(end_ticks - now_ticks, 0));
+}
+
 #if (CONFIG_ZBUS_RUNTIME_OBSERVERS_POOL_SIZE > 0)
 static inline void _zbus_notify_runtime_listeners(const struct zbus_channel *chan)
 {
@@ -27,7 +34,7 @@ static inline void _zbus_notify_runtime_listeners(const struct zbus_channel *cha
 }
 
 static inline int _zbus_notify_runtime_subscribers(const struct zbus_channel *chan,
-						   k_timepoint_t end_time)
+						   uint64_t end_ticks)
 {
 	__ASSERT(chan != NULL, "chan is required");
 
@@ -40,7 +47,7 @@ static inline int _zbus_notify_runtime_subscribers(const struct zbus_channel *ch
 
 		if (obs_nd->obs->enabled && (obs_nd->obs->queue != NULL)) {
 			err = k_msgq_put(obs_nd->obs->queue, &chan,
-					 sys_timepoint_timeout(end_time));
+					 _zbus_timeout_remainder(end_ticks));
 
 			_ZBUS_ASSERT(err == 0,
 				     "could not deliver notification to observer %s. Error code %d",
@@ -56,7 +63,7 @@ static inline int _zbus_notify_runtime_subscribers(const struct zbus_channel *ch
 }
 #endif /* CONFIG_ZBUS_RUNTIME_OBSERVERS_POOL_SIZE */
 
-static int _zbus_notify_observers(const struct zbus_channel *chan, k_timepoint_t end_time)
+static int _zbus_notify_observers(const struct zbus_channel *chan, uint64_t end_ticks)
 {
 	int last_error = 0, err;
 	/* Notify static listeners */
@@ -73,7 +80,7 @@ static int _zbus_notify_observers(const struct zbus_channel *chan, k_timepoint_t
 	/* Notify static subscribers */
 	for (const struct zbus_observer *const *obs = chan->observers; *obs != NULL; ++obs) {
 		if ((*obs)->enabled && ((*obs)->queue != NULL)) {
-			err = k_msgq_put((*obs)->queue, &chan, sys_timepoint_timeout(end_time));
+			err = k_msgq_put((*obs)->queue, &chan, _zbus_timeout_remainder(end_ticks));
 			_ZBUS_ASSERT(err == 0, "could not deliver notification to observer %s.",
 				     _ZBUS_OBS_NAME(*obs));
 			if (err) {
@@ -85,7 +92,7 @@ static int _zbus_notify_observers(const struct zbus_channel *chan, k_timepoint_t
 	}
 
 #if CONFIG_ZBUS_RUNTIME_OBSERVERS_POOL_SIZE > 0
-	err = _zbus_notify_runtime_subscribers(chan, end_time);
+	err = _zbus_notify_runtime_subscribers(chan, end_ticks);
 	if (err) {
 		last_error = err;
 	}
@@ -96,7 +103,7 @@ static int _zbus_notify_observers(const struct zbus_channel *chan, k_timepoint_t
 int zbus_chan_pub(const struct zbus_channel *chan, const void *msg, k_timeout_t timeout)
 {
 	int err;
-	k_timepoint_t end_time = sys_timepoint_calc(timeout);
+	uint64_t end_ticks = sys_clock_timeout_end_calc(timeout);
 
 	_ZBUS_ASSERT(!k_is_in_isr(), "zbus cannot be used inside ISRs");
 	_ZBUS_ASSERT(chan != NULL, "chan is required");
@@ -113,7 +120,7 @@ int zbus_chan_pub(const struct zbus_channel *chan, const void *msg, k_timeout_t 
 
 	memcpy(chan->message, msg, chan->message_size);
 
-	err = _zbus_notify_observers(chan, end_time);
+	err = _zbus_notify_observers(chan, end_ticks);
 
 	k_mutex_unlock(chan->mutex);
 
@@ -141,7 +148,7 @@ int zbus_chan_read(const struct zbus_channel *chan, void *msg, k_timeout_t timeo
 int zbus_chan_notify(const struct zbus_channel *chan, k_timeout_t timeout)
 {
 	int err;
-	k_timepoint_t end_time = sys_timepoint_calc(timeout);
+	uint64_t end_ticks = sys_clock_timeout_end_calc(timeout);
 
 	_ZBUS_ASSERT(!k_is_in_isr(), "zbus cannot be used inside ISRs");
 	_ZBUS_ASSERT(chan != NULL, "chan is required");
@@ -151,7 +158,7 @@ int zbus_chan_notify(const struct zbus_channel *chan, k_timeout_t timeout)
 		return err;
 	}
 
-	err = _zbus_notify_observers(chan, end_time);
+	err = _zbus_notify_observers(chan, end_ticks);
 
 	k_mutex_unlock(chan->mutex);
 

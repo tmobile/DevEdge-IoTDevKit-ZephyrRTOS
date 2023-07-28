@@ -21,6 +21,7 @@
 #include <zephyr/mgmt/mcumgr/smp/smp.h>
 #include <zephyr/mgmt/mcumgr/mgmt/handlers.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
+#include <zephyr/mgmt/mcumgr/grp/img_mgmt/image.h>
 
 #include <mgmt/mcumgr/util/zcbor_bulk.h>
 #include <mgmt/mcumgr/grp/img_mgmt/img_mgmt_priv.h>
@@ -39,52 +40,18 @@
 #endif
 
 #define FIXED_PARTITION_IS_RUNNING_APP_PARTITION(label)	\
-	 (FIXED_PARTITION_OFFSET(label) == CONFIG_FLASH_LOAD_OFFSET)
+	(FIXED_PARTITION_OFFSET(label) == CONFIG_FLASH_LOAD_OFFSET)
 
-#if FIXED_PARTITION_EXISTS(slot0_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
+#if !(FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition) ||	\
+	FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot2_partition))
+#error "Unsupported chosen zephyr,code-partition for boot application."
 #endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot0_ns_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot1_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 0
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot2_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot2_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 1
-#endif
-#endif
-
-#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot3_partition)
-#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot3_partition)
-#define NUMBER_OF_ACTIVE_IMAGE 1
-#endif
-#endif
-
-#ifndef NUMBER_OF_ACTIVE_IMAGE
-#error "Unsupported code parition is set as active application partition"
-#endif
-
-_Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
-		"struct image_header not required size");
 
 LOG_MODULE_REGISTER(mcumgr_img_grp, CONFIG_MCUMGR_GRP_IMG_LOG_LEVEL);
 
 struct img_mgmt_state g_img_mgmt_state;
-
-#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
-static K_MUTEX_DEFINE(img_mgmt_mutex);
-#endif
 
 #ifdef CONFIG_MCUMGR_GRP_IMG_VERBOSE_ERR
 const char *img_mgmt_err_str_app_reject = "app reject";
@@ -97,20 +64,6 @@ const char *img_mgmt_err_str_flash_write_failed = "fa write fail";
 const char *img_mgmt_err_str_downgrade = "downgrade";
 const char *img_mgmt_err_str_image_bad_flash_addr = "img addr mismatch";
 #endif
-
-void img_mgmt_take_lock(void)
-{
-#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
-	k_mutex_lock(&img_mgmt_mutex, K_FOREVER);
-#endif
-}
-
-void img_mgmt_release_lock(void)
-{
-#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
-	k_mutex_unlock(&img_mgmt_mutex);
-#endif
-}
 
 /**
  * Finds the TLVs in the specified image slot, if any.
@@ -153,9 +106,15 @@ int img_mgmt_active_slot(int image)
 
 int img_mgmt_active_image(void)
 {
-	return NUMBER_OF_ACTIVE_IMAGE;
+#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER == 2
+	if (!(FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_partition) ||
+	      FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition) ||
+	      FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition))) {
+		return 1;
+	}
+#endif
+	return 0;
 }
-
 /*
  * Reads the version and build hash from the specified image slot.
  */
@@ -304,16 +263,10 @@ img_mgmt_find_by_hash(uint8_t *find, struct image_version *ver)
 /*
  * Resets upload status to defaults (no upload in progress)
  */
-#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
 void img_mgmt_reset_upload(void)
-#else
-static void img_mgmt_reset_upload(void)
-#endif
 {
-	img_mgmt_take_lock();
 	memset(&g_img_mgmt_state, 0, sizeof(g_img_mgmt_state));
 	g_img_mgmt_state.area_id = -1;
-	img_mgmt_release_lock();
 }
 
 static int
@@ -324,13 +277,13 @@ img_mgmt_get_other_slot(void)
 	switch (slot) {
 	case 1:
 		return 0;
-#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER > 2
+#if CONFIG_MCUMGR_GRP_IMG_UPDATABLE_IMAGE_NUMBER
 	case 2:
 		return 3;
 	case 3:
 		return 2;
-#endif
 	}
+#endif
 	return 1;
 }
 
@@ -358,8 +311,6 @@ img_mgmt_erase(struct smp_streamer *ctxt)
 	if (!ok) {
 		return MGMT_ERR_EINVAL;
 	}
-
-	img_mgmt_take_lock();
 
 	/*
 	 * First check if image info is valid.
@@ -394,14 +345,11 @@ img_mgmt_erase(struct smp_streamer *ctxt)
 
 	if (IS_ENABLED(CONFIG_MCUMGR_SMP_LEGACY_RC_BEHAVIOUR)) {
 		if (!zcbor_tstr_put_lit(zse, "rc") || !zcbor_int32_put(zse, 0)) {
-			img_mgmt_release_lock();
 			return MGMT_ERR_EMSGSIZE;
 		}
 	}
 
 end:
-	img_mgmt_release_lock();
-
 	return MGMT_ERR_EOK;
 }
 
@@ -478,13 +426,8 @@ img_mgmt_upload(struct smp_streamer *ctxt)
 	bool data_match = false;
 #endif
 
-#if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK)
+#if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK) || defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS)
 	enum mgmt_cb_return status;
-#endif
-
-#if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK) ||	\
-defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS) ||		\
-defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 	int32_t ret_rc;
 	uint16_t ret_group;
 #endif
@@ -521,8 +464,6 @@ defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 		return MGMT_ERR_EINVAL;
 	}
 
-	img_mgmt_take_lock();
-
 	/* Determine what actions to take as a result of this request. */
 	rc = img_mgmt_upload_inspect(&req, &action);
 	if (rc != 0) {
@@ -541,9 +482,7 @@ defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 		/* Request specifies incorrect offset.  Respond with a success code and
 		 * the correct offset.
 		 */
-		rc = img_mgmt_upload_good_rsp(ctxt);
-		img_mgmt_release_lock();
-		return rc;
+		return img_mgmt_upload_good_rsp(ctxt);
 	}
 
 #if defined(CONFIG_MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK)
@@ -703,10 +642,6 @@ defined(CONFIG_MCUMGR_SMP_COMMAND_STATUS_HOOKS)
 #if defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS)
 			(void)mgmt_callback_notify(MGMT_EVT_OP_IMG_MGMT_DFU_PENDING, NULL, 0,
 						   &ret_rc, &ret_group);
-		} else {
-			/* Notify that the write has completed */
-			(void)mgmt_callback_notify(MGMT_EVT_OP_IMG_MGMT_DFU_CHUNK_WRITE_COMPLETE,
-						   NULL, 0, &ret_rc, &ret_group);
 #endif
 		}
 	}
@@ -743,8 +678,6 @@ end:
 		}
 	}
 
-	img_mgmt_release_lock();
-
 	if (!ok) {
 		return MGMT_ERR_EMSGSIZE;
 	}
@@ -758,15 +691,42 @@ int img_mgmt_my_version(struct image_version *ver)
 				  ver, NULL, NULL);
 }
 
+static const struct mgmt_handler img_mgmt_handlers[] = {
+	[IMG_MGMT_ID_STATE] = {
+		.mh_read = img_mgmt_state_read,
+#ifdef CONFIG_MCUBOOT_BOOTLOADER_MODE_DIRECT_XIP
+		.mh_write = NULL
+#else
+		.mh_write = img_mgmt_state_write,
+#endif
+	},
+	[IMG_MGMT_ID_UPLOAD] = {
+		.mh_read = NULL,
+		.mh_write = img_mgmt_upload
+	},
+	[IMG_MGMT_ID_ERASE] = {
+		.mh_read = NULL,
+		.mh_write = img_mgmt_erase
+	},
+};
+
+static const struct mgmt_handler img_mgmt_handlers[];
+
+#define IMG_MGMT_HANDLER_CNT ARRAY_SIZE(img_mgmt_handlers)
+
+static struct mgmt_group img_mgmt_group = {
+	.mg_handlers = (struct mgmt_handler *)img_mgmt_handlers,
+	.mg_handlers_count = IMG_MGMT_HANDLER_CNT,
+	.mg_group_id = MGMT_GROUP_ID_IMAGE,
+};
+
+static void img_mgmt_register_group(void)
+{
+	mgmt_register_group(&img_mgmt_group);
+}
+
 #ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-/*
- * @brief	Translate IMG mgmt group error code into MCUmgr error code
- *
- * @param ret	#img_mgmt_ret_code_t error code
- *
- * @return	#mcumgr_err_t error code
- */
-static int img_mgmt_translate_error_code(uint16_t ret)
+int img_mgmt_translate_error_code(uint16_t ret)
 {
 	int rc;
 
@@ -819,42 +779,5 @@ static int img_mgmt_translate_error_code(uint16_t ret)
 	return rc;
 }
 #endif
-
-static const struct mgmt_handler img_mgmt_handlers[] = {
-	[IMG_MGMT_ID_STATE] = {
-		.mh_read = img_mgmt_state_read,
-#ifdef CONFIG_MCUBOOT_BOOTLOADER_MODE_DIRECT_XIP
-		.mh_write = NULL
-#else
-		.mh_write = img_mgmt_state_write,
-#endif
-	},
-	[IMG_MGMT_ID_UPLOAD] = {
-		.mh_read = NULL,
-		.mh_write = img_mgmt_upload
-	},
-	[IMG_MGMT_ID_ERASE] = {
-		.mh_read = NULL,
-		.mh_write = img_mgmt_erase
-	},
-};
-
-static const struct mgmt_handler img_mgmt_handlers[];
-
-#define IMG_MGMT_HANDLER_CNT ARRAY_SIZE(img_mgmt_handlers)
-
-static struct mgmt_group img_mgmt_group = {
-	.mg_handlers = (struct mgmt_handler *)img_mgmt_handlers,
-	.mg_handlers_count = IMG_MGMT_HANDLER_CNT,
-	.mg_group_id = MGMT_GROUP_ID_IMAGE,
-#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-	.mg_translate_error = img_mgmt_translate_error_code,
-#endif
-};
-
-static void img_mgmt_register_group(void)
-{
-	mgmt_register_group(&img_mgmt_group);
-}
 
 MCUMGR_HANDLER_DEFINE(img_mgmt, img_mgmt_register_group);

@@ -8,7 +8,6 @@
 #include <zephyr/drivers/hwinfo.h>
 #include <zephyr/drivers/syscon.h>
 #include <string.h>
-#include <zephyr/sys/byteorder.h>
 
 /*
  * SMU(System Management Unit) Registers for hwinfo driver
@@ -27,18 +26,13 @@
 
 #define ANDES_RESET_STATUS_MASK	BIT_MASK(5)
 
-static const struct device *const syscon_dev =
-			DEVICE_DT_GET(DT_NODELABEL(syscon));
-
 ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 {
 	int ret = 0;
 	uint8_t id[3];
 	uint32_t ver;
-
-	if (!device_is_ready(syscon_dev)) {
-		return -ENODEV;
-	}
+	const struct device *const syscon_dev =
+			DEVICE_DT_GET(DT_NODELABEL(syscon));
 
 	ret = syscon_read_reg(syscon_dev, SMU_SYSTEMVER, &ver);
 	if (ret < 0) {
@@ -49,7 +43,9 @@ ssize_t z_impl_hwinfo_get_device_id(uint8_t *buffer, size_t length)
 		length = sizeof(id);
 	}
 
-	sys_put_le24(ver, id);
+	id[0] = (uint8_t)(ver >> 16);
+	id[1] = (uint8_t)(ver >> 8);
+	id[2] = (uint8_t)(ver >> 0);
 
 	memcpy(buffer, id, length);
 
@@ -60,10 +56,8 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 {
 	int ret = 0;
 	uint32_t reason, flags = 0;
-
-	if (!device_is_ready(syscon_dev)) {
-		return -ENODEV;
-	}
+	const struct device *const syscon_dev =
+			DEVICE_DT_GET(DT_NODELABEL(syscon));
 
 	ret = syscon_read_reg(syscon_dev, SMU_WRSR, &reason);
 	if (ret < 0) {
@@ -95,10 +89,8 @@ int z_impl_hwinfo_clear_reset_cause(void)
 {
 	int ret = 0;
 	uint32_t reason;
-
-	if (!device_is_ready(syscon_dev)) {
-		return -ENODEV;
-	}
+	const struct device *const syscon_dev =
+			DEVICE_DT_GET(DT_NODELABEL(syscon));
 
 	ret = syscon_write_reg(syscon_dev, SMU_WRSR, ANDES_RESET_STATUS_MASK);
 	if (ret < 0) {

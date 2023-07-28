@@ -63,12 +63,14 @@ properties:
   input-enable:
     type: boolean
     description: |
-      enable input on pin (e.g. enable an input buffer, no effect on output)
+      enable input on pin (no effect on output, such as enabling an input
+      buffer)
 
   input-disable:
     type: boolean
     description: |
-      disable input on pin (e.g. disable an input buffer, no effect on output)
+      disable input on pin (no effect on output, such as disabling an input
+      buffer)
 
   input-schmitt-enable:
     type: boolean
@@ -97,13 +99,13 @@ properties:
 
   output-disable:
     type: boolean
-    description: disable output on a pin (e.g. disable an output buffer)
+    description: disable output on a pin (such as disable an output buffer)
 
   output-enable:
     type: boolean
     description: |
-      enable output on a pin without actively driving it (e.g. enable an output
-      buffer)
+      enable output on a pin without actively driving it (such as enabling
+      an output buffer)
 
   output-low:
     type: boolean

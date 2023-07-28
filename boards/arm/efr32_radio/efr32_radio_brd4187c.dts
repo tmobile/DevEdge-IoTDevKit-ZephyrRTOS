@@ -76,12 +76,6 @@
 
 &gpiob {
 	status = "okay";
-
-	board-controller-enable {
-		gpio-hog;
-		gpios = <0 GPIO_ACTIVE_HIGH>;
-		output-high;
-	};
 };
 
 &gpioc {
