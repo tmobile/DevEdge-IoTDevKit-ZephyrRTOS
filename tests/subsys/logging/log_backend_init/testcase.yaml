@@ -6,4 +6,3 @@ tests:
       - log_core
       - logging
     filter: not CONFIG_LOG_MODE_IMMEDIATE
-    platform_exclude: tmo_dev_edge

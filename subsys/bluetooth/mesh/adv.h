@@ -13,8 +13,14 @@
 #define BT_MESH_ADV(buf) (*(struct bt_mesh_adv **)net_buf_user_data(buf))
 
 #define BT_MESH_ADV_SCAN_UNIT(_ms) ((_ms) * 8 / 5)
+
+#if defined(CONFIG_BT_EXT_ADV)
+#define BT_MESH_SCAN_INTERVAL_MS 3000
+#define BT_MESH_SCAN_WINDOW_MS   3000
+#else
 #define BT_MESH_SCAN_INTERVAL_MS 30
 #define BT_MESH_SCAN_WINDOW_MS   30
+#endif
 
 enum bt_mesh_adv_type {
 	BT_MESH_ADV_PROV,
@@ -83,29 +89,7 @@ int bt_mesh_adv_gatt_start(const struct bt_le_adv_param *param, int32_t duration
 			   const struct bt_data *ad, size_t ad_len,
 			   const struct bt_data *sd, size_t sd_len);
 
-static inline void bt_mesh_adv_send_start(uint16_t duration, int err,
-					  struct bt_mesh_adv *adv)
-{
-	if (!adv->started) {
-		adv->started = 1;
-
-		if (adv->cb && adv->cb->start) {
-			adv->cb->start(duration, err, adv->cb_data);
-		}
-
-		if (err) {
-			adv->cb = NULL;
-		}
-	}
-}
-
-static inline void bt_mesh_adv_send_end(
-	int err, struct bt_mesh_adv const *adv)
-{
-	if (adv->started && adv->cb && adv->cb->end) {
-		adv->cb->end(err, adv->cb_data);
-	}
-}
+void bt_mesh_adv_send_start(uint16_t duration, int err, struct bt_mesh_adv *adv);
 
 int bt_mesh_scan_active_set(bool active);
 

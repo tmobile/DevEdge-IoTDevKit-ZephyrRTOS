@@ -11,7 +11,6 @@ zephyr_library_sources_ifdef(CONFIG_MODEM_IFACE_UART_INTERRUPT modem_iface_uart_
 zephyr_library_sources_ifdef(CONFIG_MODEM_IFACE_UART_ASYNC modem_iface_uart_async.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_CMD_HANDLER modem_cmd_handler.c)
 zephyr_library_sources_ifdef(CONFIG_MODEM_SOCKET modem_socket.c)
-zephyr_library_sources_ifdef(CONFIG_MODEM_SMS modem_sms.c)
 
 if(CONFIG_MODEM_UBLOX_SARA)
 	zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/ip)
@@ -41,9 +40,4 @@ endif()
 if (CONFIG_MODEM_SIM7080)
 	zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/ip)
 	zephyr_library_sources(simcom-sim7080.c)
-endif()
-
-if(CONFIG_MODEM_MURATA_1SC)
-        zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/net/ip)
-        zephyr_library_sources(murata-1sc.c)
 endif()

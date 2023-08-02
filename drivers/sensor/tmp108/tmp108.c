@@ -449,7 +449,7 @@ static int tmp108_pm_action(const struct device *dev,
 	};								   \
 	SENSOR_DEVICE_DT_INST_DEFINE(inst,				   \
 			      &tmp108_init,				   \
-			      NULL,		   \
+			      NULL,					   \
 			      &tmp108_prv_data_##inst##t,		   \
 			      &tmp108_config_##inst##t,			   \
 			      POST_KERNEL,				   \

@@ -4,4 +4,3 @@ tests:
     tags:
       - kernel
       - workqueue
-    platform_exclude: tmo_dev_edge

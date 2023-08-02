@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_OPENTHREAD_L2_LOG_LEVEL);
 #include <zephyr/device.h>
 #include <zephyr/net/ieee802154_radio.h>
 #include <zephyr/net/net_pkt.h>
+#include <zephyr/net/net_time.h>
 #include <zephyr/sys/__assert.h>
 
 #include <openthread/ip6.h>
@@ -154,8 +155,7 @@ void energy_detected(const struct device *dev, int16_t max_ed)
 	}
 }
 
-enum net_verdict ieee802154_radio_handle_ack(struct net_if *iface,
-					     struct net_pkt *pkt)
+enum net_verdict ieee802154_handle_ack(struct net_if *iface, struct net_pkt *pkt)
 {
 	ARG_UNUSED(iface);
 
@@ -181,7 +181,7 @@ enum net_verdict ieee802154_radio_handle_ack(struct net_if *iface,
 	ack_frame.mPsdu = ack_psdu;
 	ack_frame.mLength = ack_len;
 	ack_frame.mInfo.mRxInfo.mLqi = net_pkt_ieee802154_lqi(pkt);
-	ack_frame.mInfo.mRxInfo.mRssi = net_pkt_ieee802154_rssi(pkt);
+	ack_frame.mInfo.mRxInfo.mRssi = net_pkt_ieee802154_rssi_dbm(pkt);
 
 #if defined(CONFIG_NET_PKT_TIMESTAMP)
 	struct net_ptp_time *pkt_time = net_pkt_timestamp(pkt);
@@ -317,7 +317,9 @@ void transmit_message(struct k_work *tx_job)
 	    (sTransmitFrame.mInfo.mTxInfo.mTxDelay != 0)) {
 		uint64_t tx_at = sTransmitFrame.mInfo.mTxInfo.mTxDelayBaseTime +
 				 sTransmitFrame.mInfo.mTxInfo.mTxDelay;
-		net_pkt_set_txtime(tx_pkt, NSEC_PER_USEC * tx_at);
+		struct net_ptp_time timestamp = ns_to_net_ptp_time(tx_at * NSEC_PER_USEC);
+
+		net_pkt_set_timestamp(tx_pkt, &timestamp);
 		tx_err =
 			radio_api->tx(radio_dev, IEEE802154_TX_MODE_TXTIME_CCA, tx_pkt, tx_payload);
 	} else if (sTransmitFrame.mInfo.mTxInfo.mCsmaCaEnabled) {
@@ -390,7 +392,7 @@ static void openthread_handle_received_frame(otInstance *instance,
 	recv_frame.mLength = net_buf_frags_len(pkt->buffer);
 	recv_frame.mChannel = platformRadioChannelGet(instance);
 	recv_frame.mInfo.mRxInfo.mLqi = net_pkt_ieee802154_lqi(pkt);
-	recv_frame.mInfo.mRxInfo.mRssi = net_pkt_ieee802154_rssi(pkt);
+	recv_frame.mInfo.mRxInfo.mRssi = net_pkt_ieee802154_rssi_dbm(pkt);
 	recv_frame.mInfo.mRxInfo.mAckedWithFramePending = net_pkt_ieee802154_ack_fpb(pkt);
 
 #if defined(CONFIG_NET_PKT_TIMESTAMP)
@@ -664,8 +666,8 @@ otError otPlatRadioReceiveAt(otInstance *aInstance, uint8_t aChannel,
 
 	struct ieee802154_config config = {
 		.rx_slot.channel = aChannel,
-		.rx_slot.start = aStart,
-		.rx_slot.duration = aDuration,
+		.rx_slot.start = (net_time_t)aStart * NSEC_PER_USEC,
+		.rx_slot.duration = (net_time_t)aDuration * NSEC_PER_USEC,
 	};
 
 	result = radio_api->configure(radio_dev, IEEE802154_CONFIG_RX_SLOT,
@@ -843,7 +845,7 @@ void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable)
 	promiscuous = aEnable;
 	/* TODO: Should check whether the radio driver actually supports
 	 *       promiscuous mode, see net_if_l2(iface)->get_flags() and
-	 *       ieee802154_get_hw_capabilities(iface).
+	 *       ieee802154_radio_get_hw_capabilities(iface).
 	 */
 	radio_api->configure(radio_dev, IEEE802154_CONFIG_PROMISCUOUS, &config);
 }
@@ -1052,7 +1054,7 @@ uint64_t otPlatTimeGet(void)
 	if (radio_api == NULL || radio_api->get_time == NULL) {
 		return k_ticks_to_us_floor64(k_uptime_ticks());
 	} else {
-		return radio_api->get_time(radio_dev);
+		return radio_api->get_time(radio_dev) / NSEC_PER_USEC;
 	}
 }
 
@@ -1193,7 +1195,7 @@ void otPlatRadioUpdateCslSampleTime(otInstance *aInstance, uint32_t aCslSampleTi
 {
 	ARG_UNUSED(aInstance);
 
-	struct ieee802154_config config = { .csl_rx_time = aCslSampleTime };
+	struct ieee802154_config config = { .csl_rx_time = aCslSampleTime * NSEC_PER_USEC };
 
 	(void)radio_api->configure(radio_dev, IEEE802154_CONFIG_CSL_RX_TIME, &config);
 }

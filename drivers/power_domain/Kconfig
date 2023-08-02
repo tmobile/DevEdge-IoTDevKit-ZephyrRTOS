@@ -3,7 +3,6 @@
 
 menuconfig POWER_DOMAIN
 	bool "Power domain drivers"
-	default y if PM_DEVICE_POWER_DOMAIN
 	help
 	  Include drivers for power domains in system config
 
@@ -19,19 +18,14 @@ config POWER_DOMAIN_GPIO
 	depends on DT_HAS_POWER_DOMAIN_GPIO_ENABLED
 	depends on GPIO
 	depends on TIMEOUT_64BIT
+	select DEVICE_DEPS
 
 config POWER_DOMAIN_INTEL_ADSP
 	bool "Use Intel ADSP power gating mechanisms"
 	default y
 	depends on DT_HAS_INTEL_ADSP_POWER_DOMAIN_ENABLED
+	select DEVICE_DEPS
 	help
 	  Include Intel ADSP power domain control mechanisms
-
-config POWER_DOMAIN_REGULATOR
-	bool "Regulator controlled power domain"
-	default y
-	depends on DT_HAS_POWER_DOMAIN_REGULATOR_ENABLED
-	depends on REGULATOR
-	depends on TIMEOUT_64BIT
 
 endif

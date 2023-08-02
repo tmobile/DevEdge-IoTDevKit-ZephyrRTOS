@@ -17,6 +17,7 @@
 #include <string.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys_clock.h>
+#include <zephyr/pm/device.h>
 
 #include "spi_nor.h"
 #include "jesd216.h"
@@ -741,7 +742,7 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 
 	/* erase area must be subregion of device */
 	if ((addr < 0) || ((size + addr) > flash_size)) {
-		return -ENODEV;
+		return -EINVAL;
 	}
 
 	/* address must be sector-aligned */
@@ -836,7 +837,7 @@ static int spi_nor_write_protection_set(const struct device *dev,
 	return ret;
 }
 
-#if defined(CONFIG_FLASH_JESD216_API)
+#if defined(CONFIG_FLASH_JESD216_API) || defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
 
 static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 			     void *dest, size_t size)
@@ -850,7 +851,7 @@ static int spi_nor_sfdp_read(const struct device *dev, off_t addr,
 	return ret;
 }
 
-#endif /* CONFIG_FLASH_JESD216_API */
+#endif /* CONFIG_FLASH_JESD216_API || CONFIG_SPI_NOR_SFDP_RUNTIME */
 
 static int spi_nor_read_jedec_id(const struct device *dev,
 				 uint8_t *id)
@@ -1148,6 +1149,13 @@ static int spi_nor_configure(const struct device *dev)
 	 * Exit DPD and wait until flash is ready.
 	 */
 	acquire_device(dev);
+
+	rc = exit_dpd(dev);
+	if (rc < 0) {
+		LOG_ERR("Failed to exit DPD (%d)", rc);
+		return -ENODEV;
+	}
+
 	rc = spi_nor_rdsr(dev);
 	if (rc > 0 && (rc & SPI_NOR_WIP_BIT)) {
 		LOG_WRN("Waiting until flash is ready");
@@ -1245,6 +1253,44 @@ static int spi_nor_configure(const struct device *dev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_DEVICE
+
+static int spi_nor_pm_control(const struct device *dev, enum pm_device_action action)
+{
+	int rc = 0;
+
+	switch (action) {
+#ifdef CONFIG_SPI_NOR_IDLE_IN_DPD
+	case PM_DEVICE_ACTION_SUSPEND:
+	case PM_DEVICE_ACTION_RESUME:
+		break;
+#else
+	case PM_DEVICE_ACTION_SUSPEND:
+		acquire_device(dev);
+		rc = enter_dpd(dev);
+		release_device(dev);
+		break;
+	case PM_DEVICE_ACTION_RESUME:
+		acquire_device(dev);
+		rc = exit_dpd(dev);
+		release_device(dev);
+		break;
+#endif /* CONFIG_SPI_NOR_IDLE_IN_DPD */
+	case PM_DEVICE_ACTION_TURN_ON:
+		/* Coming out of power off */
+		rc = spi_nor_configure(dev);
+		break;
+	case PM_DEVICE_ACTION_TURN_OFF:
+		break;
+	default:
+		rc = -ENOSYS;
+	}
+
+	return rc;
+}
+
+#endif /* CONFIG_PM_DEVICE */
 
 /**
  * @brief Initialize and configure the flash
@@ -1389,7 +1435,8 @@ static const struct spi_nor_config spi_nor_config_0 = {
 
 static struct spi_nor_data spi_nor_data_0;
 
-DEVICE_DT_INST_DEFINE(0, &spi_nor_init, NULL,
+PM_DEVICE_DT_INST_DEFINE(0, spi_nor_pm_control);
+DEVICE_DT_INST_DEFINE(0, &spi_nor_init, PM_DEVICE_DT_INST_GET(0),
 		 &spi_nor_data_0, &spi_nor_config_0,
 		 POST_KERNEL, CONFIG_SPI_NOR_INIT_PRIORITY,
 		 &spi_nor_api);

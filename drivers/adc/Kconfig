@@ -90,6 +90,8 @@ source "drivers/adc/Kconfig.ads1x1x"
 
 source "drivers/adc/Kconfig.gd32"
 
+source "drivers/adc/Kconfig.ads1112"
+
 source "drivers/adc/Kconfig.ads1119"
 
 source "drivers/adc/Kconfig.ads7052"
@@ -105,5 +107,9 @@ source "drivers/adc/Kconfig.gecko"
 source "drivers/adc/Kconfig.ifx_cat1"
 
 source "drivers/adc/Kconfig.smartbond"
+
+source "drivers/adc/Kconfig.tla2021"
+
+source "drivers/adc/Kconfig.nxp_s32"
 
 endif # ADC
