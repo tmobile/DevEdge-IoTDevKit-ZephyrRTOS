@@ -3,4 +3,3 @@ tests:
     tags:
       - kernel
       - memory_slabs
-    platform_exclude: tmo_dev_edge

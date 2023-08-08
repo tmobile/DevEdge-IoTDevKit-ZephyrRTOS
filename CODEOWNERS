@@ -4,6 +4,11 @@
 
 # Order is important; for each modified file, the last matching
 # pattern takes the most precedence.
+# That is, with the last pattern being
+# *.rst                                     @nashif
+# if only .rst files are being modified, only nashif is
+# automatically requested for review, but you can manually
+# add others as needed.
 
 /*                                         @johnlange2 @ryanhagen-tmo @eniolaodufuwa-tmo @jtbaumann @DRuffer-tmo @joebairdtmo @atrowbr2-tmo @wtucker6 @JLoucks4 @s-karstein @jvhutch @YHusain1 @rtalbott-tmo @amovitz-tmobile @rgrundy1
 /.github/workflows/                        @ryanhagen-tmo @eniolaodufuwa-tmo

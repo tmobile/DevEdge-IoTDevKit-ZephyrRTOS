@@ -52,34 +52,34 @@
 				arm,num-mpu-regions = <16>;
 			};
 		};
-	};
 
-	power-states {
-		/*
-		 * Power states are managed with set points (see page 30-35 of RT1170
-		 * datasheet). These set points correspond to various power
-		 * savings, and associated transition (residency) times.
-		 *
-		 * Set points 1 and 10 were chosen as sane defaults to offer
-		 * limited power savings and quick transitions when entering idle for
-		 * short periods, and better power savings with longer transition
-		 * times for long idle periods
-		 */
-		idle: set_point_1_wait {
-			/* idle corresponds to set point 1 (wait) for RT1170 */
-			compatible = "zephyr,power-state";
-			power-state-name="runtime-idle";
-			substate-id = <IMX_SPC_SET_POINT_1_WAIT>;
-			min-residency-us = <100>;
-		};
+		power-states {
+			/*
+			 * Power states are managed with set points (see page 30-35 of RT1170
+			 * datasheet). These set points correspond to various power
+			 * savings, and associated transition (residency) times.
+			 *
+			 * Set points 1 and 10 were chosen as sane defaults to offer
+			 * limited power savings and quick transitions when entering idle for
+			 * short periods, and better power savings with longer transition
+			 * times for long idle periods
+			 */
+			idle: set_point_1_wait {
+				/* idle corresponds to set point 1 (wait) for RT1170 */
+				compatible = "zephyr,power-state";
+				power-state-name="runtime-idle";
+				substate-id = <IMX_SPC_SET_POINT_1_WAIT>;
+				min-residency-us = <100>;
+			};
 
-		suspend: set_point_10_suspend {
-			/*  suspend corresponds to set point 10 for RT1170 */
-			compatible = "zephyr,power-state";
-			power-state-name="suspend-to-idle";
-			substate-id = <IMX_SPC_SET_POINT_10_SUSPEND>;
-			min-residency-us = <5000>;
-			exit-latency-us = <500>;
+			suspend: set_point_10_suspend {
+				/*  suspend corresponds to set point 10 for RT1170 */
+				compatible = "zephyr,power-state";
+				power-state-name="suspend-to-idle";
+				substate-id = <IMX_SPC_SET_POINT_10_SUSPEND>;
+				min-residency-us = <5000>;
+				exit-latency-us = <500>;
+			};
 		};
 	};
 
@@ -351,6 +351,7 @@
 			reg = <0x40804000 0x4000>;
 			interrupts = <54 0>;
 			status = "disabled";
+			nxp,pxp = <&pxp>;
 		};
 
 		mipi_dsi: mipi-dsi@4080c000 {
@@ -966,6 +967,14 @@
 				<16 0>;
 		};
 
+		pxp: pxp@40814000 {
+			compatible = "nxp,pxp";
+			reg = <0x40814000 0x4000>;
+			interrupts = <57 0>;
+			status = "disabled";
+			#dma-cells = <0>;
+		};
+
 		iomuxcgpr: iomuxcgpr@400e4000 {
 			compatible = "nxp,imx-gpr";
 			reg = <0x400e4000 0x4000>;
@@ -1060,6 +1069,54 @@
 			compatible = "nxp,imx-src-rev2";
 			reg = <0x40c04000 0x4000>;
 			status = "okay";
+		};
+
+
+		qdec1: qdec@40174000 {
+			compatible = "nxp,mcux-qdec";
+			reg = <0x40174000 0x4000>;
+			interrupts = <165 0>;
+			status = "disabled";
+		};
+
+		qdec2: qdec@40178000 {
+			compatible = "nxp,mcux-qdec";
+			reg = <0x40178000 0x4000>;
+			interrupts = <166 0>;
+			status = "disabled";
+		};
+
+		qdec3: qdec@4017c000 {
+			compatible = "nxp,mcux-qdec";
+			reg = <0x4017c000 0x4000>;
+			interrupts = <167 0>;
+			status = "disabled";
+		};
+
+		qdec4: qdec@40180000 {
+			compatible = "nxp,mcux-qdec";
+			reg = <0x40180000 0x4000>;
+			interrupts = <168 0>;
+			status = "disabled";
+		};
+
+		xbar1: xbar1@4003c000 {
+			compatible = "nxp,mcux-xbar";
+			reg = <0x4003c000 0x4000>;
+			interrupts = <143 0>, <144 0>;
+			status = "disabled";
+		};
+
+		xbar2: xbar2@40040000 {
+			compatible = "nxp,mcux-xbar";
+			reg = <0x40040000 0x4000>;
+			status = "disabled";
+		};
+
+		xbar3: xbar3@40044000 {
+			compatible = "nxp,mcux-xbar";
+			reg = <0x40044000 0x4000>;
+			status = "disabled";
 		};
 
 	};

@@ -253,11 +253,6 @@ struct http_request {
 	/** The HTTP protocol, for example "HTTP/1.1" */
 	const char *protocol;
 
-	/** Max timeout to wait for data receipt, 0 to disable. Value in
-	 * milliseconds
-	 */
-	uint32_t packet_timeout;
-
 	/** The HTTP header fields (application specific)
 	 * The Content-Type may be specified here or in the next field.
 	 * Depending on your application, the Content-Type may vary, however

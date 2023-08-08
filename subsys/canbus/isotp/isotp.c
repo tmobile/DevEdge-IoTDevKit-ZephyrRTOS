@@ -137,8 +137,7 @@ static void receive_send_fc(struct isotp_recv_ctx *ctx, uint8_t fs)
 	*data++ = ctx->opts.stmin;
 	payload_len = data - frame.data;
 
-#if defined(CONFIG_ISOTP_REQUIRE_RX_PADDING) || \
-				defined(CONFIG_ISOTP_ENABLE_TX_PADDING)
+#ifdef CONFIG_ISOTP_ENABLE_TX_PADDING
 	/* AUTOSAR requirement SWS_CanTp_00347 */
 	memset(&frame.data[payload_len], 0xCC, ISOTP_CAN_DL - payload_len);
 	frame.dlc = ISOTP_CAN_DL;
@@ -776,7 +775,7 @@ static void send_process_fc(struct isotp_send_ctx *ctx,
 		return;
 	}
 
-#ifdef CONFIG_ISOTP_ENABLE_TX_PADDING
+#ifdef CONFIG_ISOTP_REQUIRE_RX_PADDING
 	/* AUTOSAR requirement SWS_CanTp_00349 */
 	if (frame->dlc != ISOTP_CAN_DL) {
 		LOG_ERR("FC DL invalid. Ignore");
@@ -1179,6 +1178,7 @@ static int send(struct isotp_send_ctx *ctx, const struct device *can_dev,
 		ret = attach_fc_filter(ctx);
 		if (ret) {
 			LOG_ERR("Can't attach fc filter: %d", ret);
+			free_send_ctx(&ctx);
 			return ret;
 		}
 
@@ -1190,6 +1190,7 @@ static int send(struct isotp_send_ctx *ctx, const struct device *can_dev,
 		ctx->filter_id = -1;
 		ret = send_sf(ctx);
 		if (ret) {
+			free_send_ctx(&ctx);
 			return ret == -EAGAIN ?
 			       ISOTP_N_TIMEOUT_A : ISOTP_N_ERROR;
 		}

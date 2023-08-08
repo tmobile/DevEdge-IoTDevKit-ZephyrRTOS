@@ -6,7 +6,6 @@
 
 /dts-v1/;
 #include <silabs/efr32mg12p332f1024gl125.dtsi>
-#include "efr32mg_sltb004a-pinctrl.dtsi"
 
 / {
 	model = "Silabs EFR32MG SLTB004A board (aka Thunderboard Sense 2)";
@@ -72,22 +71,24 @@
 
 &usart0 {
 	current-speed = <115200>;
-	pinctrl-0 = <&usart0_default>;
-	pinctrl-names = "default";
+	location-rx = <GECKO_LOCATION(0) GECKO_PORT_A GECKO_PIN(1)>;
+	location-tx = <GECKO_LOCATION(0) GECKO_PORT_A GECKO_PIN(0)>;
 	status = "okay";
 };
 
 &usart2 {
 	compatible = "silabs,gecko-spi-usart";
 
-	cs-gpios = <&gpiok 1 GPIO_ACTIVE_LOW>;
-	pinctrl-0 = <&usart2_default>;
-	pinctrl-names = "default";
-	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
 
+	location-rx = <GECKO_LOCATION(30) GECKO_PORT_K GECKO_PIN(2)>;
+	location-tx = <GECKO_LOCATION(29) GECKO_PORT_K GECKO_PIN(0)>;
+	location-clk = <GECKO_LOCATION(18) GECKO_PORT_F GECKO_PIN(7)>;
 
+	cs-gpios = <&gpiok 1 GPIO_ACTIVE_LOW>;
+
+	status = "okay";
 
 	mx25r80: mx25r8035f@0 {
 		compatible = "jedec,spi-nor";
@@ -106,8 +107,8 @@
 
 &leuart0 {
 	current-speed = <9600>;
-	pinctrl-0 = <&leuart0_default>;
-	pinctrl-names = "default";
+	location-rx = <GECKO_LOCATION(27) GECKO_PORT_F GECKO_PIN(4)>;
+	location-tx = <GECKO_LOCATION(27) GECKO_PORT_F GECKO_PIN(3)>;
 	status = "okay";
 };
 
