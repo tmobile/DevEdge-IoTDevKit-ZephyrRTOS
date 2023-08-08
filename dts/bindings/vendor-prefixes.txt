@@ -150,6 +150,7 @@ delta	Delta Electronics, Inc.
 denx	Denx Software Engineering
 devantech	Devantech, Ltd.
 dfi	DFI Inc.
+dfrobot	DFRobot
 dh	DH electronics GmbH
 difrnce	Shenzhen Yagu Electronic Technology Co., Ltd.
 digi	Digi International Inc.
@@ -173,6 +174,7 @@ ebv	EBV Elektronik
 eckelmann	Eckelmann AG
 edt	Emerging Display Technologies
 eeti	eGalax_eMPIA Technology Inc
+efinix	Efinix Inc
 einfochips	Einfochips
 elan	Elan Microelectronic Corp.
 element14	Element14 (A Premier Farnell Company)
@@ -439,6 +441,7 @@ opalkelly	Opal Kelly Incorporated
 opencores	OpenCores.org
 openisa	open-isa.org
 openrisc	OpenRISC.io
+openthread	OpenThread.io
 option	Option NV
 oranth	Shenzhen Oranth Technology Co., Ltd.
 ORCL	Oracle Corporation
@@ -479,6 +482,7 @@ powervr	PowerVR (deprecated, use img)
 primux	Primux Trading, S.L.
 probox2	PROBOX2 (by W2COMP Co., Ltd.)
 prt	Protonic Holland
+ptc	Princeton Technology Corp.
 pulsedlight	PulsedLight, Inc
 purism	Purism, SPC
 qca	Qualcomm Atheros, Inc.
@@ -611,6 +615,7 @@ topeet	Topeet
 toppoly	TPO (deprecated, use tpo)
 topwise	Topwise Communication Co., Ltd.
 toradex	Toradex AG
+torex	Torex Semiconductor Ltd.
 toshiba	Toshiba Corporation
 toumaz	Toumaz
 tpk	TPK U.S.A. LLC

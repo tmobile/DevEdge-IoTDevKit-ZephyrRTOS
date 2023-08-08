@@ -299,9 +299,8 @@ structure in the main Zephyr tree: boards/<arch>/<board_name>/""")
 
     parser.add_argument("--coverage-formats", action="store", default=None, # default behavior is set in run_coverage
                         help="Output formats to use for generated coverage reports, as a comma-separated list. "
-                             "Only used in conjunction with gcovr. "
                              "Default to html. "
-                             "Valid options are html, xml, csv, txt, coveralls, sonarqube.")
+                             "Valid options are html, xml, csv, txt, coveralls, sonarqube, lcov.")
 
     parser.add_argument("--test-config", action="store", default=os.path.join(ZEPHYR_BASE, "tests", "test_config.yaml"),
         help="Path to file with plans and test configurations.")
@@ -553,8 +552,14 @@ structure in the main Zephyr tree: boards/<arch>/<board_name>/""")
 
     parser.add_argument(
         "-S", "--enable-slow", action="store_true",
+        default="--enable-slow-only" in sys.argv,
         help="Execute time-consuming test cases that have been marked "
              "as 'slow' in testcase.yaml. Normally these are only built.")
+
+    parser.add_argument(
+        "--enable-slow-only", action="store_true",
+        help="Execute time-consuming test cases that have been marked "
+             "as 'slow' in testcase.yaml only. This also set the option --enable-slow")
 
     parser.add_argument(
         "--seed", type=int,
@@ -723,12 +728,8 @@ def parse_arguments(parser, args, options = None):
                         only one platform is allowed""")
         sys.exit(1)
 
-    if options.device_flash_timeout and options.device_testing is None:
-        logger.error("--device-flash-timeout requires --device-testing")
-        sys.exit(1)
-
-    if options.device_flash_with_test and options.device_testing is None:
-        logger.error("--device-flash-with-test requires --device-testing")
+    if options.device_flash_with_test and not options.device_testing:
+        logger.error("--device-flash-with-test requires --device_testing")
         sys.exit(1)
 
     if options.shuffle_tests and options.subset is None:
@@ -737,11 +738,6 @@ def parse_arguments(parser, args, options = None):
 
     if options.shuffle_tests_seed and options.shuffle_tests is None:
         logger.error("--shuffle-tests-seed requires --shuffle-tests")
-        sys.exit(1)
-
-    if options.coverage_formats and (options.coverage_tool != "gcovr"):
-        logger.error("""--coverage-formats can only be used when coverage
-                        tool is set to gcovr""")
         sys.exit(1)
 
     if options.size:
@@ -795,6 +791,7 @@ class TwisterEnv:
         self.commit_date = None
         self.run_date = None
         self.options = options
+
         if options and options.ninja:
             self.generator_cmd = "ninja"
             self.generator = "Ninja"
@@ -803,10 +800,8 @@ class TwisterEnv:
             self.generator = "Unix Makefiles"
         logger.info(f"Using {self.generator}..")
 
-        if options:
-            self.test_roots = options.testsuite_root
-        else:
-            self.test_roots = None
+        self.test_roots = options.testsuite_root if options else None
+
         if options:
             if not isinstance(options.board_root, list):
                 self.board_roots = [self.options.board_root]
@@ -819,9 +814,9 @@ class TwisterEnv:
 
         self.hwm = None
 
-        self.test_config = options.test_config
+        self.test_config = options.test_config if options else None
 
-        self.alt_config_root = options.alt_config_root
+        self.alt_config_root = options.alt_config_root if options else None
 
     def discover(self):
         self.check_zephyr_version()
@@ -841,7 +836,7 @@ class TwisterEnv:
                     logger.info(f"Zephyr version: {self.version}")
                 else:
                     self.version = "Unknown"
-                    logger.error("Coult not determine version")
+                    logger.error("Could not determine version")
         except OSError:
             logger.info("Cannot read zephyr version.")
 
@@ -887,7 +882,7 @@ class TwisterEnv:
         out = ansi_escape.sub('', out.decode())
 
         if p.returncode == 0:
-            msg = "Finished running  %s" % (args[0])
+            msg = "Finished running %s" % (args[0])
             logger.debug(msg)
             results = {"returncode": p.returncode, "msg": msg, "stdout": out}
 
