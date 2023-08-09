@@ -15,6 +15,7 @@
 #define ZEPHYR_INCLUDE_NET_IEEE802154_RADIO_H_
 
 #include <zephyr/device.h>
+#include <zephyr/sys_clock.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/net/net_time.h>
@@ -97,86 +98,24 @@ enum ieee802154_channel {
 };
 
 enum ieee802154_hw_caps {
-
-	/*
-	 * PHY capabilities
-	 *
-	 * The following capabilities describe features of the underlying radio
-	 * hardware (PHY/L1).
-	 *
-	 * Note: A device driver must support the mandatory channel pages,
-	 * frequency bands and channels of at least one IEEE 802.15.4 PHY.
-	 */
-
-	/**
-	 * 2.4Ghz radio supported
-	 *
-	 * TODO: Replace with channel page attribute.
-	 */
-	IEEE802154_HW_2_4_GHZ = BIT(0),
-
-	/**
-	 * Sub-GHz radio supported
-	 *
-	 * TODO: Replace with channel page attribute.
-	 */
-	IEEE802154_HW_SUB_GHZ = BIT(1),
-
-	/** Energy detection (ED) supported (optional) */
-	IEEE802154_HW_ENERGY_SCAN = BIT(2),
-
-
-	/*
-	 * MAC offloading capabilities (optional)
-	 *
-	 * The following MAC/L2 features may optionally be offloaded to
-	 * specialized hardware or proprietary driver firmware ("hard MAC").
-	 *
-	 * L2 implementations will have to provide a "soft MAC" fallback for
-	 * these features in case the driver does not support them natively.
-	 *
-	 * Note: Some of these offloading capabilities may be mandatory in
-	 * practice to stay within timing requirements of certain IEEE 802.15.4
-	 * protocols, e.g. CPUs may not be fast enough to send ACKs within the
-	 * required delays in the 2.4 GHz band without hard MAC support.
-	 */
-
-	/** Frame checksum verification supported */
-	IEEE802154_HW_FCS = BIT(3),
-
-	/** Filtering of PAN ID, extended and short address supported */
-	IEEE802154_HW_FILTER = BIT(4),
-
-	/** Promiscuous mode supported */
-	IEEE802154_HW_PROMISC = BIT(5),
-
-	/** CSMA-CA procedure supported on TX */
-	IEEE802154_HW_CSMA = BIT(6),
-
-	/** Waits for ACK on TX if AR bit is set in TX pkt */
-	IEEE802154_HW_TX_RX_ACK = BIT(7),
-
-	/** Supports retransmission on TX ACK timeout */
-	IEEE802154_HW_RETRANSMISSION = BIT(8),
-
-	/** Sends ACK on RX if AR bit is set in RX pkt */
-	IEEE802154_HW_RX_TX_ACK = BIT(9),
-
-	/** TX at specified time supported */
-	IEEE802154_HW_TXTIME = BIT(10),
-
-	/** TX directly from sleep supported */
-	IEEE802154_HW_SLEEP_TO_TX = BIT(11),
-
-	/** Timed RX window scheduling supported */
-	IEEE802154_HW_RXTIME = BIT(12),
-
-	/** TX security supported (key management, encryption and authentication) */
-	IEEE802154_HW_TX_SEC = BIT(13),
-
-	/* Note: Update also IEEE802154_HW_CAPS_BITS_COMMON_COUNT when changing
-	 * the ieee802154_hw_caps type.
-	 */
+	IEEE802154_HW_FCS = BIT(0),            /* Frame Check-Sum supported */
+	IEEE802154_HW_PROMISC = BIT(1),        /* Promiscuous mode supported */
+	IEEE802154_HW_FILTER = BIT(2),         /* Filter PAN ID, long/short addr */
+	IEEE802154_HW_CSMA = BIT(3),           /* Executes CSMA-CA procedure on TX */
+	IEEE802154_HW_RETRANSMISSION = BIT(4), /* Handles retransmission on TX ACK timeout */
+	IEEE802154_HW_TX_RX_ACK = BIT(5),      /* Waits for ACK on TX if AR bit is set in TX pkt */
+	IEEE802154_HW_RX_TX_ACK = BIT(6),      /* Sends ACK on RX if AR bit is set in RX pkt */
+	IEEE802154_HW_ENERGY_SCAN = BIT(7),    /* Energy scan supported */
+	IEEE802154_HW_TXTIME = BIT(8),         /* TX at specified time supported */
+	IEEE802154_HW_SLEEP_TO_TX = BIT(9),    /* TX directly from sleep supported */
+	IEEE802154_HW_TX_SEC = BIT(10),        /* TX security handling supported */
+	IEEE802154_HW_RXTIME = BIT(11),        /* RX at specified time supported */
+	IEEE802154_HW_2_4_GHZ = BIT(12),       /* 2.4Ghz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
+	IEEE802154_HW_SUB_GHZ = BIT(13),       /* Sub-GHz radio supported
+						* TODO: Replace with channel page attribute.
+						*/
 };
 
 /** @brief Number of bits used by ieee802154_hw_caps type. */
@@ -240,23 +179,20 @@ enum ieee802154_tx_mode {
 	IEEE802154_TX_MODE_CCA,
 
 	/**
-	 * Perform full CSMA/CA procedure before packet transmission.
-	 *
-	 * @note requires IEEE802154_HW_CSMA capability.
+	 * Perform full CSMA CA procedure before packet transmission.
+	 * Requires IEEE802154_HW_CSMA capability.
 	 */
 	IEEE802154_TX_MODE_CSMA_CA,
 
 	/**
 	 * Transmit packet in the future, at specified time, no CCA.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME capability.
+	 * Requires IEEE802154_HW_TXTIME capability.
 	 */
 	IEEE802154_TX_MODE_TXTIME,
 
 	/**
 	 * Transmit packet in the future, perform CCA before transmission.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME capability.
+	 * Requires IEEE802154_HW_TXTIME capability.
 	 */
 	IEEE802154_TX_MODE_TXTIME_CCA,
 
@@ -320,10 +256,9 @@ enum ieee802154_config_type {
 	 */
 	IEEE802154_CONFIG_FRAME_COUNTER_IF_LARGER,
 
-	/** Configure a radio reception window. This can be used for any
-	 *  scheduled reception, e.g.: Zigbee GP device, CSL, TSCH, etc.
-	 *
-	 *  @note requires IEEE802154_HW_RXTIME capability.
+	/** Configure a radio reception slot. This can be used for any scheduled reception, e.g.:
+	 *  Zigbee GP device, CSL, TSCH, etc.
+	 *  Requires IEEE802154_HW_RXTIME capability.
 	 */
 	IEEE802154_CONFIG_RX_SLOT,
 
@@ -572,24 +507,7 @@ struct ieee802154_radio_api {
 	 */
 	int (*set_channel)(const struct device *dev, uint16_t channel);
 
-	/**
-	 * @brief Set/Unset PAN ID, extended or short address filters.
-	 *
-	 * @note requires IEEE802154_HW_FILTER capability.
-	 *
-	 * @param dev pointer to radio device
-	 * @param set true to set the filter, false to remove it
-	 * @param type the type of entity to be added/removed from the filter
-	 * list (a PAN ID or a source/destination address)
-	 * @param filter the entity to be added/removed from the filter list
-	 *
-	 * @retval 0 The filter was successfully added/removed.
-	 * @retval -EINVAL The given filter entity or filter entity type
-	 * was not valid.
-	 * @retval -ENOTSUP Setting/removing this filter or filter type
-	 * is not supported by this driver.
-	 * @retval -EIO Error while setting/removing the filter.
-	 */
+	/** Set/Unset filters. Requires IEEE802154_HW_FILTER capability. */
 	int (*filter)(const struct device *dev,
 		      bool set,
 		      enum ieee802154_filter_type type,
@@ -707,73 +625,30 @@ struct ieee802154_radio_api {
 			 const struct ieee802154_config *config);
 
 	/**
-	 * @brief Get the available amount of Sub-GHz channels.
-	 *
-	 * TODO: Replace with a combination of channel page and channel
-	 * attributes.
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return number of available channels in the sub-gigahertz band
+	 * Get the available amount of Sub-GHz channels
+	 * TODO: Replace with a combination of channel page and channel attributes.
 	 */
 	uint16_t (*get_subg_channel_count)(const struct device *dev);
 
-	/**
-	 * @brief Run an energy detection scan.
-	 *
-	 * @note requires IEEE802154_HW_ENERGY_SCAN capability
-	 *
-	 * @note The radio channel must be set prior to calling this function.
-	 *
-	 * @param dev pointer to radio device
-	 * @param duration duration of energy scan in ms
-	 * @param done_cb function called when the energy scan has finished
-	 *
-	 * @retval 0 the energy detection scan was successfully scheduled
-	 *
-	 * @retval -EBUSY the energy detection scan could not be scheduled at
-	 * this time
-	 * @retval -EALREADY a previous energy detection scan has not finished
-	 * yet.
-	 * @retval -ENOTSUP This driver does not support energy scans.
+	/** Run an energy detection scan.
+	 *  Note: channel must be set prior to request this function.
+	 *  duration parameter is in ms.
+	 *  Requires IEEE802154_HW_ENERGY_SCAN capability.
 	 */
 	int (*ed_scan)(const struct device *dev,
 		       uint16_t duration,
 		       energy_scan_done_cb_t done_cb);
 
-	/**
-	 * @brief Get the current time in nanoseconds relative to the network
-	 * subsystem's local uptime clock as represented by this network
-	 * interface.
-	 *
-	 * See @ref net_time_t for semantic details.
-	 *
-	 * @note requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME
-	 * capabilities.
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return nanoseconds relative to the network subsystem's local clock
+	/** Get the current radio time in microseconds
+	 *  Requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME capabilities.
 	 */
-	net_time_t (*get_time)(const struct device *dev);
+	uint64_t (*get_time)(const struct device *dev);
 
-	/**
-	 * @brief Get the current estimated worst case accuracy (maximum ±
-	 * deviation from the nominal frequency) of the network subsystem's
-	 * local clock used to calculate tolerances and guard times when
-	 * scheduling delayed receive or transmit radio operations.
-	 *
-	 * The deviation is given in units of PPM (parts per million).
-	 *
-	 * @note requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME
-	 * capabilities.
-	 *
-	 * @note Implementations may estimate this value based on current
-	 * operating conditions (e.g. temperature).
-	 *
-	 * @param dev pointer to radio device
-	 *
-	 * @return current estimated clock accuracy in PPM
+	/** Get the current accuracy, in units of ± ppm, of the clock used for
+	 *  scheduling delayed receive or transmit radio operations.
+	 *  Note: Implementations may optimize this value based on operational
+	 *  conditions (i.e.: temperature).
+	 *  Requires IEEE802154_HW_TXTIME and/or IEEE802154_HW_RXTIME capabilities.
 	 */
 	uint8_t (*get_sch_acc)(const struct device *dev);
 

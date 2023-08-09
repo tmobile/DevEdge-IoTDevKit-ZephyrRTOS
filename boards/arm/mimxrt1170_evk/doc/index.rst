@@ -131,9 +131,7 @@ RT1170 EVKB (`mimxrt1170_evkb_cm7/cm4`)
 | HWINFO    | on-chip    | Unique device serial number         | Supported (M7)  | Supported (M7)  |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | DISPLAY   | on-chip    | eLCDIF; MIPI-DSI. Tested with       | Supported (M7)  | Supported (M7)  |
-|           |            | :ref:`rk055hdmipi4m`,               |                 |                 |
-|           |            | :ref:`rk055hdmipi4ma0`,             |                 |                 |
-|           |            | and :ref:`g1120b0mipi` shields      |                 |                 |
+|           |            | :ref:`rk055hdmipi4m` shield         |                 |                 |
 +-----------+------------+-------------------------------------+-----------------+-----------------+
 | ACMP      | on-chip    | analog comparator                   | Supported       | No support      |
 +-----------+------------+-------------------------------------+-----------------+-----------------+

@@ -109,46 +109,26 @@ config BT_MESH_RELAY_ADV_SETS
 	range 0 BT_EXT_ADV_MAX_ADV_SET
 	depends on BT_MESH_RELAY
 	help
-	  Maximum of simultaneous relay message support. Requires controller support
-	  multiple advertising sets.
+	  Support for acting as a Mesh Relay Node.
 
-config BT_MESH_ADV_EXT_RELAY_USING_MAIN_ADV_SET
-	bool "Use the main advertising set to relay messages"
-	depends on BT_MESH_RELAY_ADV_SETS > 0
+if BT_MESH_RELAY
+
+config BT_MESH_RELAY_ENABLED
+	bool "Relay feature enabled by default"
+	default y
 	help
-	  When this option is enabled, there is a message that needs to be
-	  relayed, all relay advertising sets defined by
-	  CONFIG_BT_MESH_RELAY_ADV_SETS are busy with relaying messages
-	  and the main advertising set is not busy with sending local
-	  messages, the stack will use the main advertising set to relay
-	  the message. This maximizes the utilization efficiency of
-	  advertising sets, which is helpful for the sending of dense
-	  relays. With CONFIG_BT_MESH_RELAY_RETRANSMIT_COUNT value
-	  greater than zero, this can noticeably delay transmission of
-	  local messages. When Friend feature is enabled and the node is
-	  in a friendship, this option can delay transmission of local
-	  messages thus requiring bigger CONFIG_BT_MESH_FRIEND_RECV_WIN
-	  value. This in turn will result in increase of the power
-	  consumption of the Low Power node.
+	  Controls whether the Relay feature is enabled by default when the
+	  device boots up for the first time or unprovisioned. Can be changed
+	  at runtime using bt_mesh_relay_set() function.
 
-config BT_MESH_ADV_EXT_GATT_SEPARATE
-	bool "Use a separate extended advertising set for GATT Server Advertising"
-	depends on BT_MESH_GATT_SERVER
+config BT_MESH_RELAY_RETRANSMIT_COUNT
+	int "Relay Retransmit Count"
+	default 2
+	range 0 7
 	help
-	  Use a separate extended advertising set for GATT Server Advertising,
-	  otherwise a shared advertising set will be used.
-
-config BT_MESH_ADV_EXT_FRIEND_SEPARATE
-	bool "Use a separate extended advertising set for Friend advertising"
-	depends on BT_MESH_FRIEND
-	help
-	  Use a separate extended advertising set for Friend advertising,
-	  otherwise a shared advertising set will be used. Using the separate
-	  extended advertising set makes the Friend node send friendship
-	  messages as close to the start of the ReceiveWindow as possible,
-	  thus reducing the scanning time on the Low Power node.
-
-endif # BT_MESH_ADV_EXT
+	  Controls the initial number of retransmissions of relayed messages, in
+	  addition to the first transmission. Can be changed through runtime
+	  configuration.
 
 endchoice
 

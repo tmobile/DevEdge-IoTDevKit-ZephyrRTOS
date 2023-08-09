@@ -1337,8 +1337,6 @@ static const struct uart_driver_api uart_ns16550_driver_api = {
 #else
 #define BOOT_LEVEL(n) PRE_KERNEL_1
 #endif
-#define UART_RESET_FUNC_INIT(n) \
-	.reset_spec = RESET_DT_SPEC_INST_GET(n),
 
 #define UART_NS16550_DEVICE_INIT(n)                                                  \
 	UART_NS16550_IRQ_FUNC_DECLARE(n);                                            \

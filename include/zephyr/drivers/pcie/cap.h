@@ -7,43 +7,15 @@
 #define ZEPHYR_INCLUDE_DRIVERS_PCIE_CAP_H_
 
 /**
- * @file
  * @brief PCIe Capabilities
  * @defgroup pcie_capabilities PCIe Capabilities
  * @ingroup pcie_host_interface
  * @{
  */
 
-/**
- * @name PCI & PCI Express Capabilities
- *
- * From PCI Code and ID Assignment Specification Revision 1.11
- * @{
- */
-#define PCI_CAP_ID_NULL		0x00U	/**< Null Capability */
-#define PCI_CAP_ID_PM		0x01U	/**< Power Management */
-#define PCI_CAP_ID_AGP		0x02U	/**< Accelerated Graphics Port */
-#define PCI_CAP_ID_VPD		0x03U	/**< Vital Product Data */
-#define PCI_CAP_ID_SLOTID	0x04U	/**< Slot Identification */
-#define PCI_CAP_ID_MSI		0x05U	/**< Message Signalled Interrupts */
-#define PCI_CAP_ID_CHSWP	0x06U	/**< CompactPCI HotSwap */
-#define PCI_CAP_ID_PCIX		0x07U	/**< PCI-X */
-#define PCI_CAP_ID_HT		0x08U	/**< HyperTransport */
-#define PCI_CAP_ID_VNDR		0x09U	/**< Vendor-Specific */
-#define PCI_CAP_ID_DBG		0x0AU	/**< Debug port */
-#define PCI_CAP_ID_CCRC		0x0BU	/**< CompactPCI Central Resource Control */
-#define PCI_CAP_ID_SHPC		0x0CU	/**< PCI Standard Hot-Plug Controller */
-#define PCI_CAP_ID_SSVID	0x0DU	/**< Bridge subsystem vendor/device ID */
-#define PCI_CAP_ID_AGP3		0x0EU	/**< AGP 8x */
-#define PCI_CAP_ID_SECDEV	0x0FU	/**< Secure Device */
-#define PCI_CAP_ID_EXP		0x10U	/**< PCI Express */
-#define PCI_CAP_ID_MSIX		0x11U	/**< MSI-X */
-#define PCI_CAP_ID_SATA		0x12U	/**< Serial ATA Data/Index Configuration */
-#define PCI_CAP_ID_AF		0x13U	/**< PCI Advanced Features */
-#define PCI_CAP_ID_EA		0x14U	/**< PCI Enhanced Allocation */
-#define PCI_CAP_ID_FPB		0x14U	/**< Flattening Portal Bridge */
-/**
- * @}
+/*
+ * PCI & PCI Express Capabilities
+ * from PCI Code and ID Assignment Specification Revision 1.11
  */
 
 /**
@@ -91,6 +63,10 @@
 #define PCIE_EXT_CAP_ID_PL_32GT	0x002AU	/**< Physical Layer 32.0 GT/s */
 #define PCIE_EXT_CAP_ID_AP	0x002BU	/**< Alternate Protocol */
 #define PCIE_EXT_CAP_ID_SFI	0x002CU	/**< System Firmware Intermediary */
+/**
+ * @}
+ */
+
 /**
  * @}
  */

@@ -110,6 +110,4 @@ source "drivers/adc/Kconfig.smartbond"
 
 source "drivers/adc/Kconfig.tla2021"
 
-source "drivers/adc/Kconfig.nxp_s32"
-
 endif # ADC

@@ -7,7 +7,6 @@
 /dts-v1/;
 #include <arm/nxp/nxp_s32k344_m7.dtsi>
 #include <dt-bindings/gpio/gpio.h>
-#include <freq.h>
 #include "mr_canhubk3-pinctrl.dtsi"
 
 / {
@@ -22,8 +21,6 @@
 		zephyr,code-partition = &code_partition;
 		zephyr,console = &lpuart2;
 		zephyr,shell-uart = &lpuart2;
-		zephyr,flash-controller = &mx25l6433f;
-		zephyr,canbus = &flexcan0;
 	};
 
 	aliases {
@@ -32,7 +29,6 @@
 		led2 = &user_led1_blue;
 		sw0 = &user_button_1;
 		sw1 = &user_button_2;
-		watchdog0 = &fs26_wdt;
 	};
 
 	leds {
@@ -62,54 +58,6 @@
 			gpios = <&gpioa_h 9 GPIO_ACTIVE_HIGH>;
 		};
 	};
-
-	can_phy0: can-phy0 {
-		compatible = "nxp,tja1443", "can-transceiver-gpio";
-		enable-gpios = <&gpioc_h 8 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpioc_h 5 GPIO_ACTIVE_LOW>;
-		max-bitrate = <5000000>;
-		#phy-cells = <0>;
-	};
-
-	can_phy1: can-phy1 {
-		compatible = "nxp,tja1443", "can-transceiver-gpio";
-		enable-gpios = <&gpiod_l 2 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpiod_h 7 GPIO_ACTIVE_LOW>;
-		max-bitrate = <5000000>;
-		#phy-cells = <0>;
-	};
-
-	can_phy2: can-phy2 {
-		compatible = "nxp,tja1463", "can-transceiver-gpio";
-		enable-gpios = <&gpiod_l 4 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpiod_h 6 GPIO_ACTIVE_LOW>;
-		max-bitrate = <8000000>;
-		#phy-cells = <0>;
-	};
-
-	can_phy3: can-phy3 {
-		compatible = "nxp,tja1463", "can-transceiver-gpio";
-		enable-gpios = <&gpiob_l 0 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpiob_l 1 GPIO_ACTIVE_LOW>;
-		max-bitrate = <8000000>;
-		#phy-cells = <0>;
-	};
-
-	can_phy4: can-phy4 {
-		compatible = "nxp,tja1153", "can-transceiver-gpio";
-		enable-gpios = <&gpioc_h 10 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpioc_h 9 GPIO_ACTIVE_LOW>;
-		max-bitrate = <2000000>;
-		#phy-cells = <0>;
-	};
-
-	can_phy5: can-phy5 {
-		compatible = "nxp,tja1153", "can-transceiver-gpio";
-		enable-gpios = <&gpioe_h 1 GPIO_ACTIVE_HIGH>;
-		standby-gpios = <&gpiod_h 14 GPIO_ACTIVE_LOW>;
-		max-bitrate = <2000000>;
-		#phy-cells = <0>;
-	};
 };
 
 &flash0 {
@@ -138,25 +86,7 @@
 	status = "okay";
 };
 
-/* Enable gpio to control the CAN transceivers */
-
-&gpioc_h {
-	status = "okay";
-};
-
 &gpiod_l {
-	status = "okay";
-};
-
-&gpiod_h {
-	status = "okay";
-};
-
-&gpiob_l {
-	status = "okay";
-};
-
-&gpioe_h {
 	status = "okay";
 };
 
@@ -201,164 +131,4 @@
 &lpuart14 {
 	pinctrl-0 = <&lpuart14_default>;
 	pinctrl-names = "default";
-};
-
-&qspi0 {
-	pinctrl-0 = <&qspi0_default>;
-	pinctrl-names = "default";
-	data-rate = "SDR";
-	a-rx-clock-source = "LOOPBACK";
-	a-dll-mode = "BYPASSED";
-	ahb-buffers-masters = <0 1 2 3>;
-	ahb-buffers-sizes = <0 0 0 256>;
-	ahb-buffers-all-masters;
-	status = "okay";
-
-	mx25l6433f: mx25l6433f@0 {
-		compatible = "nxp,s32-qspi-nor";
-		reg = <0>;
-		size = <DT_SIZE_M(64)>;
-		jedec-id = [c2 20 17];
-		quad-enable-requirements = "S1B6";
-		readoc = "1-4-4";
-		writeoc = "1-4-4";
-		has-32k-erase;
-		status = "okay";
-
-		partitions {
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			storage_partition: partition@0 {
-				label = "storage";
-				reg = <0x0 0x100000>;
-			};
-		};
-	};
-};
-
-&flexcan0 {
-	pinctrl-0 = <&flexcan0_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy0>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-	status = "okay";
-};
-
-&flexcan1 {
-	pinctrl-0 = <&flexcan1_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy1>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-};
-
-&flexcan2 {
-	pinctrl-0 = <&flexcan2_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy2>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-};
-
-&flexcan3 {
-	pinctrl-0 = <&flexcan3_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy3>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-};
-
-&flexcan4 {
-	pinctrl-0 = <&flexcan4_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy4>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-};
-
-&flexcan5 {
-	pinctrl-0 = <&flexcan5_default>;
-	pinctrl-names = "default";
-	phys = <&can_phy5>;
-	bus-speed = <125000>;
-	sample-point = <875>;
-	sjw = <1>;
-	bus-speed-data = <1000000>;
-	sample-point-data = <875>;
-	sjw-data = <1>;
-};
-
-&lpi2c0 {
-	pinctrl-0 = <&lpi2c0_default>;
-	pinctrl-names = "default";
-	clock-frequency = <I2C_BITRATE_STANDARD>;
-};
-
-&lpi2c1 {
-	pinctrl-0 = <&lpi2c1_default>;
-	pinctrl-names = "default";
-	clock-frequency = <I2C_BITRATE_STANDARD>;
-};
-
-&lpspi1 {
-	pinctrl-0 = <&lpspi1_default>;
-	pinctrl-names = "default";
-	data-pin-config = "sdo-in,sdi-out";
-};
-
-&lpspi2 {
-	pinctrl-0 = <&lpspi2_default>;
-	pinctrl-names = "default";
-	data-pin-config = "sdo-in,sdi-out";
-};
-
-&lpspi3 {
-	pinctrl-0 = <&lpspi3_default>;
-	pinctrl-names = "default";
-	data-pin-config = "sdo-in,sdi-out";
-	status = "okay";
-
-	fs26_wdt: watchdog@0 {
-		compatible = "nxp,fs26-wdog";
-		reg = <0>;
-		spi-max-frequency = <DT_FREQ_M(5)>;
-		type = "challenger";
-		int-gpios = <&gpioa_h 2 GPIO_ACTIVE_LOW>;
-		status = "okay";
-	};
-};
-
-&lpspi4 {
-	pinctrl-0 = <&lpspi4_default>;
-	pinctrl-names = "default";
-	data-pin-config = "sdo-in,sdi-out";
-};
-
-&lpspi5 {
-	pinctrl-0 = <&lpspi5_default>;
-	pinctrl-names = "default";
-	data-pin-config = "sdo-in,sdi-out";
 };

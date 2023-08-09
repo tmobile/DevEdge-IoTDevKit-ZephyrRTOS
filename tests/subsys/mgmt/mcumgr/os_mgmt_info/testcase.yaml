@@ -17,8 +17,8 @@ common:
     - mips
     - posix
 tests:
-  mgmt.mcumgr.os.info: {}
-  mgmt.mcumgr.os.info.no_hooks:
+  os.mgmt.info: {}
+  os.mgmt.info_no_hooks:
     extra_configs:
       - CONFIG_MCUMGR_GRP_OS_INFO_CUSTOM_HOOKS=n
       - CONFIG_MCUMGR_MGMT_NOTIFICATION_HOOKS=n
@@ -45,10 +45,10 @@ tests:
       - CONFIG_NET_HOSTNAME_ENABLE=y
       - CONFIG_NET_HOSTNAME="test_net_name"
       - CONFIG_TEST_RANDOM_GENERATOR=y
-  mgmt.mcumgr.os.info.build_date:
+  os.mgmt.info_build_date:
     extra_configs:
       - CONFIG_BUILD_DATE_TIME_TEST=y
-  mgmt.mcumgr.os.info.limited_size:
+  os.mgmt.info_limited_size:
     extra_configs:
       - CONFIG_LIMITED_TEST=y
       - CONFIG_MCUMGR_TRANSPORT_DUMMY_RX_BUF_SIZE=64

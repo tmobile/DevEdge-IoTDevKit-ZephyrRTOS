@@ -175,8 +175,6 @@ The Zephyr nucleo_wba52cg board configuration supports the following hardware fe
 +-----------+------------+-------------------------------------+
 | ADC       | on-chip    | adc                                 |
 +-----------+------------+-------------------------------------+
-| RNG       | on-chip    | True Random number generator        |
-+-----------+------------+-------------------------------------+
 
 Other hardware features are not yet supported on this Zephyr port.
 

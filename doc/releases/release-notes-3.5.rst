@@ -24,14 +24,6 @@ Changes in this release
   ``16``). Bootloaders that use a part of the SRAM should set this value to an
   appropriate size. :github:`60371`
 
-* Time and timestamps in the network subsystem, PTP and IEEE 802.15.4
-  were more precisely specified and all in-tree call sites updated accordingly.
-  Fields for timed TX and TX/RX timestamps have been consolidated. See
-  :c:type:`net_time_t`, :c:struct:`net_ptp_time`, :c:struct:`ieee802154_config`,
-  :c:struct:`ieee802154_radio_api` and :c:struct:`net_pkt` for extensive
-  documentation. As this is largely an internal API, existing applications will
-  most probably continue to work unchanged.
-
 Removed APIs in this release
 ============================
 
@@ -86,8 +78,6 @@ Boards & SoC Support
 
 * Added support for these SoC series:
 
-  * Nuvoton NuMaker M46x series
-
 * Removed support for these SoC series:
 
 * Made these changes in other SoC series:
@@ -95,8 +85,6 @@ Boards & SoC Support
 * Added support for these ARC boards:
 
 * Added support for these ARM boards:
-
-  * Nuvoton NuMaker Platform M467
 
 * Added support for these ARM64 boards:
 
@@ -148,8 +136,6 @@ Drivers and Sensors
 
 * Clock control
 
-  * Added support for Nuvoton NuMaker M46x
-
 * Counter
 
 * Crypto
@@ -174,18 +160,11 @@ Drivers and Sensors
 
 * Flash
 
-  * Introduce npcx flash driver that supports two or more spi nor flashes via a
-    single Flash Interface Unit (FIU) module and Direct Read Access (DRA) mode
-    for better performance.
-  * Added support for Nuvoton NuMaker M46x embedded flash
-
 * FPGA
 
 * Fuel Gauge
 
 * GPIO
-
-  * Added support for Nuvoton NuMaker M46x
 
 * hwinfo
 
@@ -217,8 +196,6 @@ Drivers and Sensors
 
 * Pin control
 
-  * Added support for Nuvoton NuMaker M46x
-
 * PWM
 
 * Power domain
@@ -227,19 +204,13 @@ Drivers and Sensors
 
 * Reset
 
-  * Added support for Nuvoton NuMaker M46x
-
 * SDHC
 
 * Sensor
 
 * Serial
 
-  * Added support for Nuvoton NuMaker M46x
-
 * SPI
-
-  * Remove npcx spi driver implemented by Flash Interface Unit (FIU) module.
 
 * Timer
 
@@ -260,18 +231,6 @@ Drivers and Sensors
 Networking
 **********
 
-* CoAP:
-
-  * Use 64 bit timer values for calculating transmission timeouts. This fixes potential problems for
-    devices that stay on for more than 49 days when the 32 bit uptime counter might roll over and
-    cause CoAP packets to not timeout at all on this event.
-
-* LwM2M:
-
-  * Added support for tickless mode. This removes the 500 ms timeout from the socket loop
-    so the engine does not constantly wake up the CPU. This can be enabled by
-    :kconfig:option:`CONFIG_LWM2M_TICKLESS`.
-
 * Wi-Fi
   * Added Passive scan support.
   * The Wi-Fi scan API updated with Wi-Fi scan parameter to allow scan mode selection.
@@ -282,14 +241,6 @@ USB
 Devicetree
 **********
 
-* ``zephyr,memory-region-mpu`` was renamed ``zephyr,memory-attr``
-
-* The following macros were added:
-  :c:macro:`DT_FOREACH_NODE_VARGS`,
-  :c:macro:`DT_FOREACH_STATUS_OKAY_NODE_VARGS`
-  :c:macro:`DT_MEMORY_ATTR_FOREACH_NODE`
-  :c:macro:`DT_MEMORY_ATTR_APPLY`
-
 Libraries / Subsystems
 **********************
 
@@ -298,17 +249,8 @@ Libraries / Subsystems
   * Added response checking to MCUmgr's :c:enumerator:`MGMT_EVT_OP_CMD_RECV`
     notification callback to allow applications to reject MCUmgr commands.
 
-  * MCUmgr SMP version 2 error translation (to legacy MCUmgr error code) is now
-    supported in function handlers by setting ``mg_translate_error`` of
-    :c:struct:`mgmt_group` when registering a transport. See
-    :c:type:`smp_translate_error_fn` for function details.
-
 HALs
 ****
-
-* Nuvoton
-
-  * Added Nuvoton NuMaker M46x
 
 MCUboot
 *******
@@ -333,5 +275,11 @@ Documentation
 Tests and Samples
 *****************
 
+Issue Related Items
+*******************
+
 Known Issues
-************
+============
+
+Addressed issues
+================

@@ -78,6 +78,4 @@ source "drivers/clock_control/Kconfig.numaker"
 
 source "drivers/clock_control/Kconfig.nxp_s32"
 
-source "drivers/clock_control/Kconfig.agilex5"
-
 endif # CLOCK_CONTROL

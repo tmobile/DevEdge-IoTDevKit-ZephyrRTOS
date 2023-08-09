@@ -74,6 +74,35 @@
 #ifndef NUMBER_OF_ACTIVE_IMAGE
 #error "Unsupported code parition is set as active application partition"
 #endif
+#endif
+
+#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot0_ns_partition)
+#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot0_ns_partition)
+#define NUMBER_OF_ACTIVE_IMAGE 0
+#endif
+#endif
+
+#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot1_partition)
+#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot1_partition)
+#define NUMBER_OF_ACTIVE_IMAGE 0
+#endif
+#endif
+
+#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot2_partition)
+#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot2_partition)
+#define NUMBER_OF_ACTIVE_IMAGE 1
+#endif
+#endif
+
+#if !defined(NUMBER_OF_ACTIVE_IMAGE) && FIXED_PARTITION_EXISTS(slot3_partition)
+#if FIXED_PARTITION_IS_RUNNING_APP_PARTITION(slot3_partition)
+#define NUMBER_OF_ACTIVE_IMAGE 1
+#endif
+#endif
+
+#ifndef NUMBER_OF_ACTIVE_IMAGE
+#error "Unsupported code parition is set as active application partition"
+#endif
 
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
 		"struct image_header not required size");
@@ -99,6 +128,20 @@ const char *img_mgmt_err_str_image_bad_flash_addr = "img addr mismatch";
 const char *img_mgmt_err_str_image_too_large = "img too large";
 const char *img_mgmt_err_str_data_overrun = "data overrun";
 #endif
+
+void img_mgmt_take_lock(void)
+{
+#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
+	k_mutex_lock(&img_mgmt_mutex, K_FOREVER);
+#endif
+}
+
+void img_mgmt_release_lock(void)
+{
+#ifdef CONFIG_MCUMGR_GRP_IMG_MUTEX
+	k_mutex_unlock(&img_mgmt_mutex);
+#endif
+}
 
 void img_mgmt_take_lock(void)
 {

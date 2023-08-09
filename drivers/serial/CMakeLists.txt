@@ -63,7 +63,6 @@ zephyr_library_sources_ifdef(CONFIG_UART_HOSTLINK uart_hostlink.c)
 zephyr_library_sources_ifdef(CONFIG_UART_EMUL uart_emul.c)
 zephyr_library_sources_ifdef(CONFIG_UART_NUMAKER uart_numaker.c)
 zephyr_library_sources_ifdef(CONFIG_UART_EFINIX_SAPPIHIRE uart_efinix_sapphire.c)
-zephyr_library_sources_ifdef(CONFIG_UART_SEDI uart_sedi.c)
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE   uart_handlers.c)
 

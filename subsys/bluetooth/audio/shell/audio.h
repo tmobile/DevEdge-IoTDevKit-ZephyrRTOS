@@ -57,12 +57,6 @@ const struct named_lc3_preset *bap_get_named_preset(bool is_unicast, const char 
 		     CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT),                                  \
 		    (0))
 
-#define BAP_UNICAST_AC_MAX_CONN   2U
-#define BAP_UNICAST_AC_MAX_SNK    (2U * BAP_UNICAST_AC_MAX_CONN)
-#define BAP_UNICAST_AC_MAX_SRC    (2U * BAP_UNICAST_AC_MAX_CONN)
-#define BAP_UNICAST_AC_MAX_PAIR   MAX(BAP_UNICAST_AC_MAX_SNK, BAP_UNICAST_AC_MAX_SRC)
-#define BAP_UNICAST_AC_MAX_STREAM (BAP_UNICAST_AC_MAX_SNK + BAP_UNICAST_AC_MAX_SRC)
-
 struct shell_stream {
 	struct bt_cap_stream stream;
 	struct bt_audio_codec_cfg codec_cfg;
@@ -197,12 +191,6 @@ static inline void print_codec_cfg(const struct shell *sh,
 }
 
 #if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
-struct bap_broadcast_ac_param {
-	char *name;
-	size_t stream_cnt;
-	size_t chan_cnt;
-};
-
 extern struct shell_stream broadcast_source_streams[CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT];
 extern struct broadcast_source default_source;
 #endif /* CONFIG_BT_BAP_BROADCAST_SOURCE */
@@ -337,42 +325,6 @@ static inline void copy_broadcast_source_preset(struct broadcast_source *source,
 #endif /* CONFIG_BT_AUDIO_CODEC_CFG_MAX_METADATA_COUNT > 0 && CONFIG_BT_AUDIO_CODEC_MAX_DATA_LEN > \
 	* 0                                                                                        \
 	*/
-}
-
-static inline void codec_data_set_chan_alloc(struct bt_audio_codec_data *data,
-					     enum bt_audio_location loc)
-{
-	const uint32_t loc_32 = loc;
-
-	data->data.type = BT_AUDIO_CODEC_CONFIG_LC3_CHAN_ALLOC;
-	data->data.data_len = sizeof(loc_32);
-	sys_put_le32(loc_32, data->value);
-}
-
-static inline int codec_set_chan_alloc(struct bt_audio_codec_cfg *codec_cfg,
-				       enum bt_audio_location loc)
-{
-	for (size_t i = 0U; i < codec_cfg->data_count; i++) {
-		struct bt_audio_codec_data *data = &codec_cfg->data[i];
-
-		/* Overwrite the location value */
-		if (data->data.type == BT_AUDIO_CODEC_CONFIG_LC3_CHAN_ALLOC) {
-			codec_data_set_chan_alloc(data, loc);
-
-			return 0;
-		}
-	}
-
-	/* Not found, add new if possible */
-	if (codec_cfg->data_count < CONFIG_BT_AUDIO_CODEC_CFG_MAX_DATA_COUNT) {
-		struct bt_audio_codec_data *data = &codec_cfg->data[codec_cfg->data_count++];
-
-		codec_data_set_chan_alloc(data, loc);
-
-		return 0;
-	}
-
-	return -ENOMEM;
 }
 
 #endif /* CONFIG_BT_AUDIO */

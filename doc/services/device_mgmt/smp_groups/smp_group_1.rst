@@ -269,7 +269,7 @@ CBOR data of request:
         (str,opt)"len"      : (uint)
         (str)"off"          : (uint)
         (str,opt)"sha"      : (byte str)
-        (str)"data"         : (byte str)
+        (str,opt)"data"     : (byte str)
         (str,opt)"upgrade"  : (bool)
     }
 
