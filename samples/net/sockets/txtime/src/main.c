@@ -153,14 +153,15 @@ static void tx(struct app_data *data)
 		struct cmsghdr hdr;
 		unsigned char  buf[CMSG_SPACE(sizeof(uint64_t))];
 	} cmsgbuf;
-	net_time_t txtime, delay, interval;
+	uint64_t txtime, delay, interval;
 	int ret;
 	int print_offset;
 
 	print_offset = IS_ENABLED(CONFIG_NET_SAMPLE_PACKET_SOCKET) ?
 		sizeof(struct net_eth_hdr) : 0;
 
-	interval = CONFIG_NET_SAMPLE_PACKET_INTERVAL * NSEC_PER_MSEC;
+	interval = CONFIG_NET_SAMPLE_PACKET_INTERVAL * NSEC_PER_USEC *
+							USEC_PER_MSEC;
 	delay = CONFIG_NET_SAMPLE_PACKET_TXTIME * NSEC_PER_USEC;
 
 	io_vector[0].iov_base = (void *)txtime_str;
@@ -181,14 +182,14 @@ static void tx(struct app_data *data)
 	LOG_DBG("Sending network packets with SO_TXTIME");
 
 	ptp_clock_get(data->clk, &time);
-	txtime = net_ptp_time_to_ns(&time);
+	txtime = (time.second * NSEC_PER_SEC) + time.nanosecond;
 
 	snprintk(txtime_str + print_offset,
-		 sizeof(txtime_str) - print_offset, "%"PRIx64, (uint64_t)txtime);
+		 sizeof(txtime_str) - print_offset, "%"PRIx64, txtime);
 	io_vector[0].iov_len = sizeof(txtime_str);
 
 	while (1) {
-		*(net_time_t *)CMSG_DATA(cmsg) = txtime + delay;
+		*(uint64_t *)CMSG_DATA(cmsg) = txtime + delay;
 
 		ret = sendmsg(data->sock, &msg, 0);
 		if (ret < 0) {
@@ -201,7 +202,7 @@ static void tx(struct app_data *data)
 
 		txtime += interval;
 		snprintk(txtime_str + print_offset,
-			 sizeof(txtime_str) - print_offset, "%"PRIx64, (uint64_t)txtime);
+			 sizeof(txtime_str) - print_offset, "%"PRIx64, txtime);
 
 		k_sleep(K_NSEC(interval));
 	}

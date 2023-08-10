@@ -64,9 +64,9 @@
 	ITERABLE_SECTION_ROM(irq_alloc, 4)
 #endif /* CONFIG_PCIE */
 
-#if !defined(CONFIG_DEVICE_DEPS_DYNAMIC)
-	SECTION_DATA_PROLOGUE(device_deps,,)
+#if !defined(CONFIG_HAS_DYNAMIC_DEVICE_HANDLES)
+	SECTION_DATA_PROLOGUE(device_handles,,)
 	{
-#include <zephyr/linker/device-deps.ld>
+#include <zephyr/linker/device-handles.ld>
 	} GROUP_ROM_LINK_IN(RAMABLE_REGION, ROMABLE_REGION)
-#endif /* !CONFIG_DEVICE_DEPS_DYNAMIC */
+#endif /* !CONFIG_HAS_DYNAMIC_DEVICE_HANDLES */

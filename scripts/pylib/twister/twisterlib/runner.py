@@ -25,7 +25,6 @@ from colorama import Fore
 from domains import Domains
 from twisterlib.cmakecache import CMakeCache
 from twisterlib.environment import canonical_zephyr_base
-from twisterlib.error import BuildError
 
 import elftools
 from elftools.elf.elffile import ELFFile
@@ -619,14 +618,8 @@ class ProjectBuilder(FilterBuilder):
                     pipeline.put({"op": "report", "test": self.instance})
                 else:
                     logger.debug(f"Determine test cases for test instance: {self.instance.name}")
-                    try:
-                        self.determine_testcases(results)
-                        pipeline.put({"op": "gather_metrics", "test": self.instance})
-                    except BuildError as e:
-                        logger.error(str(e))
-                        self.instance.status = "error"
-                        self.instance.reason = str(e)
-                        pipeline.put({"op": "report", "test": self.instance})
+                    self.determine_testcases(results)
+                    pipeline.put({"op": "gather_metrics", "test": self.instance})
 
         elif op == "gather_metrics":
             self.gather_metrics(self.instance)
@@ -680,8 +673,7 @@ class ProjectBuilder(FilterBuilder):
         yaml_testsuite_name = self.instance.testsuite.id
         logger.debug(f"Determine test cases for test suite: {yaml_testsuite_name}")
 
-        elf_file = self.instance.get_elf_file()
-        elf = ELFFile(open(elf_file, "rb"))
+        elf = ELFFile(open(self.instance.get_elf_file(), "rb"))
 
         logger.debug(f"Test instance {self.instance.name} already has {len(self.instance.testcases)} cases.")
         new_ztest_unit_test_regex = re.compile(r"z_ztest_unit_test__([^\s]*)__([^\s]*)")
@@ -703,7 +695,6 @@ class ProjectBuilder(FilterBuilder):
                             detected_cases.append(testcase_id)
 
         if detected_cases:
-            logger.debug(f"{', '.join(detected_cases)} in {elf_file}")
             self.instance.testcases.clear()
             self.instance.testsuite.testcases.clear()
 

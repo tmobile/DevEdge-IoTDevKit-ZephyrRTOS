@@ -38,7 +38,8 @@ int bt_cap_initiator_register_cb(const struct bt_cap_initiator_cb *cb)
 	return 0;
 }
 
-static bool cap_initiator_valid_metadata(const struct bt_audio_codec_data meta[], size_t meta_count)
+static bool cap_initiator_valid_metadata(const struct bt_codec_data meta[],
+					 size_t meta_count)
 {
 	bool stream_context_found;
 
@@ -81,21 +82,21 @@ static bool cap_initiator_broadcast_audio_start_valid_param(
 
 	for (size_t i = 0U; i < param->subgroup_count; i++) {
 		const struct bt_cap_initiator_broadcast_subgroup_param *subgroup_param;
-		const struct bt_audio_codec_cfg *codec_cfg;
+		const struct bt_codec *codec;
 		bool valid_metadata;
 
 		subgroup_param = &param->subgroup_params[i];
-		codec_cfg = subgroup_param->codec_cfg;
+		codec = subgroup_param->codec;
 
 		/* Streaming Audio Context shall be present in CAP */
 
-		CHECKIF(codec_cfg == NULL) {
-			LOG_DBG("subgroup[%zu]->codec_cfg is NULL", i);
+		CHECKIF(codec == NULL) {
+			LOG_DBG("subgroup[%zu]->codec is NULL", i);
 			return false;
 		}
 
-		valid_metadata =
-			cap_initiator_valid_metadata(codec_cfg->meta, codec_cfg->meta_count);
+		valid_metadata = cap_initiator_valid_metadata(codec->meta,
+							      codec->meta_count);
 
 		CHECKIF(!valid_metadata) {
 			LOG_DBG("Invalid metadata supplied for subgroup[%zu]", i);
@@ -134,7 +135,7 @@ static void cap_initiator_broadcast_to_bap_broadcast_param(
 		struct bt_bap_broadcast_source_subgroup_param *bap_subgroup_param =
 			&bap_param->params[i];
 
-		bap_subgroup_param->codec_cfg = cap_subgroup_param->codec_cfg;
+		bap_subgroup_param->codec = cap_subgroup_param->codec;
 		bap_subgroup_param->params_count = cap_subgroup_param->stream_count;
 		bap_subgroup_param->params = &bap_stream_params[stream_cnt];
 
@@ -145,13 +146,13 @@ static void cap_initiator_broadcast_to_bap_broadcast_param(
 				&bap_subgroup_param->params[j];
 
 			bap_stream_param->stream = &cap_stream_param->stream->bap_stream;
-#if CONFIG_BT_AUDIO_CODEC_CFG_MAX_DATA_COUNT > 0
+#if CONFIG_BT_CODEC_MAX_DATA_COUNT > 0
 			bap_stream_param->data_count = cap_stream_param->data_count;
 			/* We do not need to copy the data, as that is the same type of struct, so
 			 * we can just point to the CAP parameter data
 			 */
 			bap_stream_param->data = cap_stream_param->data;
-#endif /* CONFIG_BT_AUDIO_CODEC_CFG_MAX_DATA_COUNT > 0 */
+#endif /* CONFIG_BT_CODEC_MAX_DATA_COUNT > 0 */
 		}
 	}
 }
@@ -211,7 +212,7 @@ int bt_cap_initiator_broadcast_audio_start(struct bt_cap_broadcast_source *broad
 }
 
 int bt_cap_initiator_broadcast_audio_update(struct bt_cap_broadcast_source *broadcast_source,
-					    const struct bt_audio_codec_data meta[],
+					    const struct bt_codec_data meta[],
 					    size_t meta_count)
 {
 	CHECKIF(broadcast_source == NULL) {
@@ -653,16 +654,18 @@ static bool valid_unicast_audio_start_param(const struct bt_cap_unicast_audio_st
 									&param->stream_params[i];
 		const union bt_cap_set_member *member = &stream_param->member;
 		const struct bt_cap_stream *cap_stream = stream_param->stream;
-		const struct bt_audio_codec_cfg *codec_cfg = stream_param->codec_cfg;
+		const struct bt_codec *codec = stream_param->codec;
 		const struct bt_bap_stream *bap_stream;
 
-		CHECKIF(stream_param->codec_cfg == NULL) {
-			LOG_DBG("param->stream_params[%zu].codec_cfg  is NULL", i);
+		CHECKIF(stream_param->codec == NULL) {
+			LOG_DBG("param->stream_params[%zu].codec is NULL", i);
 			return false;
 		}
 
-		CHECKIF(!cap_initiator_valid_metadata(codec_cfg->meta, codec_cfg->meta_count)) {
-			LOG_DBG("param->stream_params[%zu].codec_cfg  is invalid", i);
+		CHECKIF(!cap_initiator_valid_metadata(codec->meta,
+						      codec->meta_count)) {
+			LOG_DBG("param->stream_params[%zu].codec is invalid",
+				i);
 			return false;
 		}
 
@@ -772,7 +775,7 @@ static int cap_initiator_unicast_audio_configure(
 		struct bt_cap_stream *cap_stream = stream_param->stream;
 		struct bt_bap_stream *bap_stream = &cap_stream->bap_stream;
 		struct bt_bap_ep *ep = stream_param->ep;
-		struct bt_audio_codec_cfg *codec_cfg = stream_param->codec_cfg;
+		struct bt_codec *codec = stream_param->codec;
 		struct bt_conn *conn;
 		int err;
 
@@ -794,7 +797,7 @@ static int cap_initiator_unicast_audio_configure(
 
 		active_proc.streams[i] = cap_stream;
 
-		err = bt_bap_stream_config(conn, bap_stream, ep, codec_cfg);
+		err = bt_bap_stream_config(conn, bap_stream, ep, codec);
 		if (err != 0) {
 			LOG_DBG("bt_bap_stream_config failed for param->stream_params[%zu]: %d",
 				i, err);
@@ -941,11 +944,8 @@ void bt_cap_initiator_codec_configured(struct bt_cap_stream *cap_stream)
 			continue;
 		}
 
-		if (free_conn != NULL) {
-			*free_conn = stream_conn;
-		} else {
-			__ASSERT_PRINT("No free conns");
-		}
+		__ASSERT(free_conn, "No free conns");
+		*free_conn = stream_conn;
 	}
 
 	/* All streams in the procedure share the same unicast group, so we just
@@ -1022,8 +1022,9 @@ void bt_cap_initiator_qos_configured(struct bt_cap_stream *cap_stream)
 		int err;
 
 		/* TODO: Add metadata */
-		err = bt_bap_stream_enable(bap_stream, bap_stream->codec_cfg->meta,
-					   bap_stream->codec_cfg->meta_count);
+		err = bt_bap_stream_enable(bap_stream,
+					     bap_stream->codec->meta,
+					     bap_stream->codec->meta_count);
 		if (err != 0) {
 			LOG_DBG("Failed to enable stream %p: %d",
 				cap_stream_active, err);

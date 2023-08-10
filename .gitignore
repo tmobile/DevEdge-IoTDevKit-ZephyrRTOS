@@ -75,7 +75,6 @@ Identity.txt
 ImageSize.txt
 Kconfig.txt
 KconfigBasic.txt
-KconfigBasicNoModules.txt
 MaintainersFormat.txt
 Nits.txt
 Pylint.txt

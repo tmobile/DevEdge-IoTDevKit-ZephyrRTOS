@@ -46,7 +46,7 @@
 		device_type = "memory";
 		reg = <0xc0000000 DT_SIZE_M(16)>;
 		zephyr,memory-region = "SDRAM1";
-		zephyr,memory-attr = "RAM";
+		zephyr,memory-region-mpu = "RAM";
 	};
 
 	aliases {

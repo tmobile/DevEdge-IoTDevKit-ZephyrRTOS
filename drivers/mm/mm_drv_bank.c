@@ -15,14 +15,15 @@
  */
 
 #include <zephyr/kernel.h>
+
 #include <zephyr/drivers/mm/mm_drv_bank.h>
 #include <zephyr/sys/mem_stats.h>
 
 void sys_mm_drv_bank_init(struct mem_drv_bank *bank, uint32_t bank_pages)
 {
-	bank->unmapped_pages = 0;
-	bank->mapped_pages = bank_pages;
-	bank->max_mapped_pages = bank_pages;
+	bank->unmapped_pages = bank_pages;
+	bank->mapped_pages = 0;
+	bank->max_mapped_pages = 0;
 }
 
 uint32_t sys_mm_drv_bank_page_mapped(struct mem_drv_bank *bank)
@@ -39,6 +40,7 @@ uint32_t sys_mm_drv_bank_page_unmapped(struct mem_drv_bank *bank)
 {
 	bank->unmapped_pages++;
 	bank->mapped_pages--;
+
 	return bank->unmapped_pages;
 }
 

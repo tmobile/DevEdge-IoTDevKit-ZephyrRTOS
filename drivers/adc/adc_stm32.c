@@ -76,7 +76,6 @@ LOG_MODULE_REGISTER(adc_stm32);
 	!defined(CONFIG_SOC_SERIES_STM32F0X) && \
 	!defined(CONFIG_SOC_SERIES_STM32G0X) && \
 	!defined(CONFIG_SOC_SERIES_STM32L0X) && \
-	!defined(CONFIG_SOC_SERIES_STM32WBAX) && \
 	!defined(CONFIG_SOC_SERIES_STM32WLX)
 #define RANK(n)		LL_ADC_REG_RANK_##n
 static const uint32_t table_rank[] = {
@@ -251,7 +250,7 @@ static int adc_stm32_dma_start(const struct device *dev,
  * The entire buffer must be in a single region.
  * An example of how the SRAM region can be defined in the DTS:
  *	&sram4 {
- *		zephyr,memory-attr = "RAM_NOCACHE";
+ *		zephyr,memory-region-mpu = "RAM_NOCACHE";
  *	};
  */
 static bool address_in_non_cacheable_sram(const uint16_t *buffer, const uint16_t size)
@@ -259,12 +258,12 @@ static bool address_in_non_cacheable_sram(const uint16_t *buffer, const uint16_t
 	/* Default if no valid SRAM region found or buffer+size not located in a single region */
 	bool cachable = false;
 #define IS_NON_CACHEABLE_REGION_FN(node_id)                                                    \
-	COND_CODE_1(DT_NODE_HAS_PROP(node_id, zephyr_memory_attr), ({                          \
+	COND_CODE_1(DT_NODE_HAS_PROP(node_id, zephyr_memory_region_mpu), ({                    \
 			const uint32_t region_start = DT_REG_ADDR(node_id);                    \
 			const uint32_t region_end = region_start + DT_REG_SIZE(node_id);       \
 			if (((uint32_t)buffer >= region_start) &&                              \
 				(((uint32_t)buffer + size) < region_end)) {                    \
-				cachable = strcmp(DT_PROP(node_id, zephyr_memory_attr),        \
+				cachable = strcmp(DT_PROP(node_id, zephyr_memory_region_mpu),  \
 						"RAM_NOCACHE") == 0;                           \
 			}                                                                      \
 		}),                                                                            \
@@ -377,8 +376,7 @@ static void adc_stm32_calib(const struct device *dev)
 	DT_HAS_COMPAT_STATUS_OKAY(st_stm32f1_adc) || \
 	defined(CONFIG_SOC_SERIES_STM32G0X) || \
 	defined(CONFIG_SOC_SERIES_STM32L0X) || \
-	defined(CONFIG_SOC_SERIES_STM32WLX) || \
-	defined(CONFIG_SOC_SERIES_STM32WBAX)
+	defined(CONFIG_SOC_SERIES_STM32WLX)
 	LL_ADC_StartCalibration(adc);
 #elif defined(CONFIG_SOC_SERIES_STM32U5X)
 	LL_ADC_StartCalibration(adc, LL_ADC_CALIB_OFFSET);
@@ -422,7 +420,6 @@ static void adc_stm32_disable(ADC_TypeDef *adc)
 	!DT_HAS_COMPAT_STATUS_OKAY(st_stm32f4_adc) && \
 	!defined(CONFIG_SOC_SERIES_STM32G0X) && \
 	!defined(CONFIG_SOC_SERIES_STM32L0X) && \
-	!defined(CONFIG_SOC_SERIES_STM32WBAX) && \
 	!defined(CONFIG_SOC_SERIES_STM32WLX)
 	if (LL_ADC_INJ_IsConversionOngoing(adc)) {
 		LL_ADC_INJ_StopConversion(adc);
@@ -710,7 +707,7 @@ static void dma_callback(const struct device *dev, void *user_data,
 {
 	/* user_data directly holds the adc device */
 	struct adc_stm32_data *data = user_data;
-	const struct adc_stm32_cfg *config = data->dev->config;
+	const struct adc_stm32_cfg *config = dev->config;
 	ADC_TypeDef *adc = (ADC_TypeDef *)config->base;
 
 	LOG_DBG("dma callback");
@@ -848,7 +845,6 @@ static int start_read(const struct device *dev,
 	!defined(CONFIG_SOC_SERIES_STM32F0X) && \
 	!defined(CONFIG_SOC_SERIES_STM32G0X) && \
 	!defined(CONFIG_SOC_SERIES_STM32L0X) && \
-	!defined(CONFIG_SOC_SERIES_STM32WBAX) && \
 	!defined(CONFIG_SOC_SERIES_STM32WLX)
 	if (data->channel_count > ARRAY_SIZE(table_seq_len)) {
 		LOG_ERR("Too many channels for sequencer. Max: %d", ARRAY_SIZE(table_seq_len));
@@ -921,12 +917,6 @@ static int start_read(const struct device *dev,
 		while (LL_ADC_IsActiveFlag_CCRDY(adc) == 0) {
 		}
 		LL_ADC_ClearFlag_CCRDY(adc);
-#elif defined(CONFIG_SOC_SERIES_STM32WBAX)
-		LL_ADC_REG_StopConversion(adc);
-		while (LL_ADC_REG_IsStopConversionOngoing(adc) != 0) {
-		}
-		LL_ADC_REG_SetSequencerChannels(adc, channel);
-		LL_ADC_REG_SetSequencerConfigurable(adc, LL_ADC_REG_SEQ_FIXED);
 #elif defined(CONFIG_SOC_SERIES_STM32U5X)
 		if (adc != ADC4) {
 			LL_ADC_REG_SetSequencerRanks(adc, table_rank[channel_index], channel);
@@ -1323,8 +1313,7 @@ static int adc_stm32_init(const struct device *dev)
 	LL_ADC_SetCommonClock(__LL_ADC_COMMON_INSTANCE(adc),
 			      LL_ADC_CLOCK_SYNC_PCLK_DIV2);
 #elif defined(CONFIG_SOC_SERIES_STM32L1X) || \
-	defined(CONFIG_SOC_SERIES_STM32U5X) || \
-	defined(CONFIG_SOC_SERIES_STM32WBAX)
+	defined(CONFIG_SOC_SERIES_STM32U5X)
 	LL_ADC_SetCommonClock(__LL_ADC_COMMON_INSTANCE(adc),
 			LL_ADC_CLOCK_ASYNC_DIV4);
 #endif

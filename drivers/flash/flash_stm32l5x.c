@@ -128,7 +128,7 @@ static int icache_wait_for_invalidate_complete(void)
 #endif /* CONFIG_SOC_SERIES_STM32H5X */
 
 /*
- * offset and len must be aligned on write-block-size for write,
+ * offset and len must be aligned on 8 for write,
  * positive and not beyond end of flash
  */
 bool flash_stm32_valid_range(const struct device *dev, off_t offset,
@@ -149,21 +149,17 @@ bool flash_stm32_valid_range(const struct device *dev, off_t offset,
 		}
 	}
 
-	if (write && !flash_stm32_valid_write(offset, len)) {
-		return false;
-	}
-	return flash_stm32_range_exists(dev, offset, len);
+	return (!write || (offset % 8 == 0 && len % 8 == 0U)) &&
+		flash_stm32_range_exists(dev, offset, len);
 }
 
-static int write_nwords(const struct device *dev, off_t offset, const uint32_t *buff, size_t n)
+static int write_dword(const struct device *dev, off_t offset, uint64_t val)
 {
 	FLASH_TypeDef *regs = FLASH_STM32_REGS(dev);
 	volatile uint32_t *flash = (uint32_t *)(offset
 						+ CONFIG_FLASH_BASE_ADDRESS);
-	bool full_zero = true;
 	uint32_t tmp;
 	int rc;
-	int i;
 
 	/* if the non-secure control register is locked,do not fail silently */
 	if (regs->NSCR & FLASH_STM32_NSLOCK) {
@@ -177,26 +173,16 @@ static int write_nwords(const struct device *dev, off_t offset, const uint32_t *
 		return rc;
 	}
 
-	/* Check if this double/quad word is erased and value isn't 0.
+	/* Check if this double word is erased and value isn't 0.
 	 *
-	 * It is allowed to write only zeros over an already written dword / qword
+	 * It is allowed to write only zeros over an already written dword
 	 * See 6.3.7 in STM32L5 reference manual.
 	 * See 7.3.7 in STM32U5 reference manual.
-	 * See 7.3.5 in STM32H5 reference manual.
 	 */
-	for (i = 0; i < n; i++) {
-		if (buff[i] != 0) {
-			full_zero = false;
-			break;
-		}
-	}
-	if (!full_zero) {
-		for (i = 0; i < n; i++) {
-			if (flash[i] != 0xFFFFFFFFUL) {
-				LOG_ERR("Word at offs %ld not erased", (long)(offset + i));
-				return -EIO;
-			}
-		}
+	if ((flash[0] != 0xFFFFFFFFUL ||
+	     flash[1] != 0xFFFFFFFFUL) && val != 0UL) {
+		LOG_ERR("Word at offs %ld not erased", (long)offset);
+		return -EIO;
 	}
 
 	/* Set the NSPG bit */
@@ -206,9 +192,8 @@ static int write_nwords(const struct device *dev, off_t offset, const uint32_t *
 	tmp = regs->NSCR;
 
 	/* Perform the data write operation at the desired memory address */
-	for (i = 0; i < n; i++) {
-		flash[i] = buff[i];
-	}
+	flash[0] = (uint32_t)val;
+	flash[1] = (uint32_t)(val >> 32);
 
 	/* Wait until the NSBSY bit is cleared */
 	rc = flash_stm32_wait_flash_idle(dev);
@@ -356,9 +341,8 @@ int flash_stm32_write_range(const struct device *dev, unsigned int offset,
 		}
 	}
 
-	for (i = 0; i < len; i += FLASH_STM32_WRITE_BLOCK_SIZE) {
-		rc = write_nwords(dev, offset + i, ((const uint32_t *) data + (i>>2)),
-				  FLASH_STM32_WRITE_BLOCK_SIZE / 4);
+	for (i = 0; i < len; i += 8, offset += 8) {
+		rc = write_dword(dev, offset, ((const uint64_t *) data)[i>>3]);
 		if (rc < 0) {
 			break;
 		}

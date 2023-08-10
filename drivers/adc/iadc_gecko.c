@@ -19,7 +19,6 @@ LOG_MODULE_REGISTER(iadc_gecko, CONFIG_ADC_LOG_LEVEL);
 
 /* Number of channels available. */
 #define GECKO_CHANNEL_COUNT	16
-#define GECKO_INTERNAL_REFERENCE_mV	1210
 
 struct adc_gecko_channel_config {
 	IADC_CfgAnalogGain_t gain;
@@ -231,7 +230,7 @@ static void adc_gecko_isr(void *arg)
 	if (!err) {
 		sample = IADC_readSingleResult(iadc);
 
-		*data->buffer++ = GECKO_DATA_RES12BIT((uint16_t)sample.data);
+		*data->buffer++ = (uint16_t)sample.data;
 		data->channels &= ~BIT(data->channel_id);
 
 		if (data->channels) {
@@ -458,7 +457,6 @@ static const struct adc_driver_api api_gecko_adc_driver_api = {
 #ifdef CONFIG_ADC_ASYNC
 	.read_async = adc_gecko_read_async,
 #endif
-	.ref_internal = GECKO_INTERNAL_REFERENCE_mV,
 };
 
 #define GECKO_IADC_INIT(n)						\

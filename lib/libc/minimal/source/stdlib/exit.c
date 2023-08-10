@@ -11,6 +11,5 @@ void _exit(int status)
 {
 	printk("exit\n");
 	while (1) {
-		Z_SPIN_DELAY(100);
 	}
 }

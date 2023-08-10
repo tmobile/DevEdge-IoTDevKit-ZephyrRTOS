@@ -68,7 +68,9 @@ ZTEST(bt_keys_clear_bt_settings_enabled, test_clear_key_with_id_equal_0)
 	zassert_true(find_returned_ref == NULL,
 		     "bt_keys_find_addr() returned a non-NULL reference");
 
-	expect_single_call_bt_settings_delete_keys();
+	expect_not_called_u8_to_dec();
+	expect_single_call_bt_settings_encode_key_with_null_key(&returned_key->addr);
+	expect_single_call_settings_delete();
 }
 
 /*
@@ -106,5 +108,7 @@ ZTEST(bt_keys_clear_bt_settings_enabled, test_clear_key_with_id_not_equal_0)
 	zassert_true(find_returned_ref == NULL,
 		     "bt_keys_find_addr() returned a non-NULL reference");
 
-	expect_single_call_bt_settings_delete_keys();
+	expect_single_call_u8_to_dec(id);
+	expect_single_call_bt_settings_encode_key_with_not_null_key(&returned_key->addr);
+	expect_single_call_settings_delete();
 }

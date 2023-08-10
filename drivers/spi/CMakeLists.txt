@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/spi.h)
-
 zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_SPI_TELINK_B91  spi_b91.c)
@@ -16,11 +14,9 @@ zephyr_library_sources_ifdef(CONFIG_SPI_SAM		spi_sam.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_SAM0		spi_sam0.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_SIFIVE		spi_sifive.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_RV32M1_LPSPI	spi_rv32m1_lpspi.c)
-zephyr_library_sources_ifdef(CONFIG_SPI_NRFX_SPI	spi_nrfx_spi.c
-							spi_nrfx_common.c)
-zephyr_library_sources_ifdef(CONFIG_SPI_NRFX_SPIM	spi_nrfx_spim.c
-							spi_nrfx_common.c)
-zephyr_library_sources_ifdef(CONFIG_SPI_NRFX_SPIS	spi_nrfx_spis.c)
+zephyr_library_sources_ifdef(CONFIG_NRFX_SPI		spi_nrfx_spi.c)
+zephyr_library_sources_ifdef(CONFIG_NRFX_SPIM		spi_nrfx_spim.c)
+zephyr_library_sources_ifdef(CONFIG_NRFX_SPIS		spi_nrfx_spis.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_LITESPI		spi_litespi.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_OC_SIMPLE	spi_oc_simple.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_XEC_QMSPI	spi_xec_qmspi.c)
@@ -29,6 +25,7 @@ zephyr_library_sources_ifdef(CONFIG_SPI_XLNX_AXI_QUADSPI spi_xlnx_axi_quadspi.c)
 zephyr_library_sources_ifdef(CONFIG_ESP32_SPIM		spi_esp32_spim.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_TEST		spi_test.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_PSOC6		spi_psoc6.c)
+zephyr_library_sources_ifdef(CONFIG_SPI_NPCX_FIU	spi_npcx_fiu.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_BITBANG		spi_bitbang.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_XEC_QMSPI_LDMA	spi_xec_qmspi_ldma.c)
 zephyr_library_sources_ifdef(CONFIG_SPI_GD32		spi_gd32.c)

@@ -1079,10 +1079,8 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 		    conn->role == BT_CONN_ROLE_PERIPHERAL) {
 
 #if defined(CONFIG_BT_GAP_AUTO_UPDATE_CONN_PARAMS)
-			if (conn->type == BT_CONN_TYPE_LE) {
-				conn->le.conn_param_retry_countdown =
-					CONFIG_BT_CONN_PARAM_RETRY_COUNT;
-			}
+			conn->le.conn_param_retry_countdown =
+				CONFIG_BT_CONN_PARAM_RETRY_COUNT;
 #endif /* CONFIG_BT_GAP_AUTO_UPDATE_CONN_PARAMS */
 
 			k_work_schedule(&conn->deferred_work,
@@ -1207,44 +1205,35 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 	}
 }
 
-struct bt_conn *bt_conn_lookup_handle(uint16_t handle, enum bt_conn_type type)
+struct bt_conn *bt_conn_lookup_handle(uint16_t handle)
 {
 	struct bt_conn *conn;
 
 #if defined(CONFIG_BT_CONN)
 	conn = conn_lookup_handle(acl_conns, ARRAY_SIZE(acl_conns), handle);
 	if (conn) {
-		goto found;
+		return conn;
 	}
 #endif /* CONFIG_BT_CONN */
 
 #if defined(CONFIG_BT_ISO)
 	conn = conn_lookup_handle(iso_conns, ARRAY_SIZE(iso_conns), handle);
 	if (conn) {
-		goto found;
+		return conn;
 	}
 #endif
 
-#if defined(CONFIG_BT_BREDR)
+ #if defined(CONFIG_BT_BREDR)
 	conn = conn_lookup_handle(sco_conns, ARRAY_SIZE(sco_conns), handle);
 	if (conn) {
-		goto found;
+		return conn;
 	}
 #endif
 
-found:
-	if (conn) {
-		if (type & conn->type) {
-			return conn;
-		}
-		LOG_WRN("incompatible handle %u", handle);
-		bt_conn_unref(conn);
-	}
 	return NULL;
 }
 
-void bt_conn_foreach(enum bt_conn_type type,
-		     void (*func)(struct bt_conn *conn, void *data),
+void bt_conn_foreach(int type, void (*func)(struct bt_conn *conn, void *data),
 		     void *data)
 {
 	int i;
@@ -2170,10 +2159,6 @@ int bt_conn_le_start_encryption(struct bt_conn *conn, uint8_t rand[8],
 	struct bt_hci_cp_le_start_encryption *cp;
 	struct net_buf *buf;
 
-	if (len > sizeof(cp->ltk)) {
-		return -EINVAL;
-	}
-
 	buf = bt_hci_cmd_create(BT_HCI_OP_LE_START_ENCRYPTION, sizeof(*cp));
 	if (!buf) {
 		return -ENOBUFS;
@@ -2562,8 +2547,6 @@ int bt_conn_get_info(const struct bt_conn *conn, struct bt_conn_info *info)
 		}
 		return 0;
 #endif
-	default:
-		break;
 	}
 
 	return -EINVAL;

@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/ztest.h>
+#include <zephyr/kernel.h>
 #include <pthread.h>
 #include <semaphore.h>
-
 #include <zephyr/sys/util.h>
-#include <zephyr/ztest.h>
 
 #ifndef min
 #define min(a, b) ((a) < (b)) ? (a) : (b)
@@ -216,9 +216,6 @@ void *thread_top_term(void *p1)
 	}
 
 	if (id >= 2) {
-		if (IS_ENABLED(CONFIG_DYNAMIC_THREAD)) {
-			zassert_false(pthread_detach(self), "failed to set detach state");
-		}
 		ret = pthread_detach(self);
 		if (id == 2) {
 			zassert_equal(ret, EINVAL, "re-detached thread!");
@@ -233,7 +230,7 @@ void *thread_top_term(void *p1)
 	return NULL;
 }
 
-ZTEST(posix_apis, test_pthread_execution)
+ZTEST(posix_apis, test_posix_pthread_execution)
 {
 	int i, ret, min_prio, max_prio;
 	int dstate, policy;
@@ -348,13 +345,8 @@ ZTEST(posix_apis, test_pthread_execution)
 			      getschedparam.sched_priority,
 			      "scheduling priorities do not match!");
 
-		if (IS_ENABLED(CONFIG_DYNAMIC_THREAD)) {
-			ret = pthread_create(&newthread[i], NULL, thread_top_exec,
-					INT_TO_POINTER(i));
-		} else {
-			ret = pthread_create(&newthread[i], &attr[i], thread_top_exec,
-					INT_TO_POINTER(i));
-		}
+		ret = pthread_create(&newthread[i], &attr[i], thread_top_exec,
+				INT_TO_POINTER(i));
 
 		/* TESTPOINT: Check if thread is created successfully */
 		zassert_false(ret, "Number of threads exceed max limit");
@@ -419,7 +411,7 @@ ZTEST(posix_apis, test_pthread_execution)
 	printk("Barrier test OK\n");
 }
 
-ZTEST(posix_apis, test_pthread_errors_errno)
+ZTEST(posix_apis, test_posix_pthread_error_condition)
 {
 	pthread_attr_t attr;
 	struct sched_param param;
@@ -481,7 +473,7 @@ ZTEST(posix_apis, test_pthread_errors_errno)
 		      "get detach state error");
 }
 
-ZTEST(posix_apis, test_pthread_termination)
+ZTEST(posix_apis, test_posix_pthread_termination)
 {
 	int32_t i, ret;
 	int oldstate, policy;
@@ -508,13 +500,8 @@ ZTEST(posix_apis, test_pthread_termination)
 		schedparam.sched_priority = 2;
 		pthread_attr_setschedparam(&attr[i], &schedparam);
 		pthread_attr_setstack(&attr[i], &stack_t[i][0], STACKS);
-		if (IS_ENABLED(CONFIG_DYNAMIC_THREAD)) {
-			ret = pthread_create(&newthread[i], NULL, thread_top_term,
-						INT_TO_POINTER(i));
-		} else {
-			ret = pthread_create(&newthread[i], &attr[i], thread_top_term,
-						INT_TO_POINTER(i));
-		}
+		ret = pthread_create(&newthread[i], &attr[i], thread_top_term,
+				     INT_TO_POINTER(i));
 
 		zassert_false(ret, "Not enough space to create new thread");
 	}
@@ -549,7 +536,7 @@ ZTEST(posix_apis, test_pthread_termination)
 	zassert_equal(ret, ESRCH, "got attr from terminated thread!");
 }
 
-ZTEST(posix_apis, test_pthread_attr_stacksize)
+ZTEST(posix_apis, test_posix_thread_attr_stacksize)
 {
 	size_t act_size;
 	pthread_attr_t attr;
@@ -577,17 +564,15 @@ static void *create_thread1(void *p1)
 	return NULL;
 }
 
-ZTEST(posix_apis, test_pthread_create_negative)
+ZTEST(posix_apis, test_posix_pthread_create_negative)
 {
 	int ret;
 	pthread_t pthread1;
 	pthread_attr_t attr1;
 
 	/* create pthread without attr initialized */
-	if (!IS_ENABLED(CONFIG_DYNAMIC_THREAD)) {
-		ret = pthread_create(&pthread1, NULL, create_thread1, (void *)1);
-		zassert_equal(ret, EAGAIN, "create thread with NULL successful");
-	}
+	ret = pthread_create(&pthread1, NULL, create_thread1, (void *)1);
+	zassert_equal(ret, EINVAL, "create thread with NULL successful");
 
 	/* initialized attr without set stack to create thread */
 	ret = pthread_attr_init(&attr1);
@@ -757,32 +742,4 @@ ZTEST(posix_apis, test_sched_policy)
 				   param.sched_priority, policy_names[policy]);
 		}
 	}
-}
-
-ZTEST(posix_apis, test_posix_pthread_barrier)
-{
-	int ret, pshared;
-	pthread_barrierattr_t attr;
-
-	ret = pthread_barrierattr_init(&attr);
-	zassert_equal(ret, 0, "pthread_barrierattr_init failed");
-
-	ret = pthread_barrierattr_getpshared(&attr, &pshared);
-	zassert_equal(ret, 0, "pthread_barrierattr_getpshared failed");
-	zassert_equal(pshared, PTHREAD_PROCESS_PRIVATE, "pshared attribute not set correctly");
-
-	ret = pthread_barrierattr_setpshared(&attr, PTHREAD_PROCESS_PRIVATE);
-	zassert_equal(ret, 0, "pthread_barrierattr_setpshared failed");
-
-	ret = pthread_barrierattr_setpshared(&attr, PTHREAD_PROCESS_PUBLIC);
-	zassert_equal(ret, 0, "pthread_barrierattr_setpshared failed");
-
-	ret = pthread_barrierattr_getpshared(&attr, &pshared);
-	zassert_equal(pshared, PTHREAD_PROCESS_PUBLIC, "pshared attribute not retrieved correctly");
-
-	ret = pthread_barrierattr_setpshared(&attr, 42);
-	zassert_equal(ret, -EINVAL, "pthread_barrierattr_setpshared did not return EINVAL");
-
-	ret = pthread_barrierattr_destroy(&attr);
-	zassert_equal(ret, 0, "pthread_barrierattr_destroy failed");
 }

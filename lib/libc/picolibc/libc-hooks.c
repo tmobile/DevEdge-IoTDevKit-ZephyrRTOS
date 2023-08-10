@@ -131,7 +131,7 @@ __weak void _exit(int status)
 {
 	printk("exit\n");
 	while (1) {
-		Z_SPIN_DELAY(100);
+		;
 	}
 }
 
@@ -154,6 +154,22 @@ SYS_INIT(picolibc_locks_prepare, POST_KERNEL,
 	 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
 #endif /* CONFIG_USERSPACE */
 
+/* Create a new dynamic non-recursive lock */
+void __retarget_lock_init(_LOCK_T *lock)
+{
+	__ASSERT_NO_MSG(lock != NULL);
+
+	/* Allocate semaphore object */
+#ifndef CONFIG_USERSPACE
+	*lock = malloc(sizeof(struct k_sem));
+#else
+	*lock = k_object_alloc(K_OBJ_SEM);
+#endif /* !CONFIG_USERSPACE */
+	__ASSERT(*lock != NULL, "non-recursive lock allocation failed");
+
+	k_sem_init((struct k_sem *)*lock, 1, 1);
+}
+
 /* Create a new dynamic recursive lock */
 void __retarget_lock_init_recursive(_LOCK_T *lock)
 {
@@ -170,10 +186,15 @@ void __retarget_lock_init_recursive(_LOCK_T *lock)
 	k_mutex_init((struct k_mutex *)*lock);
 }
 
-/* Create a new dynamic non-recursive lock */
-void __retarget_lock_init(_LOCK_T *lock)
+/* Close dynamic non-recursive lock */
+void __retarget_lock_close(_LOCK_T lock)
 {
-	__retarget_lock_init_recursive(lock);
+	__ASSERT_NO_MSG(lock != NULL);
+#ifndef CONFIG_USERSPACE
+	free(lock);
+#else
+	k_object_release(lock);
+#endif /* !CONFIG_USERSPACE */
 }
 
 /* Close dynamic recursive lock */
@@ -187,10 +208,11 @@ void __retarget_lock_close_recursive(_LOCK_T lock)
 #endif /* !CONFIG_USERSPACE */
 }
 
-/* Close dynamic non-recursive lock */
-void __retarget_lock_close(_LOCK_T lock)
+/* Acquiure non-recursive lock */
+void __retarget_lock_acquire(_LOCK_T lock)
 {
-	__retarget_lock_close_recursive(lock);
+	__ASSERT_NO_MSG(lock != NULL);
+	k_sem_take((struct k_sem *)lock, K_FOREVER);
 }
 
 /* Acquiure recursive lock */
@@ -200,10 +222,11 @@ void __retarget_lock_acquire_recursive(_LOCK_T lock)
 	k_mutex_lock((struct k_mutex *)lock, K_FOREVER);
 }
 
-/* Acquiure non-recursive lock */
-void __retarget_lock_acquire(_LOCK_T lock)
+/* Try acquiring non-recursive lock */
+int __retarget_lock_try_acquire(_LOCK_T lock)
 {
-	__retarget_lock_acquire_recursive(lock);
+	__ASSERT_NO_MSG(lock != NULL);
+	return !k_sem_take((struct k_sem *)lock, K_NO_WAIT);
 }
 
 /* Try acquiring recursive lock */
@@ -213,10 +236,11 @@ int __retarget_lock_try_acquire_recursive(_LOCK_T lock)
 	return !k_mutex_lock((struct k_mutex *)lock, K_NO_WAIT);
 }
 
-/* Try acquiring non-recursive lock */
-int __retarget_lock_try_acquire(_LOCK_T lock)
+/* Release non-recursive lock */
+void __retarget_lock_release(_LOCK_T lock)
 {
-	return __retarget_lock_try_acquire_recursive(lock);
+	__ASSERT_NO_MSG(lock != NULL);
+	k_sem_give((struct k_sem *)lock);
 }
 
 /* Release recursive lock */
@@ -224,12 +248,6 @@ void __retarget_lock_release_recursive(_LOCK_T lock)
 {
 	__ASSERT_NO_MSG(lock != NULL);
 	k_mutex_unlock((struct k_mutex *)lock);
-}
-
-/* Release non-recursive lock */
-void __retarget_lock_release(_LOCK_T lock)
-{
-	__retarget_lock_release_recursive(lock);
 }
 
 #endif /* CONFIG_MULTITHREADING */

@@ -270,7 +270,6 @@ class Build(Forceable):
                     y = yaml.safe_load(stream)
                 except yaml.YAMLError as exc:
                     log.die(exc)
-            common = y.get('common')
             tests = y.get('tests')
             if not tests:
                 log.die(f"No tests found in {yf}")
@@ -278,12 +277,9 @@ class Build(Forceable):
             if not item:
                 log.die(f"Test item {test_item} not found in {yf}")
 
-            sysbuild = False
-            extra_dtc_overlay_files = []
-            extra_overlay_confs = []
-            extra_conf_files = []
-            for section in [common, item]:
-                if not section:
+            for data in ['extra_args', 'extra_configs']:
+                extra = item.get(data)
+                if not extra:
                     continue
                 if isinstance(extra, str):
                     arg_list = extra.split(" ")
@@ -294,7 +290,6 @@ class Build(Forceable):
                     self.args.cmake_opts.extend(args)
                 else:
                     self.args.cmake_opts = args
-            self.args.sysbuild = item.get('sysbuild')
         return found_test_metadata
 
     def _sanity_precheck(self):

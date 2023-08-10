@@ -124,7 +124,7 @@ void hci_iso(struct net_buf *buf)
 		return;
 	}
 
-	iso = bt_conn_lookup_handle(iso(buf)->handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(iso(buf)->handle);
 	if (iso == NULL) {
 		LOG_ERR("Unable to find conn for handle %u", iso(buf)->handle);
 		net_buf_unref(buf);
@@ -329,7 +329,6 @@ static int bt_iso_setup_data_path(struct bt_iso_chan *chan)
 			dir = BT_HCI_DATAPATH_DIR_HOST_TO_CTLR;
 			err = hci_le_setup_iso_data_path(iso, dir, in_path);
 			if (err) {
-				LOG_DBG("Failed to setup host-to-ctrl path: %d", err);
 				return err;
 			}
 		}
@@ -339,7 +338,6 @@ static int bt_iso_setup_data_path(struct bt_iso_chan *chan)
 			dir = BT_HCI_DATAPATH_DIR_CTLR_TO_HOST;
 			err = hci_le_setup_iso_data_path(iso, dir, out_path);
 			if (err) {
-				LOG_DBG("Failed to setup ctlr-to-host path: %d", err);
 				return err;
 			}
 		}
@@ -815,62 +813,20 @@ int bt_iso_chan_send(struct bt_iso_chan *chan, struct net_buf *buf,
 
 #if defined(CONFIG_BT_ISO_CENTRAL) || defined(CONFIG_BT_ISO_BROADCASTER)
 static bool valid_chan_io_qos(const struct bt_iso_chan_io_qos *io_qos,
-			      bool is_tx, bool is_broadcast, bool advanced)
+			      bool is_tx)
 {
 	const size_t max_mtu = (is_tx ? CONFIG_BT_ISO_TX_MTU : CONFIG_BT_ISO_RX_MTU);
 	const size_t max_sdu = MIN(max_mtu, BT_ISO_MAX_SDU);
 
 	if (io_qos->sdu > max_sdu) {
-		LOG_DBG("sdu (%u) shall be smaller or equal to %zu", io_qos->sdu, max_sdu);
-
+		LOG_DBG("sdu (%u) shall be smaller than %zu", io_qos->sdu, max_sdu);
 		return false;
 	}
 
-	if (!IN_RANGE(io_qos->phy, BT_GAP_LE_PHY_1M, BT_GAP_LE_PHY_CODED)) {
-		LOG_DBG("Invalid PHY %u", io_qos->phy);
-
+	if (io_qos->phy > BT_GAP_LE_PHY_CODED) {
+		LOG_DBG("Invalid phy %u", io_qos->phy);
 		return false;
 	}
-
-	if (IS_ENABLED(CONFIG_BT_ISO_BROADCASTER) &&
-	    is_broadcast &&
-	    io_qos->rtn > BT_ISO_BROADCAST_RTN_MAX) {
-		LOG_DBG("Invalid RTN %u", io_qos->phy);
-
-		return false;
-	}
-
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	if (advanced) {
-		if (IS_ENABLED(CONFIG_BT_ISO_BROADCASTER) && is_broadcast) {
-			if (!IN_RANGE(io_qos->max_pdu,
-				      BT_ISO_BROADCAST_PDU_MIN,
-				      BT_ISO_PDU_MAX)) {
-				LOG_DBG("Invalid PDU %u", io_qos->max_pdu);
-
-				return false;
-			}
-		} else if (IS_ENABLED(CONFIG_BT_ISO_CENTRAL)) {
-			if (!IN_RANGE(io_qos->max_pdu,
-				      BT_ISO_CONNECTED_PDU_MIN,
-				      BT_ISO_PDU_MAX)) {
-				LOG_DBG("Invalid PDU %u", io_qos->max_pdu);
-
-				return false;
-			}
-		}
-
-		if (!IN_RANGE(io_qos->burst_number,
-			      BT_ISO_BN_MIN,
-			      BT_ISO_BN_MAX)) {
-			LOG_DBG("Invalid BN %u", io_qos->burst_number);
-
-			return false;
-		}
-	}
-#else
-	ARG_UNUSED(advanced);
-#endif /* CONFIG_BT_ISO_ADVANCED */
 
 	return true;
 }
@@ -1026,7 +982,7 @@ void hci_le_cis_established(struct net_buf *buf)
 	LOG_DBG("status 0x%02x handle %u", evt->status, handle);
 
 	/* ISO connection handles are already assigned at this point */
-	iso = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(handle);
 	if (!iso) {
 		LOG_ERR("No connection found for handle %u", handle);
 		return;
@@ -1058,12 +1014,6 @@ void hci_le_cis_established(struct net_buf *buf)
 			rx = chan->qos->rx;
 			tx = chan->qos->tx;
 
-			/* As of BT Core 5.4, there is no way for the peripheral to get the actual
-			 * SDU size or SDU interval without the use of higher layer profiles such as
-			 * the Basic Audio Profile (BAP). The best we can do is use the PDU size
-			 * until https://bluetooth.atlassian.net/browse/ES-18552 has been resolved
-			 * and incorporated
-			 */
 			if (rx != NULL) {
 				rx->phy = bt_get_phy(evt->c_phy);
 				rx->sdu = sys_le16_to_cpu(evt->c_max_pdu);
@@ -1279,7 +1229,7 @@ void hci_le_cis_req(struct net_buf *buf)
 	}
 
 	/* Lookup existing connection with same handle */
-	iso = bt_conn_lookup_handle(cis_handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(cis_handle);
 	if (iso) {
 		LOG_ERR("Invalid ISO handle %u", cis_handle);
 		hci_le_reject_cis(cis_handle, BT_HCI_ERR_CONN_LIMIT_EXCEEDED);
@@ -1288,7 +1238,7 @@ void hci_le_cis_req(struct net_buf *buf)
 	}
 
 	/* Lookup ACL connection to attach */
-	acl = bt_conn_lookup_handle(acl_handle, BT_CONN_TYPE_LE);
+	acl = bt_conn_lookup_handle(acl_handle);
 	if (!acl) {
 		LOG_ERR("Invalid ACL handle %u", acl_handle);
 		hci_le_reject_cis(cis_handle, BT_HCI_ERR_UNKNOWN_CONN_ID);
@@ -1441,19 +1391,10 @@ static void bt_iso_remove_data_path(struct bt_conn *iso)
 	}
 }
 
-static bool valid_chan_qos(const struct bt_iso_chan_qos *qos, bool advanced)
+static bool valid_chan_qos(const struct bt_iso_chan_qos *qos)
 {
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	if (advanced &&
-	    !IN_RANGE(qos->num_subevents, BT_ISO_NSE_MIN, BT_ISO_NSE_MAX)) {
-		LOG_DBG("Invalid NSE: %u", qos->num_subevents);
-
-		return false;
-	}
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
 	if (qos->rx != NULL) {
-		if (!valid_chan_io_qos(qos->rx, false, false, advanced)) {
+		if (!valid_chan_io_qos(qos->rx, false)) {
 			LOG_DBG("Invalid rx qos");
 			return false;
 		}
@@ -1463,7 +1404,7 @@ static bool valid_chan_qos(const struct bt_iso_chan_qos *qos, bool advanced)
 	}
 
 	if (qos->tx != NULL) {
-		if (!valid_chan_io_qos(qos->tx, true, false, advanced)) {
+		if (!valid_chan_io_qos(qos->tx, true)) {
 			LOG_DBG("Invalid tx qos");
 			return false;
 		}
@@ -1577,138 +1518,6 @@ static struct net_buf *hci_le_set_cig_params(const struct bt_iso_cig *cig,
 	return rsp;
 }
 
-#if defined(CONFIG_BT_ISO_ADVANCED)
-static struct net_buf *hci_le_set_cig_test_params(const struct bt_iso_cig *cig,
-						  const struct bt_iso_cig_param *param)
-{
-	struct bt_hci_cp_le_set_cig_params_test *req;
-	struct bt_hci_cis_params_test *cis_param;
-	struct net_buf *buf;
-	struct net_buf *rsp;
-	int err;
-
-	buf = bt_hci_cmd_create(BT_HCI_OP_LE_SET_CIG_PARAMS_TEST,
-				sizeof(*req) + sizeof(*cis_param) * param->num_cis);
-	if (!buf) {
-		return NULL;
-	}
-
-	req = net_buf_add(buf, sizeof(*req));
-
-	memset(req, 0, sizeof(*req));
-
-	req->cig_id = cig->id;
-	sys_put_le24(param->interval, req->c_interval);
-	sys_put_le24(param->interval, req->p_interval);
-
-	req->c_ft = param->c_to_p_ft;
-	req->p_ft = param->p_to_c_ft;
-	req->iso_interval = sys_cpu_to_le16(param->iso_interval);
-	req->sca = param->sca;
-	req->packing = param->packing;
-	req->framing = param->framing;
-	req->num_cis = param->num_cis;
-
-	LOG_DBG("id %u, SDU interval %u, c_ft %u, p_ft %u, iso_interval %u, "
-		"sca %u, packing %u, framing %u, num_cis %u",
-		cig->id, param->interval, param->c_to_p_ft, param->p_to_c_ft,
-		param->iso_interval, param->sca, param->packing,
-		param->framing, param->num_cis);
-
-	/* Program the cis parameters */
-	for (uint8_t i = 0U; i < param->num_cis; i++) {
-		const struct bt_iso_chan *cis = param->cis_channels[i];
-		const struct bt_iso_chan_qos *qos = cis->qos;
-
-		cis_param = net_buf_add(buf, sizeof(*cis_param));
-
-		memset(cis_param, 0, sizeof(*cis_param));
-
-		cis_param->cis_id = cis->iso->iso.cis_id;
-		cis_param->nse = qos->num_subevents;
-
-		if (!qos->tx && !qos->rx) {
-			LOG_ERR("Both TX and RX QoS are disabled");
-			net_buf_unref(buf);
-			return NULL;
-		}
-
-		if (!qos->tx) {
-			/* Use RX PHY if TX is not set (disabled)
-			 * to avoid setting invalid values
-			 */
-			cis_param->c_phy = qos->rx->phy;
-		} else {
-			cis_param->c_sdu = sys_cpu_to_le16(qos->tx->sdu);
-			cis_param->c_pdu = sys_cpu_to_le16(qos->tx->max_pdu);
-			cis_param->c_phy = qos->tx->phy;
-			cis_param->c_bn = qos->tx->burst_number;
-		}
-
-		if (!qos->rx) {
-			/* Use TX PHY if RX is not set (disabled)
-			 * to avoid setting invalid values
-			 */
-			cis_param->p_phy = qos->tx->phy;
-		} else {
-			cis_param->p_sdu = sys_cpu_to_le16(qos->rx->sdu);
-			cis_param->p_pdu = sys_cpu_to_le16(qos->rx->max_pdu);
-			cis_param->p_phy = qos->rx->phy;
-			cis_param->p_bn = qos->rx->burst_number;
-		}
-
-		LOG_DBG("[%d]: id %u, nse %u c_sdu %u, p_sdu %u, c_pdu %u, "
-			"p_pdu %u, c_phy %u, p_phy %u, c_bn %u, p_bn %u",
-			i, cis_param->cis_id, cis_param->nse, cis_param->c_sdu,
-			cis_param->p_sdu, cis_param->c_pdu, cis_param->p_pdu,
-			cis_param->c_phy, cis_param->p_phy, cis_param->c_bn,
-			cis_param->p_bn);
-	}
-
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_CIG_PARAMS_TEST, buf, &rsp);
-	if (err) {
-		return NULL;
-	}
-
-	return rsp;
-}
-
-static bool is_advanced_cig_param(const struct bt_iso_cig_param *param)
-{
-	if (param->c_to_p_ft != 0U ||
-	    param->p_to_c_ft != 0U ||
-	    param->iso_interval != 0U) {
-		return true;
-	}
-
-	/* Check if any of the CIS contain any test-param-only values */
-	for (uint8_t i = 0U; i < param->num_cis; i++) {
-		const struct bt_iso_chan *cis = param->cis_channels[i];
-		const struct bt_iso_chan_qos *qos = cis->qos;
-
-		if (qos->num_subevents > 0U) {
-			return true;
-		}
-
-		if (qos->tx != NULL) {
-			if (qos->tx->max_pdu > 0U ||
-			    qos->tx->burst_number > 0U) {
-				return true;
-			}
-		}
-
-		if (qos->rx != NULL) {
-			if (qos->rx->max_pdu > 0U ||
-			    qos->rx->burst_number > 0U) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
 static struct bt_iso_cig *get_cig(const struct bt_iso_chan *iso_chan)
 {
 	if (iso_chan->iso == NULL) {
@@ -1790,7 +1599,7 @@ static void cleanup_cig(struct bt_iso_cig *cig)
 	memset(cig, 0, sizeof(*cig));
 }
 
-static bool valid_cig_param(const struct bt_iso_cig_param *param, bool advanced)
+static bool valid_cig_param(const struct bt_iso_cig_param *param)
 {
 	if (param == NULL) {
 		return false;
@@ -1809,7 +1618,7 @@ static bool valid_cig_param(const struct bt_iso_cig_param *param, bool advanced)
 			return false;
 		}
 
-		if (!valid_chan_qos(cis->qos, advanced)) {
+		if (!valid_chan_qos(cis->qos)) {
 			LOG_DBG("cis_channels[%d]: Invalid QOS", i);
 			return false;
 		}
@@ -1847,38 +1656,11 @@ static bool valid_cig_param(const struct bt_iso_cig_param *param, bool advanced)
 		return false;
 	}
 
-	if (!advanced &&
-	    (param->latency < BT_ISO_LATENCY_MIN ||
-	     param->latency > BT_ISO_LATENCY_MAX)) {
+	if (param->latency < BT_ISO_LATENCY_MIN ||
+	    param->latency > BT_ISO_LATENCY_MAX) {
 		LOG_DBG("Invalid latency: %u", param->latency);
 		return false;
 	}
-
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	if (advanced) {
-		if (!IN_RANGE(param->c_to_p_ft, BT_ISO_FT_MIN, BT_ISO_FT_MAX)) {
-			LOG_DBG("Invalid Central to Peripheral FT %u",
-				param->c_to_p_ft);
-
-			return false;
-		}
-
-		if (!IN_RANGE(param->p_to_c_ft, BT_ISO_FT_MIN, BT_ISO_FT_MAX)) {
-			LOG_DBG("Invalid Peripheral to Central FT %u",
-				param->p_to_c_ft);
-
-			return false;
-		}
-
-		if (!IN_RANGE(param->iso_interval,
-			      BT_ISO_ISO_INTERVAL_MIN,
-			      BT_ISO_ISO_INTERVAL_MAX)) {
-			LOG_DBG("Invalid ISO interval %u", param->iso_interval);
-
-			return false;
-		}
-	}
-#endif /* CONFIG_BT_ISO_ADVANCED */
 
 	return true;
 }
@@ -1891,7 +1673,6 @@ int bt_iso_cig_create(const struct bt_iso_cig_param *param,
 	struct bt_iso_cig *cig;
 	struct bt_hci_rp_le_set_cig_params *cig_rsp;
 	struct bt_iso_chan *cis;
-	bool advanced = false;
 	int i;
 
 	CHECKIF(out_cig == NULL) {
@@ -1917,11 +1698,7 @@ int bt_iso_cig_create(const struct bt_iso_cig_param *param,
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	advanced = is_advanced_cig_param(param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
-	CHECKIF(!valid_cig_param(param, advanced)) {
+	CHECKIF(!valid_cig_param(param)) {
 		LOG_DBG("Invalid CIG params");
 		return -EINVAL;
 	}
@@ -1939,14 +1716,7 @@ int bt_iso_cig_create(const struct bt_iso_cig_param *param,
 		return err;
 	}
 
-	if (!advanced) {
-		rsp = hci_le_set_cig_params(cig, param);
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	} else {
-		rsp = hci_le_set_cig_test_params(cig, param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
-	}
-
+	rsp = hci_le_set_cig_params(cig, param);
 	if (rsp == NULL) {
 		LOG_WRN("Unexpected response to hci_le_set_cig_params");
 		err = -EIO;
@@ -2007,7 +1777,6 @@ int bt_iso_cig_reconfigure(struct bt_iso_cig *cig,
 	struct bt_hci_rp_le_set_cig_params *cig_rsp;
 	uint8_t existing_num_cis;
 	struct bt_iso_chan *cis;
-	bool advanced = false;
 	struct net_buf *rsp;
 	int err;
 	int i;
@@ -2022,11 +1791,7 @@ int bt_iso_cig_reconfigure(struct bt_iso_cig *cig,
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	advanced = is_advanced_cig_param(param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
-	CHECKIF(!valid_cig_param(param, advanced)) {
+	CHECKIF(!valid_cig_param(param)) {
 		LOG_DBG("Invalid CIG params");
 		return -EINVAL;
 	}
@@ -2052,14 +1817,7 @@ int bt_iso_cig_reconfigure(struct bt_iso_cig *cig,
 		return err;
 	}
 
-	if (!advanced) {
-		rsp = hci_le_set_cig_params(cig, param);
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	} else {
-		rsp = hci_le_set_cig_test_params(cig, param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
-	}
-
+	rsp = hci_le_set_cig_params(cig, param);
 	if (rsp == NULL) {
 		LOG_WRN("Unexpected response to hci_le_set_cig_params");
 		err = -EIO;
@@ -2569,113 +2327,25 @@ static int hci_le_create_big(struct bt_le_ext_adv *padv, struct bt_iso_big *big,
 	return err;
 }
 
-#if defined(CONFIG_BT_ISO_ADVANCED)
-static int hci_le_create_big_test(const struct bt_le_ext_adv *padv,
-				  struct bt_iso_big *big,
-				  const struct bt_iso_big_create_param *param)
+int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param *param,
+		      struct bt_iso_big **out_big)
 {
-	struct bt_hci_cp_le_create_big_test *req;
-	struct bt_hci_cmd_state_set state;
-	const struct bt_iso_chan_qos *qos;
-	struct bt_iso_chan *bis;
-	struct net_buf *buf;
 	int err;
+	struct bt_iso_big *big;
 
-	buf = bt_hci_cmd_create(BT_HCI_OP_LE_CREATE_BIG_TEST, sizeof(*req));
-
-	if (!buf) {
-		return -ENOBUFS;
+	if (!atomic_test_bit(padv->flags, BT_PER_ADV_PARAMS_SET)) {
+		LOG_DBG("PA params not set; invalid adv object");
+		return -EINVAL;
 	}
 
-	bis = SYS_SLIST_PEEK_HEAD_CONTAINER(&big->bis_channels, bis, node);
-	__ASSERT(bis != NULL, "bis was NULL");
-
-	/* All BIS will share the same QOS */
-	qos = bis->qos;
-
-	req = net_buf_add(buf, sizeof(*req));
-	req->big_handle = big->handle;
-	req->adv_handle = padv->handle;
-	req->num_bis = big->num_bis;
-	sys_put_le24(param->interval, req->sdu_interval);
-	req->iso_interval = sys_cpu_to_le16(param->iso_interval);
-	req->nse = qos->num_subevents;
-	req->max_sdu = sys_cpu_to_le16(qos->tx->sdu);
-	req->max_pdu = sys_cpu_to_le16(qos->tx->max_pdu);
-	req->phy = qos->tx->phy;
-	req->packing = param->packing;
-	req->framing = param->framing;
-	req->bn = qos->tx->burst_number;
-	req->irc = param->irc;
-	req->pto = param->pto;
-	req->encryption = param->encryption;
-	if (req->encryption) {
-		memcpy(req->bcode, param->bcode, sizeof(req->bcode));
-	} else {
-		memset(req->bcode, 0, sizeof(req->bcode));
-	}
-
-	LOG_DBG("BIG handle %u, adv handle %u, num_bis %u, SDU interval %u, "
-		"ISO interval %u, NSE %u, SDU %u, PDU %u, PHY %u, packing %u, "
-		"framing %u, BN %u, IRC %u, PTO %u, encryption %u",
-		req->big_handle, req->adv_handle, req->num_bis, param->interval,
-		param->iso_interval, req->nse, req->max_sdu, req->max_pdu,
-		req->phy, req->packing, req->framing, req->bn, req->irc,
-		req->pto, req->encryption);
-
-	bt_hci_cmd_state_set_init(buf, &state, big->flags, BT_BIG_PENDING, true);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_CREATE_BIG_TEST, buf, NULL);
-	if (err) {
-		return err;
-	}
-
-	SYS_SLIST_FOR_EACH_CONTAINER(&big->bis_channels, bis, node) {
-		bt_iso_chan_set_state(bis, BT_ISO_STATE_CONNECTING);
-	}
-
-	return err;
-}
-
-static bool is_advanced_big_param(const struct bt_iso_big_create_param *param)
-{
-	if (param->irc != 0U ||
-	    param->iso_interval != 0U) {
-		return true;
-	}
-
-	/* Check if any of the CIS contain any test-param-only values */
-	for (uint8_t i = 0U; i < param->num_bis; i++) {
-		const struct bt_iso_chan *bis = param->bis_channels[i];
-		const struct bt_iso_chan_qos *qos = bis->qos;
-
-		if (qos->num_subevents > 0U) {
-			return true;
-		}
-
-		__ASSERT(qos->tx != NULL, "TX cannot be NULL for broadcaster");
-
-		if (qos->tx->max_pdu > 0U || qos->tx->burst_number > 0U) {
-			return true;
-		}
-	}
-
-	return false;
-}
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
-static bool valid_big_param(const struct bt_iso_big_create_param *param,
-			    bool advanced)
-{
 	CHECKIF(!param->bis_channels) {
 		LOG_DBG("NULL BIS channels");
-
-		return false;
+		return -EINVAL;
 	}
 
 	CHECKIF(!param->num_bis) {
 		LOG_DBG("Invalid number of BIS %u", param->num_bis);
-
-		return false;
+		return -EINVAL;
 	}
 
 	for (uint8_t i = 0; i < param->num_bis; i++) {
@@ -2683,116 +2353,54 @@ static bool valid_big_param(const struct bt_iso_big_create_param *param,
 
 		CHECKIF(bis == NULL) {
 			LOG_DBG("bis_channels[%u]: NULL channel", i);
-
-			return false;
+			return -EINVAL;
 		}
 
 		if (bis->iso) {
 			LOG_DBG("bis_channels[%u]: already allocated", i);
-
-			return false;
+			return -EALREADY;
 		}
 
 		CHECKIF(bis->qos == NULL) {
 			LOG_DBG("bis_channels[%u]: qos is NULL", i);
-
-			return false;
+			return -EINVAL;
 		}
 
 		CHECKIF(bis->qos->tx == NULL ||
-			!valid_chan_io_qos(bis->qos->tx, true, true,
-					   advanced)) {
+			!valid_chan_io_qos(bis->qos->tx, true)) {
 			LOG_DBG("bis_channels[%u]: Invalid QOS", i);
-
-			return false;
+			return -EINVAL;
 		}
 	}
 
 	CHECKIF(param->framing != BT_ISO_FRAMING_UNFRAMED &&
 		param->framing != BT_ISO_FRAMING_FRAMED) {
 		LOG_DBG("Invalid framing parameter: %u", param->framing);
-
-		return false;
+		return -EINVAL;
 	}
 
 	CHECKIF(param->packing != BT_ISO_PACKING_SEQUENTIAL &&
 		param->packing != BT_ISO_PACKING_INTERLEAVED) {
 		LOG_DBG("Invalid packing parameter: %u", param->packing);
-
-		return false;
+		return -EINVAL;
 	}
 
 	CHECKIF(param->num_bis > BT_ISO_MAX_GROUP_ISO_COUNT ||
 		param->num_bis > CONFIG_BT_ISO_MAX_CHAN) {
 		LOG_DBG("num_bis (%u) shall be lower than: %u", param->num_bis,
 			MAX(CONFIG_BT_ISO_MAX_CHAN, BT_ISO_MAX_GROUP_ISO_COUNT));
-
-		return false;
-	}
-
-	CHECKIF(!IN_RANGE(param->interval,
-			  BT_ISO_SDU_INTERVAL_MIN,
-			  BT_ISO_SDU_INTERVAL_MAX)) {
-		LOG_DBG("Invalid interval: %u", param->interval);
-
-		return false;
-	}
-
-	CHECKIF(!advanced &&
-		!IN_RANGE(param->latency,
-			  BT_ISO_LATENCY_MIN,
-			  BT_ISO_LATENCY_MAX)) {
-		LOG_DBG("Invalid latency: %u", param->latency);
-
-		return false;
-	}
-
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	if (advanced) {
-		CHECKIF(!IN_RANGE(param->irc, BT_ISO_IRC_MIN, BT_ISO_IRC_MAX)) {
-			LOG_DBG("Invalid IRC %u", param->irc);
-
-			return false;
-		}
-
-		CHECKIF(!IN_RANGE(param->pto, BT_ISO_PTO_MIN, BT_ISO_PTO_MAX)) {
-			LOG_DBG("Invalid PTO %u", param->pto);
-
-			return false;
-		}
-
-		CHECKIF(!IN_RANGE(param->iso_interval,
-				BT_ISO_ISO_INTERVAL_MIN,
-				BT_ISO_ISO_INTERVAL_MAX)) {
-			LOG_DBG("Invalid ISO interval %u", param->iso_interval);
-
-			return false;
-		}
-	}
-#endif /* CONFIG_BT_ISO_ADVANCED */
-
-	return true;
-}
-
-int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param *param,
-		      struct bt_iso_big **out_big)
-{
-	int err;
-	struct bt_iso_big *big;
-	bool advanced = false;
-
-	if (!atomic_test_bit(padv->flags, BT_PER_ADV_PARAMS_SET)) {
-		LOG_DBG("PA params not set; invalid adv object");
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	advanced = is_advanced_big_param(param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
+	CHECKIF(param->interval < BT_ISO_SDU_INTERVAL_MIN ||
+		param->interval > BT_ISO_SDU_INTERVAL_MAX) {
+		LOG_DBG("Invalid interval: %u", param->interval);
+		return -EINVAL;
+	}
 
-	if (!valid_big_param(param, advanced)) {
-		LOG_DBG("Invalid BIG parameters");
-
+	CHECKIF(param->latency < BT_ISO_LATENCY_MIN ||
+		param->latency > BT_ISO_LATENCY_MAX) {
+		LOG_DBG("Invalid latency: %u", param->latency);
 		return -EINVAL;
 	}
 
@@ -2810,14 +2418,7 @@ int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param
 	}
 	big->num_bis = param->num_bis;
 
-	if (!advanced) {
-		err = hci_le_create_big(padv, big, param);
-#if defined(CONFIG_BT_ISO_ADVANCED)
-	} else {
-		err = hci_le_create_big_test(padv, big, param);
-#endif /* CONFIG_BT_ISO_ADVANCED */
-	}
-
+	err = hci_le_create_big(padv, big, param);
 	if (err) {
 		LOG_DBG("Could not create BIG %d", err);
 		cleanup_big(big);

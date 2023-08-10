@@ -49,7 +49,7 @@ else()
   set(rom_start ${RAM_ADDR})
 endif()
 
-zephyr_linker_group(NAME RAM_REGION VMA RAM LMA ROM_REGION)
+zephyr_linker_group(NAME RAM_REGION VMA RAM LMA RAM)
 zephyr_linker_group(NAME TEXT_REGION GROUP ROM_REGION SYMBOL SECTION)
 zephyr_linker_group(NAME RODATA_REGION GROUP ROM_REGION)
 zephyr_linker_group(NAME DATA_REGION GROUP RAM_REGION SYMBOL SECTION)
@@ -122,7 +122,7 @@ include(${COMMON_ZEPHYR_LINKER_DIR}/common-ram.cmake)
 #include(kobject.ld)
 
 if(NOT CONFIG_USERSPACE)
-  zephyr_linker_section(NAME .bss VMA RAM LMA FLASH TYPE BSS)
+  zephyr_linker_section(NAME .bss VMA RAM LMA RAM_REGION TYPE BSS)
   zephyr_linker_section_configure(SECTION .bss INPUT COMMON)
   zephyr_linker_section_configure(SECTION .bss INPUT ".kernel_bss.*")
   # As memory is cleared in words only, it is simpler to ensure the BSS
@@ -134,8 +134,6 @@ if(NOT CONFIG_USERSPACE)
   # will not be cleared during the boot process.
   zephyr_linker_section_configure(SECTION .noinit INPUT ".kernel_noinit.*")
 endif()
-
-include(${COMMON_ZEPHYR_LINKER_DIR}/ram-end.cmake)
 
 zephyr_linker_symbol(OBJECT REGION_RAM SYMBOL __kernel_ram_start EXPR "(@__bss_start@)")
 zephyr_linker_symbol(OBJECT REGION_RAM SYMBOL __kernel_ram_end  EXPR "(${RAM_ADDR} + ${RAM_SIZE})")

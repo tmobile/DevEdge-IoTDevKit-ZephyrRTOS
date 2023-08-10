@@ -25,10 +25,6 @@ extern "C" {
 #define PTHREAD_CREATE_DETACHED 0
 #define PTHREAD_CREATE_JOINABLE 1
 
-/* Pthread resource visibility */
-#define PTHREAD_PROCESS_PRIVATE 0
-#define PTHREAD_PROCESS_SHARED  1
-
 /* Pthread cancellation */
 #define _PTHREAD_CANCEL_POS	0
 #define PTHREAD_CANCEL_ENABLE	(0U << _PTHREAD_CANCEL_POS)
@@ -297,12 +293,6 @@ static inline int pthread_mutexattr_destroy(pthread_mutexattr_t *m)
 
 #define PTHREAD_BARRIER_SERIAL_THREAD 1
 
-/*
- *  Barrier attributes - type
- */
-#define PTHREAD_PROCESS_PRIVATE		0
-#define PTHREAD_PROCESS_PUBLIC		1
-
 /**
  * @brief POSIX threading compatibility API
  *
@@ -329,30 +319,29 @@ int pthread_barrier_destroy(pthread_barrier_t *b);
  * @brief POSIX threading compatibility API
  *
  * See IEEE 1003.1
+ *
+ * Note that pthread attribute structs are currently noops in Zephyr.
  */
-int pthread_barrierattr_init(pthread_barrierattr_t *b);
+static inline int pthread_barrierattr_init(pthread_barrierattr_t *b)
+{
+	ARG_UNUSED(b);
+
+	return 0;
+}
 
 /**
  * @brief POSIX threading compatibility API
  *
  * See IEEE 1003.1
- */
-int pthread_barrierattr_destroy(pthread_barrierattr_t *b);
-
-/**
- * @brief POSIX threading compatibility API
  *
- * See IEEE 1003.1
+ * Note that pthread attribute structs are currently noops in Zephyr.
  */
-int pthread_barrierattr_setpshared(pthread_barrierattr_t *attr, int pshared);
+static inline int pthread_barrierattr_destroy(pthread_barrierattr_t *b)
+{
+	ARG_UNUSED(b);
 
-/**
- * @brief POSIX threading compatibility API
- *
- * See IEEE 1003.1
- */
-int pthread_barrierattr_getpshared(const pthread_barrierattr_t *ZRESTRICT attr,
-				   int *ZRESTRICT pshared);
+	return 0;
+}
 
 /* Predicates and setters for various pthread attribute values that we
  * don't support (or always support: the "process shared" attribute
@@ -377,6 +366,8 @@ int pthread_mutexattr_getrobust(const pthread_mutexattr_t * int *);
 int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *, int);
 int pthread_mutexattr_setpshared(pthread_mutexattr_t *, int);
 int pthread_mutexattr_setrobust(pthread_mutexattr_t *, int);
+int pthread_barrierattr_getpshared(const pthread_barrierattr_t *, int *);
+int pthread_barrierattr_setpshared(pthread_barrierattr_t *, int);
 */
 
 /* Base Pthread related APIs */
@@ -396,7 +387,10 @@ pthread_t pthread_self(void);
  *
  * See IEEE 1003.1
  */
-int pthread_equal(pthread_t pt1, pthread_t pt2);
+static inline int pthread_equal(pthread_t pt1, pthread_t pt2)
+{
+	return (pt1 == pt2);
+}
 
 /**
  * @brief Destroy the read-write lock attributes object.
@@ -500,45 +494,6 @@ int pthread_setname_np(pthread_t thread, const char *name);
  * @retval Negative value if kernel function error
  */
 int pthread_getname_np(pthread_t thread, char *name, size_t len);
-
-#ifdef CONFIG_PTHREAD_IPC
-
-/**
- * @brief Destroy a pthread_spinlock_t.
- *
- * See IEEE 1003.1
- */
-int pthread_spin_destroy(pthread_spinlock_t *lock);
-
-/**
- * @brief Initialize a thread_spinlock_t.
- *
- * See IEEE 1003.1
- */
-int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
-
-/**
- * @brief Lock a previously initialized thread_spinlock_t.
- *
- * See IEEE 1003.1
- */
-int pthread_spin_lock(pthread_spinlock_t *lock);
-
-/**
- * @brief Attempt to lock a previously initialized thread_spinlock_t.
- *
- * See IEEE 1003.1
- */
-int pthread_spin_trylock(pthread_spinlock_t *lock);
-
-/**
- * @brief Unlock a previously locked thread_spinlock_t.
- *
- * See IEEE 1003.1
- */
-int pthread_spin_unlock(pthread_spinlock_t *lock);
-
-#endif
 
 #ifdef __cplusplus
 }

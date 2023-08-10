@@ -3,7 +3,7 @@
 # Copyright (c) 2018-2022 Intel Corporation
 # Copyright 2022 NXP
 # SPDX-License-Identifier: Apache-2.0
-from __future__ import annotations
+
 import os
 import hashlib
 import random
@@ -11,19 +11,11 @@ import logging
 import shutil
 import glob
 
-from twisterlib.testsuite import TestCase, TestSuite
-from twisterlib.platform import Platform
+from twisterlib.testsuite import TestCase
 from twisterlib.error import BuildError
 from twisterlib.size_calc import SizeCalculator
-from twisterlib.handlers import (
-    Handler,
-    SimulationHandler,
-    BinaryHandler,
-    QEMUHandler,
-    DeviceHandler,
-    SUPPORTED_SIMS,
-    SUPPORTED_SIMS_IN_PYTEST,
-)
+from twisterlib.handlers import Handler, SimulationHandler, BinaryHandler, QEMUHandler, DeviceHandler, SUPPORTED_SIMS
+from twisterlib.harness import SUPPORTED_SIMS_IN_PYTEST
 
 logger = logging.getLogger('twister')
 logger.setLevel(logging.DEBUG)
@@ -41,8 +33,8 @@ class TestInstance:
 
     def __init__(self, testsuite, platform, outdir):
 
-        self.testsuite: TestSuite = testsuite
-        self.platform: Platform = platform
+        self.testsuite = testsuite
+        self.platform = platform
 
         self.status = None
         self.reason = "Unknown"
@@ -59,7 +51,7 @@ class TestInstance:
         self.domains = None
 
         self.run = False
-        self.testcases: list[TestCase] = []
+        self.testcases = []
         self.init_cases()
         self.filters = []
         self.filter_type = None
@@ -290,17 +282,15 @@ class TestInstance:
             build_dir = self.build_dir
 
         fns = glob.glob(os.path.join(build_dir, "zephyr", "*.elf"))
+        fns.extend(glob.glob(os.path.join(build_dir, "zephyr", "*.exe")))
         fns.extend(glob.glob(os.path.join(build_dir, "testbinary")))
         blocklist = [
                 'remapped', # used for xtensa plaforms
                 'zefi', # EFI for Zephyr
-                'qemu', # elf files generated after running in qemu
-                '_pre']
+                '_pre' ]
         fns = [x for x in fns if not any(bad in os.path.basename(x) for bad in blocklist)]
-        if not fns:
-            raise BuildError("Missing output binary")
-        elif len(fns) > 1:
-            logger.warning(f"multiple ELF files detected: {', '.join(fns)}")
+        if len(fns) != 1 and self.platform.type != 'native':
+            raise BuildError("Missing/multiple output ELF binary")
         return fns[0]
 
     def get_buildlog_file(self) -> str:

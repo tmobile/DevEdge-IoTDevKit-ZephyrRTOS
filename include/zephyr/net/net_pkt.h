@@ -29,7 +29,6 @@
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_context.h>
-#include <zephyr/net/net_time.h>
 #include <zephyr/net/ethernet_vlan.h>
 #include <zephyr/net/ptp_time.h>
 
@@ -95,24 +94,10 @@ struct net_pkt {
 	struct net_if *orig_iface; /* Original network interface */
 #endif
 
-#if defined(CONFIG_NET_PKT_TIMESTAMP) || defined(CONFIG_NET_PKT_TXTIME)
+#if defined(CONFIG_NET_PKT_TIMESTAMP)
 	/**
-	 * TX or RX timestamp if available
-	 *
-	 * For packets that have been sent over the medium, the timestamp refers
-	 * to the time the message timestamp point was encountered at the
-	 * reference plane.
-	 *
-	 * Unsent packages can be scheduled by setting the timestamp to a future
-	 * point in time.
-	 *
-	 * All timestamps refer to the network subsystem's local clock.
-	 *
-	 * See @ref net_ptp_time for definitions of local clock, message
-	 * timestamp point and reference plane. See @ref net_time_t for
-	 * semantics of the network reference clock.
-	 *
-	 * TODO: Replace with net_time_t to decouple from PTP.
+	 * Timestamp if available.
+	 * For IEEE 802.15.4 packets this refers to the first symbol of the MAC Header.
 	 */
 	struct net_ptp_time timestamp;
 #endif
@@ -137,6 +122,11 @@ struct net_pkt {
 	  CONFIG_NET_PKT_RXTIME_STATS_DETAIL */
 	};
 #endif /* CONFIG_NET_PKT_RXTIME_STATS || CONFIG_NET_PKT_TXTIME_STATS */
+
+#if defined(CONFIG_NET_PKT_TXTIME)
+	/** Network packet TX time in the future (in nanoseconds) */
+	uint64_t txtime;
+#endif /* CONFIG_NET_PKT_TXTIME */
 
 	/** Reference counter */
 	atomic_t atomic_ref;
@@ -953,7 +943,7 @@ static inline void net_pkt_set_vlan_tci(struct net_pkt *pkt, uint16_t tci)
 }
 #endif
 
-#if defined(CONFIG_NET_PKT_TIMESTAMP) || defined(CONFIG_NET_PKT_TXTIME)
+#if defined(CONFIG_NET_PKT_TIMESTAMP)
 static inline struct net_ptp_time *net_pkt_timestamp(struct net_pkt *pkt)
 {
 	return &pkt->timestamp;
@@ -979,7 +969,7 @@ static inline void net_pkt_set_timestamp(struct net_pkt *pkt,
 	ARG_UNUSED(pkt);
 	ARG_UNUSED(timestamp);
 }
-#endif /* CONFIG_NET_PKT_TIMESTAMP || CONFIG_NET_PKT_TXTIME */
+#endif /* CONFIG_NET_PKT_TIMESTAMP */
 
 #if defined(CONFIG_NET_PKT_RXTIME_STATS) || defined(CONFIG_NET_PKT_TXTIME_STATS)
 static inline uint32_t net_pkt_create_time(struct net_pkt *pkt)
@@ -1008,33 +998,30 @@ static inline void net_pkt_set_create_time(struct net_pkt *pkt,
 }
 #endif /* CONFIG_NET_PKT_RXTIME_STATS || CONFIG_NET_PKT_TXTIME_STATS */
 
-/**
- * @deprecated Use @ref net_pkt_timestamp instead.
- */
+#if defined(CONFIG_NET_PKT_TXTIME)
 static inline uint64_t net_pkt_txtime(struct net_pkt *pkt)
 {
-#if defined(CONFIG_NET_PKT_TXTIME)
-	return pkt->timestamp.second * NSEC_PER_SEC + pkt->timestamp.nanosecond;
+	return pkt->txtime;
+}
+
+static inline void net_pkt_set_txtime(struct net_pkt *pkt, uint64_t txtime)
+{
+	pkt->txtime = txtime;
+}
 #else
+static inline uint64_t net_pkt_txtime(struct net_pkt *pkt)
+{
 	ARG_UNUSED(pkt);
 
 	return 0;
-#endif /* CONFIG_NET_PKT_TXTIME */
 }
 
-/**
- * @deprecated Use @ref net_pkt_set_timestamp instead.
- */
 static inline void net_pkt_set_txtime(struct net_pkt *pkt, uint64_t txtime)
 {
-#if defined(CONFIG_NET_PKT_TXTIME)
-	pkt->timestamp.second = txtime / NSEC_PER_SEC;
-	pkt->timestamp.nanosecond = txtime % NSEC_PER_SEC;
-#else
 	ARG_UNUSED(pkt);
 	ARG_UNUSED(txtime);
-#endif /* CONFIG_NET_PKT_TXTIME */
 }
+#endif /* CONFIG_NET_PKT_TXTIME */
 
 #if defined(CONFIG_NET_PKT_TXTIME_STATS_DETAIL) || \
 	defined(CONFIG_NET_PKT_RXTIME_STATS_DETAIL)
@@ -1287,37 +1274,6 @@ static inline bool net_pkt_filter_recv_ok(struct net_pkt *pkt)
 }
 
 #endif /* CONFIG_NET_PKT_FILTER */
-
-#if defined(CONFIG_NET_PKT_FILTER) && \
-	(defined(CONFIG_NET_PKT_FILTER_IPV4_HOOK) || defined(CONFIG_NET_PKT_FILTER_IPV6_HOOK))
-
-bool net_pkt_filter_ip_recv_ok(struct net_pkt *pkt);
-
-#else
-
-static inline bool net_pkt_filter_ip_recv_ok(struct net_pkt *pkt)
-{
-	ARG_UNUSED(pkt);
-
-	return true;
-}
-
-#endif /* CONFIG_NET_PKT_FILTER_IPV4_HOOK || CONFIG_NET_PKT_FILTER_IPV6_HOOK */
-
-#if defined(CONFIG_NET_PKT_FILTER) && defined(CONFIG_NET_PKT_FILTER_LOCAL_IN_HOOK)
-
-bool net_pkt_filter_local_in_recv_ok(struct net_pkt *pkt);
-
-#else
-
-static inline bool net_pkt_filter_local_in_recv_ok(struct net_pkt *pkt)
-{
-	ARG_UNUSED(pkt);
-
-	return true;
-}
-
-#endif /* CONFIG_NET_PKT_FILTER && CONFIG_NET_PKT_FILTER_LOCAL_IN_HOOK */
 
 /* @endcond */
 

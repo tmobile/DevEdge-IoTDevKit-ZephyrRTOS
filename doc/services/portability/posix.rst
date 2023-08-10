@@ -59,7 +59,6 @@ as POSIX.1-2017).
     POSIX_FILE_LOCKING,
     POSIX_SIGNALS,
     POSIX_SINGLE_PROCESS,
-    POSIX_SPIN_LOCKS,yes
     POSIX_THREADS_BASE,yes
     XSI_THREAD_MUTEX_EXT,yes
     XSI_THREADS_EXT,yes
@@ -94,12 +93,11 @@ Zephyr.
     _POSIX_REALTIME_SIGNALS,
     _POSIX_SEMAPHORES,yes
     _POSIX_SHARED_MEMORY_OBJECTS,
-    _POSIX_SPIN_LOCKS,yes
     _POSIX_SYNCHRONIZED_IO,
     _POSIX_THREAD_ATTR_STACKADDR,yes
     _POSIX_THREAD_ATTR_STACKSIZE,yes
     _POSIX_THREAD_CPUTIME,
-    _POSIX_THREAD_PRIO_INHERIT,
+    _POSIX_THREAD_PRIO_INHERIT,yes
     _POSIX_THREAD_PRIO_PROTECT,
     _POSIX_THREAD_PRIORITY_SCHEDULING,yes
     _POSIX_THREAD_SPORADIC_SERVER,
@@ -140,10 +138,10 @@ multiple processes.
     pthread_barrier_destroy(),yes
     pthread_barrier_init(),yes
     pthread_barrier_wait(),yes
-    pthread_barrierattr_destroy(),yes
-    pthread_barrierattr_getpshared(),yes
-    pthread_barrierattr_init(),yes
-    pthread_barrierattr_setpshared(),yes
+    pthread_barrierattr_destroy(),
+    pthread_barrierattr_getpshared(),
+    pthread_barrierattr_init(),
+    pthread_barrierattr_setpshared(),
     pthread_cancel(),yes
     pthread_cleanup_pop(),
     pthread_cleanup_push(),
@@ -153,11 +151,11 @@ multiple processes.
     pthread_cond_signal(),yes
     pthread_cond_timedwait(),yes
     pthread_cond_wait(),yes
-    pthread_condattr_destroy(),yes
-    pthread_condattr_init(),yes
+    pthread_condattr_destroy(),
+    pthread_condattr_init(),
     pthread_create(),yes
     pthread_detach(),yes
-    pthread_equal(),yes
+    pthread_equal(),
     pthread_exit(),yes
     pthread_getspecific(),yes
     pthread_join(),yes
@@ -169,8 +167,8 @@ multiple processes.
     pthread_mutex_lock(),yes
     pthread_mutex_trylock(),yes
     pthread_mutex_unlock(),yes
-    pthread_mutexattr_destroy(),yes
-    pthread_mutexattr_init(),yes
+    pthread_mutexattr_destroy(),
+    pthread_mutexattr_init(),
     pthread_once(),yes
     pthread_self(),yes
     pthread_setcancelstate(),yes
@@ -355,7 +353,7 @@ process applications.
     getenv(),
     setenv(),
     sysconf(),
-    uname(),yes
+    uname(),
     unsetenv()
 
 
@@ -376,37 +374,16 @@ required for error and event handling.
     pause(),
     raise(),
     sigaction(),
-    sigaddset(),yes
-    sigdelset(),yes
-    sigemptyset(),yes
-    sigfillset(),yes
-    sigismember(),yes
+    igaddset(),
+    sigdelset(),
+    sigemptyset(),
+    sigfillset(),
+    igismember(),
     signal(),
     sigpending(),
     sigprocmask(),
     igsuspend(),
-    sigwait(),
-    strsignal(),yes
-
-.. csv-table:: POSIX_SPIN_LOCKS
-   :header: API, Supported
-   :widths: 50,10
-
-    pthread_spin_destroy(),yes
-    pthread_spin_init(),yes
-    pthread_spin_lock(),yes
-    pthread_spin_trylock(),yes
-    pthread_spin_unlock(),yes
-
-.. csv-table:: POSIX_SPIN_LOCKS
-   :header: API, Supported
-   :widths: 50,10
-
-    pthread_spin_destroy(),yes
-    pthread_spin_init(),yes
-    pthread_spin_lock(),yes
-    pthread_spin_trylock(),yes
-    pthread_spin_unlock(),yes
+    sigwait()
 
 
 POSIX_DEVICE_IO
@@ -453,7 +430,7 @@ POSIX_DEVICE_IO
     read(),yes
     scanf(),
     setbuf(),
-    setvbuf(),
+    etvbuf(),
     stderr,yes
     stdin,yes
     stdout,yes

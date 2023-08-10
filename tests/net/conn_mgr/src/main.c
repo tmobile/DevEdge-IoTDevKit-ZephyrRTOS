@@ -44,6 +44,9 @@ static void reset_test_iface(struct net_if *iface)
 	struct in6_addr *ll_ipv6;
 
 	if (net_if_is_admin_up(iface)) {
+		if (conn_mgr_if_is_bound(iface)) {
+			(void)conn_mgr_if_disconnect(iface);
+		}
 		(void)net_if_down(iface);
 	}
 
@@ -183,6 +186,10 @@ static void cycle_ready_ifaces(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take A up */
 	zassert_equal(net_if_up(ifa), 0, "net_if_up should succeed for ifa.");
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_connect(ifa), 0,
+			"conn_mgr_if_connect should succeed for ifa.");
+	}
 
 	/* Expect connectivity gained */
 	k_sleep(EVENT_WAIT_TIME);
@@ -195,6 +202,10 @@ static void cycle_ready_ifaces(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take B up */
 	zassert_equal(net_if_up(ifb), 0, "net_if_up should succeed for ifb.");
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_connect(ifb), 0,
+			"conn_mgr_if_connect should succeed for ifb.");
+	}
 
 	/* Expect no events */
 	k_sleep(EVENT_WAIT_TIME);
@@ -203,6 +214,10 @@ static void cycle_ready_ifaces(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take A down */
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_disconnect(ifa), 0,
+			"conn_mgr_if_disconnect should succeed for ifa.");
+	}
 	zassert_equal(net_if_down(ifa), 0, "net_if_down should succeed for ifa.");
 
 	/* Expect no events */
@@ -212,6 +227,10 @@ static void cycle_ready_ifaces(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take B down */
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_disconnect(ifb), 0,
+			"conn_mgr_if_disconnect should succeed for ifb.");
+	}
 	zassert_equal(net_if_down(ifb), 0, "net_if_down should succeed for ifb.");
 
 	/* Expect connectivity loss */
@@ -247,6 +266,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take B up */
 	zassert_equal(net_if_up(ifb), 0, "net_if_up should succeed for ifb.");
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_connect(ifb), 0,
+			"conn_mgr_if_connect should succeed for ifb.");
+	}
 
 	/* Expect no events */
 	k_sleep(EVENT_WAIT_TIME);
@@ -255,6 +278,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take B down */
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_disconnect(ifb), 0,
+			"conn_mgr_if_disconnect should succeed for ifb.");
+	}
 	zassert_equal(net_if_down(ifb), 0, "net_if_down should succeed for ifb.");
 
 	/* Expect no events */
@@ -265,6 +292,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take A up */
 	zassert_equal(net_if_up(ifa), 0, "net_if_up should succeed for ifa.");
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_connect(ifa), 0,
+			"conn_mgr_if_connect should succeed for ifa.");
+	}
 
 	/* Expect connectivity gained */
 	k_sleep(EVENT_WAIT_TIME);
@@ -277,6 +308,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take B up */
 	zassert_equal(net_if_up(ifb), 0, "net_if_up should succeed for ifb.");
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_connect(ifb), 0,
+			"conn_mgr_if_connect should succeed for ifb.");
+	}
 
 	/* Expect no events */
 	k_sleep(EVENT_WAIT_TIME);
@@ -285,6 +320,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take B down */
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_disconnect(ifb), 0,
+			"conn_mgr_if_disconnect should succeed for ifba.");
+	}
 	zassert_equal(net_if_down(ifb), 0, "net_if_down should succeed for ifb.");
 
 	/* Expect no events */
@@ -294,6 +333,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take A down */
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_disconnect(ifa), 0,
+			"conn_mgr_if_disconnect should succeed for ifa.");
+	}
 	zassert_equal(net_if_down(ifa), 0, "net_if_down should succeed for ifa.");
 
 	/* Expect connectivity lost */
@@ -310,6 +353,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take B up */
 	zassert_equal(net_if_up(ifb), 0, "net_if_up should succeed for ifb.");
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_connect(ifb), 0,
+			"conn_mgr_if_connect should succeed for ifb.");
+	}
 
 	/* Expect no events */
 	k_sleep(EVENT_WAIT_TIME);
@@ -319,6 +366,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take A up */
 	zassert_equal(net_if_up(ifa), 0, "net_if_up should succeed for ifa.");
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_connect(ifa), 0,
+			"conn_mgr_if_connect should succeed for ifa.");
+	}
 
 	/* Expect connectivity gained */
 	k_sleep(EVENT_WAIT_TIME);
@@ -330,6 +381,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 	zassert_equal(stats.conn_iface, ifa, "ifa should be blamed.");
 
 	/* Take B down */
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_disconnect(ifb), 0,
+			"conn_mgr_if_disconnect should succeed for ifb.");
+	}
 	zassert_equal(net_if_down(ifb), 0, "net_if_down should succeed for ifb.");
 
 	/* Expect no events */
@@ -341,6 +396,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 
 	/* Take B up */
 	zassert_equal(net_if_up(ifb), 0, "net_if_up should succeed for ifb.");
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_connect(ifb), 0,
+			"conn_mgr_if_connect should succeed for ifb.");
+	}
 
 	/* Expect no events */
 	k_sleep(EVENT_WAIT_TIME);
@@ -349,6 +408,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 		"No events should be fired if connectivity availability did not change.");
 
 	/* Take A down */
+	if (conn_mgr_if_is_bound(ifa)) {
+		zassert_equal(conn_mgr_if_disconnect(ifa), 0,
+			"conn_mgr_if_disconnect should succeed for ifa.");
+	}
 	zassert_equal(net_if_down(ifa), 0, "net_if_down should succeed for ifa.");
 
 	/* Expect connectivity lost */
@@ -361,6 +424,10 @@ static void cycle_ignored_iface(struct net_if *ifa, struct net_if *ifb)
 	zassert_equal(stats.dconn_iface, ifa, "ifa should be blamed.");
 
 	/* Take B down */
+	if (conn_mgr_if_is_bound(ifb)) {
+		zassert_equal(conn_mgr_if_disconnect(ifb), 0,
+			"conn_mgr_if_disconnect should succeed for ifb.");
+	}
 	zassert_equal(net_if_down(ifb), 0, "net_if_down should succeed for ifb.");
 
 	/* Expect no events */
@@ -413,6 +480,11 @@ static void cycle_iface_states(struct net_if *iface, enum ip_order ifa_ipm)
 
 	/* Take iface up */
 	zassert_equal(net_if_up(iface), 0, "net_if_up should succeed.");
+
+	if (conn_mgr_if_is_bound(iface)) {
+		zassert_equal(conn_mgr_if_connect(iface), 0,
+			"conn_mgr_if_connect should succeed.");
+	}
 
 	/* Verify that no events have been fired yet */
 	k_sleep(EVENT_WAIT_TIME);
@@ -531,6 +603,10 @@ static void cycle_iface_states(struct net_if *iface, enum ip_order ifa_ipm)
 	/* (10 -> 00): Lose oper-up from semi-ready state */
 
 	/* Take iface down */
+	if (conn_mgr_if_is_bound(iface)) {
+		zassert_equal(conn_mgr_if_disconnect(iface), 0,
+			"conn_mgr_if_disconnect should succeed.");
+	}
 	zassert_equal(net_if_down(iface), 0, "net_if_down should succeed.");
 
 	/* Verify there are no events fired */
@@ -567,6 +643,10 @@ static void cycle_iface_states(struct net_if *iface, enum ip_order ifa_ipm)
 
 	/* Take iface up */
 	zassert_equal(net_if_up(iface), 0, "net_if_up should succeed.");
+	if (conn_mgr_if_is_bound(iface)) {
+		zassert_equal(conn_mgr_if_connect(iface), 0,
+			"conn_mgr_if_connect should succeed.");
+	}
 
 	/* Verify events are fired */
 	k_sleep(EVENT_WAIT_TIME);
@@ -580,6 +660,10 @@ static void cycle_iface_states(struct net_if *iface, enum ip_order ifa_ipm)
 	/* (11 -> 01): Lose oper-up from ready state */
 
 	/* Take iface down */
+	if (conn_mgr_if_is_bound(iface)) {
+		zassert_equal(conn_mgr_if_disconnect(iface), 0,
+			"conn_mgr_if_disconnect should succeed.");
+	}
 	zassert_equal(net_if_down(iface), 0, "net_if_down should succeed.");
 
 	/* Verify events are fired */

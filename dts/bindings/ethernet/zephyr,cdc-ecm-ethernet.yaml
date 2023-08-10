@@ -5,7 +5,7 @@ description: USB CDC ECM virtual Ethernet controller
 
 compatible: "zephyr,cdc-ecm-ethernet"
 
-include: ethernet-controller.yaml
+include: ethernet.yaml
 
 properties:
   remote-mac-address:

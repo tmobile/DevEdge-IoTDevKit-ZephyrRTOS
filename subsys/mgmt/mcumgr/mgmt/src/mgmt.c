@@ -1,11 +1,10 @@
 /*
  * Copyright (c) 2018-2021 mcumgr authors
- * Copyright (c) 2022-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2022 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <assert.h>
 #include <zephyr/sys/slist.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/device.h>
@@ -68,30 +67,6 @@ mgmt_find_handler(uint16_t group_id, uint16_t command_id)
 
 	return &group->mg_handlers[command_id];
 }
-
-#if IS_ENABLED(CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL)
-smp_translate_error_fn mgmt_find_error_translation_function(uint16_t group_id)
-{
-	struct mgmt_group *group = NULL;
-	sys_snode_t *snp, *sns;
-
-	/* Find the group with the specified group ID. */
-	SYS_SLIST_FOR_EACH_NODE_SAFE(&mgmt_group_list, snp, sns) {
-		struct mgmt_group *loop_group =
-			CONTAINER_OF(snp, struct mgmt_group, node);
-		if (loop_group->mg_group_id == group_id) {
-			group = loop_group;
-			break;
-		}
-	}
-
-	if (group == NULL) {
-		return NULL;
-	}
-
-	return group->mg_translate_error;
-}
-#endif
 
 void
 mgmt_register_group(struct mgmt_group *group)
@@ -167,28 +142,6 @@ enum mgmt_cb_return mgmt_callback_notify(uint32_t event, void *data, size_t data
 	}
 
 	return return_status;
-}
-
-uint8_t mgmt_evt_get_index(uint32_t event)
-{
-	uint8_t index = 0;
-
-	event &= MGMT_EVT_OP_ID_ALL;
-	__ASSERT((event != 0), "Event cannot be 0.");
-
-	while (index < 16) {
-		if (event & 0x1) {
-			break;
-		}
-
-		++index;
-		event = event >> 1;
-	}
-
-	event = event >> 1;
-	__ASSERT((event == 0), "Event cannot contain multiple values.");
-
-	return index;
 }
 #endif
 

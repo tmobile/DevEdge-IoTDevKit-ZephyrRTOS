@@ -198,7 +198,13 @@ static int pwm_nrfx_set_cycles(const struct device *dev, uint32_t channel,
 			 * and till that moment, it ignores any start requests,
 			 * so ensure here that it is stopped.
 			 */
-			while (!nrfx_pwm_stopped_check(&config->pwm)) {
+			/* TODO: Remove nrfy_pwm_events_process() that is temporarly
+			 * added as a workaround for missing functionality in
+			 * nrfx_pwm_stopped_check()
+			 */
+			while (!nrfx_pwm_stopped_check(&config->pwm) &&
+			       !nrfy_pwm_events_process(config->pwm.p_reg,
+					NRFY_EVENT_TO_INT_BITMASK(NRF_PWM_EVENT_STOPPED))) {
 			}
 		}
 
@@ -351,18 +357,18 @@ static int pwm_nrfx_pm_action(const struct device *dev,
 			 POST_KERNEL, CONFIG_PWM_INIT_PRIORITY,		      \
 			 &pwm_nrfx_drv_api_funcs)
 
-#ifdef CONFIG_HAS_HW_NRF_PWM0
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(pwm0), okay)
 PWM_NRFX_DEVICE(0);
 #endif
 
-#ifdef CONFIG_HAS_HW_NRF_PWM1
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(pwm1), okay)
 PWM_NRFX_DEVICE(1);
 #endif
 
-#ifdef CONFIG_HAS_HW_NRF_PWM2
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(pwm2), okay)
 PWM_NRFX_DEVICE(2);
 #endif
 
-#ifdef CONFIG_HAS_HW_NRF_PWM3
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(pwm3), okay)
 PWM_NRFX_DEVICE(3);
 #endif

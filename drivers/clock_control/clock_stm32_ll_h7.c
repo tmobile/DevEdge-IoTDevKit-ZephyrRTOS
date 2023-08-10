@@ -16,7 +16,6 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/drivers/clock_control/stm32_clock_control.h>
-#include "clock_stm32_ll_mco.h"
 #include "stm32_hsem.h"
 
 
@@ -819,7 +818,7 @@ static int set_up_plls(void)
 }
 
 #if defined(CONFIG_CPU_CORTEX_M7)
-int stm32_clock_control_init(const struct device *dev)
+static int stm32_clock_control_init(const struct device *dev)
 {
 	uint32_t old_hclk_freq = 0;
 	uint32_t new_hclk_freq = 0;
@@ -836,9 +835,6 @@ int stm32_clock_control_init(const struct device *dev)
 #endif
 
 	z_stm32_hsem_lock(CFG_HW_RCC_SEMID, HSEM_LOCK_DEFAULT_RETRY);
-
-	/* Configure MCO1/MCO2 based on Kconfig */
-	stm32_clock_control_mco_init();
 
 	/* Set up indiviual enabled clocks */
 	set_up_fixed_clock_sources();
@@ -917,7 +913,7 @@ int stm32_clock_control_init(const struct device *dev)
 	return r;
 }
 #else
-int stm32_clock_control_init(const struct device *dev)
+static int stm32_clock_control_init(const struct device *dev)
 {
 	ARG_UNUSED(dev);
 

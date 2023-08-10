@@ -14,6 +14,8 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/init.h>
+#include <zephyr/arch/arm/aarch32/nmi.h>
 #include <hal/nrf_power.h>
 #include <soc/nrfx_coredep.h>
 #include <zephyr/logging/log.h>
@@ -34,6 +36,23 @@ void sys_arch_reboot(int type)
 }
 #endif
 
+static int nordicsemi_nrf51_init(void)
+{
+	uint32_t key;
+
+
+	key = irq_lock();
+
+	/* Install default handler that simply resets the CPU
+	 * if configured in the kernel, NOP otherwise
+	 */
+	NMI_INIT();
+
+	irq_unlock(key);
+
+	return 0;
+}
+
 #define DELAY_CALL_OVERHEAD_US 2
 
 void arch_busy_wait(uint32_t time_us)
@@ -45,3 +64,5 @@ void arch_busy_wait(uint32_t time_us)
 	time_us -= DELAY_CALL_OVERHEAD_US;
 	nrfx_coredep_delay_us(time_us);
 }
+
+SYS_INIT(nordicsemi_nrf51_init, PRE_KERNEL_1, 0);

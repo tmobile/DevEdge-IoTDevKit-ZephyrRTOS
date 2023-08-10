@@ -16,7 +16,6 @@ comment "Optional modules. Make sure they're installed, via the project manifest
 
 source "modules/Kconfig.altera"
 source "modules/Kconfig.atmel"
-source "modules/Kconfig.chre"
 source "modules/Kconfig.cmsis"
 source "modules/Kconfig.cypress"
 source "modules/Kconfig.eos_s3"
@@ -29,7 +28,6 @@ source "modules/Kconfig.mcux"
 source "modules/Kconfig.microchip"
 source "modules/Kconfig.nuvoton"
 source "modules/Kconfig.open-amp"
-source "modules/Kconfig.picolibc"
 source "modules/Kconfig.s32"
 source "modules/Kconfig.silabs"
 source "modules/Kconfig.simplelink"
@@ -45,7 +43,6 @@ source "modules/Kconfig.wurthelektronik"
 source "modules/Kconfig.xtensa"
 source "modules/zcbor/Kconfig"
 source "modules/Kconfig.mcuboot"
-source "modules/Kconfig.intel"
 
 comment "Unavailable modules, please install those via the project manifest."
 

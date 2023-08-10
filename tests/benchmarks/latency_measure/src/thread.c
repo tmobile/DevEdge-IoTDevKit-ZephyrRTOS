@@ -60,19 +60,19 @@ int suspend_resume(void)
 
 	diff = timing_cycles_get(&timestamp_start_create_c,
 				 &timestamp_end_create_c);
-	PRINT_STATS("Time to create a thread (without start)", diff, false, "");
+	PRINT_STATS("Time to create a thread (without start)", diff);
 
 	diff = timing_cycles_get(&timestamp_start_start_c,
 				 &timestamp_start_suspend_c);
-	PRINT_STATS("Time to start a thread", diff, false, "");
+	PRINT_STATS("Time to start a thread", diff);
 
 	diff = timing_cycles_get(&timestamp_start_suspend_c,
 				 &timestamp_end_suspend_c);
-	PRINT_STATS("Time to suspend a thread", diff, false, "");
+	PRINT_STATS("Time to suspend a thread", diff);
 
 	diff = timing_cycles_get(&timestamp_start_resume_c,
 				 &timestamp_end_resume_c);
-	PRINT_STATS("Time to resume a thread", diff, false, "");
+	PRINT_STATS("Time to resume a thread", diff);
 
 	timestamp_start_abort_1 = timing_counter_get();
 	k_thread_abort(t1_tid);
@@ -80,7 +80,7 @@ int suspend_resume(void)
 
 	diff = timing_cycles_get(&timestamp_start_abort_1,
 				 &timestamp_end_abort_1);
-	PRINT_STATS("Time to abort a thread (not running)", diff, false, "");
+	PRINT_STATS("Time to abort a thread (not running)", diff);
 
 	timing_stop();
 	return 0;

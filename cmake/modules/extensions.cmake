@@ -1331,16 +1331,11 @@ function(zephyr_code_relocate)
     message(FATAL_ERROR "zephyr_code_relocate() requires a LOCATION argument")
   endif()
   if(CODE_REL_LIBRARY)
-    # Use cmake generator expression to convert library to file list,
-    # supporting relative and absolute paths
+    # Use cmake generator expression to convert library to file list
     set(genex_src_dir "$<TARGET_PROPERTY:${CODE_REL_LIBRARY},SOURCE_DIR>")
     set(genex_src_list "$<TARGET_PROPERTY:${CODE_REL_LIBRARY},SOURCES>")
-    set(src_list_abs "$<FILTER:${genex_src_list},INCLUDE,^/>")
-    set(src_list_rel "$<FILTER:${genex_src_list},EXCLUDE,^/>")
-    set(src_list "${genex_src_dir}/$<JOIN:${src_list_rel},$<SEMICOLON>${genex_src_dir}/>")
-    set(nonempty_src_list "$<$<BOOL:${src_list_rel}>:${src_list}>")
-    set(sep_list "$<$<AND:$<BOOL:${src_list_abs}>,$<BOOL:${src_list_rel}>>:$<SEMICOLON>>")
-    set(file_list "${src_list_abs}${sep_list}${nonempty_src_list}")
+    set(file_list
+      "${genex_src_dir}/$<JOIN:${genex_src_list},$<SEMICOLON>${genex_src_dir}/>")
   else()
     # Check if CODE_REL_FILES is a generator expression, if so leave it
     # untouched.
@@ -1489,42 +1484,6 @@ function(zephyr_build_string outvar)
 
   # This updates the provided outvar in parent scope (callers scope)
   set(${outvar} ${${outvar}} PARENT_SCOPE)
-endfunction()
-
-# Function to add header file(s) to the list to be passed to syscall generator.
-function(zephyr_syscall_header)
-  foreach(one_file ${ARGV})
-    if(EXISTS ${one_file})
-      set(header_file ${one_file})
-    elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${one_file})
-      set(header_file ${CMAKE_CURRENT_SOURCE_DIR}/${one_file})
-    else()
-      message(FATAL_ERROR "Syscall header file not found: ${one_file}")
-    endif()
-
-    target_sources(
-      syscalls_interface INTERFACE
-      ${header_file}
-    )
-    target_include_directories(
-      syscalls_interface INTERFACE
-      ${header_file}
-    )
-    add_dependencies(
-      syscalls_interface
-      ${header_file}
-    )
-
-    unset(header_file)
-  endforeach()
-endfunction()
-
-# Function to add header file(s) to the list to be passed to syscall generator
-# if condition is true.
-function(zephyr_syscall_header_ifdef feature_toggle)
-  if(${${feature_toggle}})
-    zephyr_syscall_header(${ARGN})
-  endif()
 endfunction()
 
 ########################################################
@@ -2939,7 +2898,7 @@ function(target_byproducts)
   endif()
 
   add_custom_command(TARGET ${TB_TARGET}
-                     POST_BUILD COMMAND ${CMAKE_COMMAND} -E true
+                     POST_BUILD COMMAND ${CMAKE_COMMAND} -E echo ""
                      BYPRODUCTS ${TB_BYPRODUCTS}
                      COMMENT "Logical command for additional byproducts on target: ${TB_TARGET}"
   )
@@ -4495,7 +4454,7 @@ endfunction()
 #     zephyr_linker_symbol(SYMBOL bar EXPR "(@foo@ + 1024)")
 #
 function(zephyr_linker_symbol)
-  set(single_args "EXPR;SYMBOL")
+  set(single_args "EXPR;SYMBOL;OBJECT")
   cmake_parse_arguments(SYMBOL "" "${single_args}" "" ${ARGN})
 
   if(SECTION_UNPARSED_ARGUMENTS)

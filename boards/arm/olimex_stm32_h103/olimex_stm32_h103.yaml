@@ -9,7 +9,11 @@ toolchain:
 ram: 20
 flash: 128
 supported:
+  - adc
   - gpio
+  - i2c
+  - pwm
+  - spi
   - uart
   - watchdog
 testing:

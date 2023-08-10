@@ -6,7 +6,7 @@ description: ESP32 Ethernet
 compatible: "espressif,esp32-eth"
 
 include:
-  - name: ethernet-controller.yaml
+  - name: ethernet.yaml
 
 properties:
   phy-connection-type:

@@ -7,8 +7,6 @@
 #ifndef _POSIX_SOC_INF_CLOCK_POSIX_NATIVE_TASK_H
 #define _POSIX_SOC_INF_CLOCK_POSIX_NATIVE_TASK_H
 
-#include <zephyr/toolchain.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

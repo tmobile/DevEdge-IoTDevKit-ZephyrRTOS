@@ -47,11 +47,26 @@
 			label = "LED 5";
 		};
 	};
+
+	power-states {
+		idle: idle {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1000000>;
+		};
+
+		suspend_to_ram: suspend_to_ram {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-ram";
+			min-residency-us = <2000000>;
+		};
+	};
 };
 
 &cpu0 {
 	clock-frequency = <96000000>;
 	status = "okay";
+	cpu-power-states = <&idle &suspend_to_ram>;
 };
 
 /* Initialize ECIA. Does not initialize child devices */
@@ -288,8 +303,7 @@
 &ps2_0 {
 	status = "okay";
 	pinctrl-0 = <&ps2_clk0a_gpio114 &ps2_dat0a_gpio115>;
-	pinctrl-1 = <&ps2_clk0a_gpio114_sleep &ps2_dat0a_gpio115_sleep>;
-	pinctrl-names = "default", "sleep";
+	pinctrl-names = "default";
 };
 
 &timer5 {

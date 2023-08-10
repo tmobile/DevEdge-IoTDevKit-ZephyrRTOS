@@ -5,7 +5,7 @@
  */
 /dts-v1/;
 
-#include <espressif/esp32s3/esp32s3_mini_n8.dtsi>
+#include <espressif/esp32s3.dtsi>
 #include "esp32s3_devkitm-pinctrl.dtsi"
 
 / {
@@ -93,12 +93,6 @@
 	pinctrl-names = "default";
 };
 
-&twai {
-	pinctrl-0 = <&twai_default>;
-	pinctrl-names = "default";
-	bus-speed = <125000>;
-};
-
 &timer0 {
 	status = "disabled";
 };
@@ -121,10 +115,6 @@
 
 &trng0 {
 	status = "okay";
-};
-
-&usb_serial {
-	status = "disabled";
 };
 
 &flash0 {

@@ -1,7 +1,7 @@
 /* ieee802154_nrf5.h - nRF5 802.15.4 driver */
 
 /*
- * Copyright (c) 2017-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2017 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,8 @@
 
 #include <zephyr/net/ieee802154_radio.h>
 
+#define NRF5_FCS_LENGTH   (2)
+#define NRF5_PSDU_LENGTH  (125)
 #define NRF5_PHR_LENGTH   (1)
 
 struct nrf5_802154_rx_frame {
@@ -59,7 +61,7 @@ struct nrf5_802154_data {
 	/* TX buffer. First byte is PHR (length), remaining bytes are
 	 * MPDU data.
 	 */
-	uint8_t tx_psdu[NRF5_PHR_LENGTH + IEEE802154_MAX_PHY_PACKET_SIZE];
+	uint8_t tx_psdu[NRF5_PHR_LENGTH + NRF5_PSDU_LENGTH + NRF5_FCS_LENGTH];
 
 	/* TX result, updated in radio transmit callbacks. */
 	uint8_t tx_result;
@@ -87,39 +89,6 @@ struct nrf5_802154_data {
 
 	/* Indicates if currently processed TX frame has dynamic data updated. */
 	bool tx_frame_mac_hdr_rdy;
-
-#if defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA)
-	/* The maximum number of extra CCA attempts to be performed before transmission. */
-	uint8_t extra_cca_attempts;
-#endif
 };
-
-#if defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA)
-/**
- * @brief Sets the maximum number of extra CCA attempts to be performed by a transmit operation
- *
- * The default value of extra cca attempts is 0.
- *
- * The maximum number of extra cca attempts set by this function is applied to transmissions
- * requested with mode IEEE802154_TX_MODE_TXTIME_CCA only. This might change in the future, so
- * it is recommended to restore previously used value after each transmission. See
- * @ref ieee802154_nrf5_extra_cca_attempts_get.
- *
- * @param dev    Pointer to a ieee802154_nrf5 device
- * @param value  Value to set. Allowed range is 0...254.
- */
-void ieee802154_nrf5_extra_cca_attempts_set(const struct device *dev, uint8_t value);
-
-/**
- * @brief Gets the maximum number of extra CCA attempts to be performed by a transmit operation.
- *
- * @sa @ref ieee802154_nrf5_extra_cca_attempts_set
- *
- * @param dev    Pointer to a ieee802154_nrf5 device
- * @return       Maximum number of extra CCA attempts.
- */
-uint8_t ieee802154_nrf5_extra_cca_attempts_get(const struct device *dev);
-
-#endif /* defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA) */
 
 #endif /* ZEPHYR_DRIVERS_IEEE802154_IEEE802154_NRF5_H_ */

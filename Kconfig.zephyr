@@ -56,7 +56,7 @@ menu "Build and Link Features"
 
 menu "Linker Options"
 
-choice LINKER_ORPHAN_CONFIGURATION
+choice
 	prompt "Linker Orphan Section Handling"
 	default LINKER_ORPHAN_SECTION_WARN
 
@@ -316,29 +316,13 @@ config CODING_GUIDELINE_CHECK
 	  Use available compiler flags to check coding guideline rules during
 	  the build.
 
-config NATIVE_BUILD
-	bool
+config NATIVE_APPLICATION
+	bool "Build as a native host application"
 	select FULL_LIBC_SUPPORTED
 	select FULL_LIBCPP_SUPPORTED if CPP
 	help
-	  Zephyr will be built targeting the host system for debug and
-	  development purposes.
-
-config NATIVE_APPLICATION
-	bool
-	default y if ARCH_POSIX
-	depends on !NATIVE_LIBRARY
-	select NATIVE_BUILD
-	help
 	  Build as a native application that can run on the host and using
 	  resources and libraries provided by the host.
-
-config NATIVE_LIBRARY
-	bool
-	select NATIVE_BUILD
-	help
-	  Build as a prelinked library for the native host target.
-	  This library can later be built into an executable for the host.
 
 config COMPILER_FREESTANDING
 	bool "Build in a freestanding compiler mode"
@@ -414,7 +398,7 @@ config COMPILER_COLOR_DIAGNOSTICS
 
 choice COMPILER_SECURITY_FORTIFY
 	prompt "Detect buffer overflows in libc calls"
-	default FORTIFY_SOURCE_NONE if NO_OPTIMIZATIONS || MINIMAL_LIBC || NATIVE_BUILD
+	default FORTIFY_SOURCE_NONE if NO_OPTIMIZATIONS || MINIMAL_LIBC || NATIVE_APPLICATION
 	default FORTIFY_SOURCE_COMPILE_TIME
 	help
 	  Buffer overflow checking in libc calls. Supported by Clang and
@@ -537,8 +521,7 @@ config CLEANUP_INTERMEDIATE_FILES
 	bool "Remove all intermediate files"
 	help
 	  Delete intermediate files to save space and cleanup clutter resulting
-	  from the build process. Note this breaks incremental builds, west spdx
-	  (Software Bill of Material generation), and maybe others.
+	  from the build process.
 
 config BUILD_NO_GAP_FILL
 	bool "Don't fill gaps in generated hex/bin/s19 files."
@@ -594,7 +577,7 @@ if BUILD_OUTPUT_UF2
 
 config BUILD_OUTPUT_UF2_FAMILY_ID
 	string "UF2 device family ID"
-	default "0x1c5f21b0" if SOC_SERIES_ESP32
+	default "0x1c5f21b0" if SOC_ESP32
 	default "0x621e937a" if SOC_NRF52833_QIAA
 	default "0xada52840" if SOC_NRF52840_QIAA
 	default "0x4fb2d5bd" if SOC_SERIES_IMX_RT
@@ -755,13 +738,6 @@ config CHECK_INIT_PRIORITIES_FAIL_ON_WARNING
 	  devices depending on each other but initialized with the same
 	  priority.
 
-config EMIT_ALL_SYSCALLS
-	bool "Emit all possible syscalls in the tree"
-	help
-	  This tells the build system to emit all possible syscalls found
-	  in the tree, instead of only those syscalls associated with enabled
-	  drivers and subsystems.
-
 endmenu
 
 config DEPRECATED
@@ -828,7 +804,7 @@ config IS_BOOTLOADER
 
 config BOOTLOADER_SRAM_SIZE
 	int "SRAM reserved for bootloader"
-	default 0
+	default 16
 	depends on !XIP || IS_BOOTLOADER
 	depends on ARM || XTENSA
 	help

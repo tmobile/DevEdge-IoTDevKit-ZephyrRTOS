@@ -64,15 +64,15 @@ int sc18im704_transfer(const struct device *dev,
 	}
 
 	if (rx_data != NULL) {
-		k_timepoint_t end;
+		uint64_t end;
 
 		for (uint8_t i = 0; i < rx_len && ret == 0; ++i)  {
 			/* Make sure we don't wait forever */
-			end = sys_timepoint_calc(K_SECONDS(1));
+			end = sys_clock_timeout_end_calc(K_SECONDS(1));
 
 			do {
 				ret = uart_poll_in(cfg->bus, &rx_data[i]);
-			} while (ret == -1 && !sys_timepoint_expired(end));
+			} while (ret == -1 && end > k_uptime_ticks());
 		}
 
 		/* -1 indicates we timed out */

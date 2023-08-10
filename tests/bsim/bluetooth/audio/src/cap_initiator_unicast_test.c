@@ -11,43 +11,8 @@
 #include <zephyr/bluetooth/audio/bap_lc3_preset.h>
 #include <zephyr/bluetooth/audio/cap.h>
 #include <zephyr/bluetooth/audio/bap.h>
-#include <zephyr/sys/byteorder.h>
 #include "common.h"
 #include "bap_unicast_common.h"
-
-#define UNICAST_SINK_SUPPORTED (CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT > 0)
-#define UNICAST_SRC_SUPPORTED  (CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT > 0)
-
-#define CAP_AC_MAX_CONN   2U
-#define CAP_AC_MAX_SNK    (2U * CAP_AC_MAX_CONN)
-#define CAP_AC_MAX_SRC    (2U * CAP_AC_MAX_CONN)
-#define CAP_AC_MAX_PAIR   MAX(CAP_AC_MAX_SNK, CAP_AC_MAX_SRC)
-#define CAP_AC_MAX_STREAM (CAP_AC_MAX_SNK + CAP_AC_MAX_SRC)
-
-#define CONTEXT  (BT_AUDIO_CONTEXT_TYPE_UNSPECIFIED)
-#define LOCATION (BT_AUDIO_LOCATION_FRONT_LEFT | BT_AUDIO_LOCATION_FRONT_RIGHT)
-
-struct unicast_stream {
-	struct bt_cap_stream stream;
-	struct bt_audio_codec_cfg codec_cfg;
-	struct bt_audio_codec_qos qos;
-};
-
-struct named_lc3_preset {
-	const char *name;
-	struct bt_bap_lc3_preset preset;
-};
-
-struct cap_initiator_ac_param {
-	char *name;
-	size_t conn_cnt;
-	size_t snk_cnt[CAP_AC_MAX_CONN];
-	size_t src_cnt[CAP_AC_MAX_CONN];
-	size_t snk_chan_cnt;
-	size_t src_chan_cnt;
-	const struct named_lc3_preset *snk_named_preset;
-	const struct named_lc3_preset *src_named_preset;
-};
 
 extern enum bst_result_t bst_result;
 
@@ -55,15 +20,7 @@ static struct bt_bap_lc3_preset unicast_preset_16_2_1 = BT_BAP_LC3_UNICAST_PRESE
 	BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_UNSPECIFIED);
 
 static struct bt_cap_stream unicast_client_streams[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
-static struct bt_bap_ep
-	*unicast_sink_eps[CONFIG_BT_MAX_CONN][CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
-static struct bt_bap_ep
-	*unicast_source_eps[CONFIG_BT_MAX_CONN][CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
-static struct unicast_stream unicast_streams[CAP_AC_MAX_STREAM];
-static struct bt_conn *connected_conns[CAP_AC_MAX_CONN];
-static size_t connected_conn_cnt;
-const struct named_lc3_preset *snk_named_preset;
-const struct named_lc3_preset *src_named_preset;
+static struct bt_bap_ep *unicast_sink_eps[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
 
 CREATE_FLAG(flag_discovered);
 CREATE_FLAG(flag_codec_found);
@@ -74,46 +31,9 @@ CREATE_FLAG(flag_updated);
 CREATE_FLAG(flag_stopped);
 CREATE_FLAG(flag_mtu_exchanged);
 CREATE_FLAG(flag_sink_discovered);
-CREATE_FLAG(flag_source_discovered);
-
-static const struct named_lc3_preset lc3_unicast_presets[] = {
-	{"8_1_1", BT_BAP_LC3_UNICAST_PRESET_8_1_1(LOCATION, CONTEXT)},
-	{"8_2_1", BT_BAP_LC3_UNICAST_PRESET_8_2_1(LOCATION, CONTEXT)},
-	{"16_1_1", BT_BAP_LC3_UNICAST_PRESET_16_1_1(LOCATION, CONTEXT)},
-	{"16_2_1", BT_BAP_LC3_UNICAST_PRESET_16_2_1(LOCATION, CONTEXT)},
-	{"24_1_1", BT_BAP_LC3_UNICAST_PRESET_24_1_1(LOCATION, CONTEXT)},
-	{"24_2_1", BT_BAP_LC3_UNICAST_PRESET_24_2_1(LOCATION, CONTEXT)},
-	{"32_1_1", BT_BAP_LC3_UNICAST_PRESET_32_1_1(LOCATION, CONTEXT)},
-	{"32_2_1", BT_BAP_LC3_UNICAST_PRESET_32_2_1(LOCATION, CONTEXT)},
-	{"441_1_1", BT_BAP_LC3_UNICAST_PRESET_441_1_1(LOCATION, CONTEXT)},
-	{"441_2_1", BT_BAP_LC3_UNICAST_PRESET_441_2_1(LOCATION, CONTEXT)},
-	{"48_1_1", BT_BAP_LC3_UNICAST_PRESET_48_1_1(LOCATION, CONTEXT)},
-	{"48_2_1", BT_BAP_LC3_UNICAST_PRESET_48_2_1(LOCATION, CONTEXT)},
-	{"48_3_1", BT_BAP_LC3_UNICAST_PRESET_48_3_1(LOCATION, CONTEXT)},
-	{"48_4_1", BT_BAP_LC3_UNICAST_PRESET_48_4_1(LOCATION, CONTEXT)},
-	{"48_5_1", BT_BAP_LC3_UNICAST_PRESET_48_5_1(LOCATION, CONTEXT)},
-	{"48_6_1", BT_BAP_LC3_UNICAST_PRESET_48_6_1(LOCATION, CONTEXT)},
-	/* High-reliability presets */
-	{"8_1_2", BT_BAP_LC3_UNICAST_PRESET_8_1_2(LOCATION, CONTEXT)},
-	{"8_2_2", BT_BAP_LC3_UNICAST_PRESET_8_2_2(LOCATION, CONTEXT)},
-	{"16_1_2", BT_BAP_LC3_UNICAST_PRESET_16_1_2(LOCATION, CONTEXT)},
-	{"16_2_2", BT_BAP_LC3_UNICAST_PRESET_16_2_2(LOCATION, CONTEXT)},
-	{"24_1_2", BT_BAP_LC3_UNICAST_PRESET_24_1_2(LOCATION, CONTEXT)},
-	{"24_2_2", BT_BAP_LC3_UNICAST_PRESET_24_2_2(LOCATION, CONTEXT)},
-	{"32_1_2", BT_BAP_LC3_UNICAST_PRESET_32_1_2(LOCATION, CONTEXT)},
-	{"32_2_2", BT_BAP_LC3_UNICAST_PRESET_32_2_2(LOCATION, CONTEXT)},
-	{"441_1_2", BT_BAP_LC3_UNICAST_PRESET_441_1_2(LOCATION, CONTEXT)},
-	{"441_2_2", BT_BAP_LC3_UNICAST_PRESET_441_2_2(LOCATION, CONTEXT)},
-	{"48_1_2", BT_BAP_LC3_UNICAST_PRESET_48_1_2(LOCATION, CONTEXT)},
-	{"48_2_2", BT_BAP_LC3_UNICAST_PRESET_48_2_2(LOCATION, CONTEXT)},
-	{"48_3_2", BT_BAP_LC3_UNICAST_PRESET_48_3_2(LOCATION, CONTEXT)},
-	{"48_4_2", BT_BAP_LC3_UNICAST_PRESET_48_4_2(LOCATION, CONTEXT)},
-	{"48_5_2", BT_BAP_LC3_UNICAST_PRESET_48_5_2(LOCATION, CONTEXT)},
-	{"48_6_2", BT_BAP_LC3_UNICAST_PRESET_48_6_2(LOCATION, CONTEXT)},
-};
 
 static void unicast_stream_configured(struct bt_bap_stream *stream,
-				      const struct bt_audio_codec_qos_pref *pref)
+				      const struct bt_codec_qos_pref *pref)
 {
 	printk("Configured stream %p\n", stream);
 
@@ -234,29 +154,12 @@ static struct bt_cap_initiator_cb cap_cb = {
 	.unicast_stop_complete = unicast_stop_complete_cb,
 };
 
-static void add_remote_sink(const struct bt_conn *conn, struct bt_bap_ep *ep)
+static void add_remote_sink(struct bt_bap_ep *ep)
 {
-	const uint8_t conn_index = bt_conn_index(conn);
-
-	for (size_t i = 0U; i < ARRAY_SIZE(unicast_sink_eps[conn_index]); i++) {
-		if (unicast_sink_eps[conn_index][i] == NULL) {
-			printk("Conn[%u] %p: Sink #%zu: ep %p\n", conn_index, conn, i, ep);
-			unicast_sink_eps[conn_index][i] = ep;
-			return;
-		}
-	}
-
-	FAIL("Could not add sink ep\n");
-}
-
-static void add_remote_source(const struct bt_conn *conn, struct bt_bap_ep *ep)
-{
-	const uint8_t conn_index = bt_conn_index(conn);
-
-	for (size_t i = 0U; i < ARRAY_SIZE(unicast_source_eps[conn_index]); i++) {
-		if (unicast_source_eps[conn_index][i] == NULL) {
-			printk("Conn[%u] %p: Source #%zu: ep %p\n", conn_index, conn, i, ep);
-			unicast_source_eps[conn_index][i] = ep;
+	for (size_t i = 0U; i < ARRAY_SIZE(unicast_sink_eps); i++) {
+		if (unicast_sink_eps[i] == NULL) {
+			printk("Sink #%zu: ep %p\n", i, ep);
+			unicast_sink_eps[i] = ep;
 			return;
 		}
 	}
@@ -264,47 +167,35 @@ static void add_remote_source(const struct bt_conn *conn, struct bt_bap_ep *ep)
 	FAIL("Could not add source ep\n");
 }
 
-static void print_remote_codec(const struct bt_audio_codec_cap *codec_cap, enum bt_audio_dir dir)
+static void print_remote_codec(const struct bt_codec *codec, enum bt_audio_dir dir)
 {
-	printk("codec_cap %p dir 0x%02x\n", codec_cap, dir);
+	printk("codec %p dir 0x%02x\n", codec, dir);
 
-	print_codec_cap(codec_cap);
+	print_codec(codec);
 }
 
-static void pac_record_cb(struct bt_conn *conn, enum bt_audio_dir dir,
-			  const struct bt_audio_codec_cap *codec_cap)
+static void pac_record_cb(struct bt_conn *conn, enum bt_audio_dir dir, const struct bt_codec *codec)
 {
-	print_remote_codec(codec_cap, dir);
+	print_remote_codec(codec, dir);
 	SET_FLAG(flag_codec_found);
 }
 
-static void discover_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
+static void discover_sink_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
 {
 	if (err != 0) {
 		FAIL("Discovery failed: %d\n", err);
 		return;
 	}
 
-	if (dir == BT_AUDIO_DIR_SINK) {
-		printk("Sink discover complete\n");
+	printk("Sink discover complete\n");
 
-		SET_FLAG(flag_sink_discovered);
-	} else if (dir == BT_AUDIO_DIR_SOURCE) {
-		printk("Source discover complete\n");
-
-		SET_FLAG(flag_source_discovered);
-	} else {
-		FAIL("Invalid dir: %u\n", dir);
-	}
+	SET_FLAG(flag_sink_discovered);
 }
 
 static void endpoint_cb(struct bt_conn *conn, enum bt_audio_dir dir, struct bt_bap_ep *ep)
 {
 	if (dir == BT_AUDIO_DIR_SINK) {
-		add_remote_sink(conn, ep);
-		SET_FLAG(flag_endpoint_found);
-	} else if (dir == BT_AUDIO_DIR_SOURCE) {
-		add_remote_source(conn, ep);
+		add_remote_sink(ep);
 		SET_FLAG(flag_endpoint_found);
 	} else {
 		FAIL("Invalid param dir: %u\n", dir);
@@ -312,7 +203,7 @@ static void endpoint_cb(struct bt_conn *conn, enum bt_audio_dir dir, struct bt_b
 }
 
 static const struct bt_bap_unicast_client_cb unicast_client_cbs = {
-	.discover = discover_cb,
+	.discover = discover_sink_cb,
 	.pac_record = pac_record_cb,
 	.endpoint = endpoint_cb,
 };
@@ -356,56 +247,11 @@ static void init(void)
 	}
 }
 
-static void cap_device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
-			     struct net_buf_simple *ad)
-{
-	char addr_str[BT_ADDR_LE_STR_LEN];
-	struct bt_conn *conn;
-	int err;
-
-	/* We're only interested in connectable events */
-	if (type != BT_HCI_ADV_IND && type != BT_HCI_ADV_DIRECT_IND) {
-		return;
-	}
-
-	conn = bt_conn_lookup_addr_le(BT_ID_DEFAULT, addr);
-	if (conn != NULL) {
-		/* Already connected to this device */
-		bt_conn_unref(conn);
-		return;
-	}
-
-	bt_addr_le_to_str(addr, addr_str, sizeof(addr_str));
-	printk("Device found: %s (RSSI %d)\n", addr_str, rssi);
-
-	/* connect only to devices in close proximity */
-	if (rssi < -70) {
-		FAIL("RSSI too low");
-		return;
-	}
-
-	printk("Stopping scan\n");
-	if (bt_le_scan_stop()) {
-		FAIL("Could not stop scan");
-		return;
-	}
-
-	err = bt_conn_le_create(
-		addr, BT_CONN_LE_CREATE_CONN,
-		BT_LE_CONN_PARAM(BT_GAP_INIT_CONN_INT_MIN, BT_GAP_INIT_CONN_INT_MIN, 0, 400),
-		&connected_conns[connected_conn_cnt]);
-	if (err) {
-		FAIL("Could not connect to peer: %d", err);
-	}
-}
-
 static void scan_and_connect(void)
 {
 	int err;
 
-	UNSET_FLAG(flag_connected);
-
-	err = bt_le_scan_start(BT_LE_SCAN_PASSIVE, cap_device_found);
+	err = bt_le_scan_start(BT_LE_SCAN_PASSIVE, device_found);
 	if (err != 0) {
 		FAIL("Scanning failed to start (err %d)\n", err);
 		return;
@@ -413,54 +259,30 @@ static void scan_and_connect(void)
 
 	printk("Scanning successfully started\n");
 	WAIT_FOR_FLAG(flag_connected);
-	connected_conn_cnt++;
 }
 
-static void discover_sink(struct bt_conn *conn)
+static void discover_sink(void)
 {
-	const uint8_t conn_index = bt_conn_index(conn);
 	int err;
 
 	UNSET_FLAG(flag_sink_discovered);
 	UNSET_FLAG(flag_codec_found);
 	UNSET_FLAG(flag_endpoint_found);
 
-	err = bt_bap_unicast_client_discover(conn, BT_AUDIO_DIR_SINK);
+	err = bt_bap_unicast_client_discover(default_conn, BT_AUDIO_DIR_SINK);
 	if (err != 0) {
 		printk("Failed to discover sink: %d\n", err);
 		return;
 	}
 
-	memset(unicast_sink_eps[conn_index], 0, sizeof(unicast_sink_eps[conn_index]));
+	memset(unicast_sink_eps, 0, sizeof(unicast_sink_eps));
 
 	WAIT_FOR_FLAG(flag_sink_discovered);
 	WAIT_FOR_FLAG(flag_endpoint_found);
 	WAIT_FOR_FLAG(flag_codec_found);
 }
 
-static void discover_source(struct bt_conn *conn)
-{
-	const uint8_t conn_index = bt_conn_index(conn);
-	int err;
-
-	UNSET_FLAG(flag_source_discovered);
-	UNSET_FLAG(flag_codec_found);
-	UNSET_FLAG(flag_endpoint_found);
-
-	err = bt_bap_unicast_client_discover(conn, BT_AUDIO_DIR_SOURCE);
-	if (err != 0) {
-		printk("Failed to discover sink: %d\n", err);
-		return;
-	}
-
-	memset(unicast_source_eps[conn_index], 0, sizeof(unicast_source_eps[conn_index]));
-
-	WAIT_FOR_FLAG(flag_source_discovered);
-	WAIT_FOR_FLAG(flag_endpoint_found);
-	WAIT_FOR_FLAG(flag_codec_found);
-}
-
-static void discover_cas_inval(struct bt_conn *conn)
+static void discover_cas_inval(void)
 {
 	int err;
 
@@ -473,13 +295,13 @@ static void discover_cas_inval(struct bt_conn *conn)
 	/* Test if it handles concurrent request for same connection */
 	UNSET_FLAG(flag_discovered);
 
-	err = bt_cap_initiator_unicast_discover(conn);
+	err = bt_cap_initiator_unicast_discover(default_conn);
 	if (err != 0) {
 		printk("Failed to discover CAS: %d\n", err);
 		return;
 	}
 
-	err = bt_cap_initiator_unicast_discover(conn);
+	err = bt_cap_initiator_unicast_discover(default_conn);
 	if (err == 0) {
 		FAIL("bt_cap_initiator_unicast_discover while previous discovery has not completed "
 		     "did not fail\n");
@@ -489,13 +311,13 @@ static void discover_cas_inval(struct bt_conn *conn)
 	WAIT_FOR_FLAG(flag_discovered);
 }
 
-static void discover_cas(struct bt_conn *conn)
+static void discover_cas(void)
 {
 	int err;
 
 	UNSET_FLAG(flag_discovered);
 
-	err = bt_cap_initiator_unicast_discover(conn);
+	err = bt_cap_initiator_unicast_discover(default_conn);
 	if (err != 0) {
 		printk("Failed to discover CAS: %d\n", err);
 		return;
@@ -529,8 +351,8 @@ static void unicast_group_create(struct bt_bap_unicast_group **out_unicast_group
 
 static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group)
 {
-	struct bt_audio_codec_cfg invalid_codec = BT_AUDIO_CODEC_LC3_CONFIG_16_2(
-		BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
+	struct bt_codec invalid_codec =
+		BT_CODEC_LC3_CONFIG_16_2(BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
 	struct bt_cap_unicast_audio_start_stream_param invalid_stream_param;
 	struct bt_cap_unicast_audio_start_stream_param valid_stream_param;
 	struct bt_cap_unicast_audio_start_param invalid_start_param;
@@ -544,7 +366,7 @@ static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group
 	valid_stream_param.member.member = default_conn;
 	valid_stream_param.stream = &unicast_client_streams[0];
 	valid_stream_param.ep = unicast_sink_eps[0];
-	valid_stream_param.codec_cfg = &unicast_preset_16_2_1.codec_cfg;
+	valid_stream_param.codec = &unicast_preset_16_2_1.codec;
 	valid_stream_param.qos = &unicast_preset_16_2_1.qos;
 
 	/* Test NULL parameters */
@@ -617,7 +439,7 @@ static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group
 
 	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
 
-	invalid_stream_param.codec_cfg = NULL;
+	invalid_stream_param.codec = NULL;
 	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
 	if (err == 0) {
 		FAIL("bt_cap_initiator_unicast_audio_start with NULL stream params codec did not "
@@ -639,7 +461,7 @@ static void unicast_audio_start_inval(struct bt_bap_unicast_group *unicast_group
 	memcpy(&invalid_stream_param, &valid_stream_param, sizeof(valid_stream_param));
 	memset(&invalid_codec.meta, 0, sizeof(invalid_codec.meta));
 
-	invalid_stream_param.codec_cfg = &invalid_codec;
+	invalid_stream_param.codec = &invalid_codec;
 	err = bt_cap_initiator_unicast_audio_start(&invalid_start_param, unicast_group);
 	if (err == 0) {
 		FAIL("bt_cap_initiator_unicast_audio_start with invalid Codec metadata did not "
@@ -660,7 +482,7 @@ static void unicast_audio_start(struct bt_bap_unicast_group *unicast_group, bool
 	stream_param[0].member.member = default_conn;
 	stream_param[0].stream = &unicast_client_streams[0];
 	stream_param[0].ep = unicast_sink_eps[0];
-	stream_param[0].codec_cfg = &unicast_preset_16_2_1.codec_cfg;
+	stream_param[0].codec = &unicast_preset_16_2_1.codec;
 	stream_param[0].qos = &unicast_preset_16_2_1.qos;
 
 	UNSET_FLAG(flag_started);
@@ -678,14 +500,14 @@ static void unicast_audio_start(struct bt_bap_unicast_group *unicast_group, bool
 
 static void unicast_audio_update_inval(void)
 {
-	struct bt_audio_codec_cfg invalid_codec = BT_AUDIO_CODEC_LC3_CONFIG_16_2(
-		BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
+	struct bt_codec invalid_codec =
+		BT_CODEC_LC3_CONFIG_16_2(BT_AUDIO_LOCATION_FRONT_LEFT, BT_AUDIO_CONTEXT_TYPE_MEDIA);
 	struct bt_cap_unicast_audio_update_param param;
 	int err;
 
 	param.stream = &unicast_client_streams[0];
-	param.meta = unicast_preset_16_2_1.codec_cfg.meta;
-	param.meta_count = unicast_preset_16_2_1.codec_cfg.meta_count;
+	param.meta = unicast_preset_16_2_1.codec.meta;
+	param.meta_count = unicast_preset_16_2_1.codec.meta_count;
 
 	err = bt_cap_initiator_unicast_audio_update(NULL, 1);
 	if (err == 0) {
@@ -717,8 +539,8 @@ static void unicast_audio_update(void)
 	int err;
 
 	param.stream = &unicast_client_streams[0];
-	param.meta = unicast_preset_16_2_1.codec_cfg.meta;
-	param.meta_count = unicast_preset_16_2_1.codec_cfg.meta_count;
+	param.meta = unicast_preset_16_2_1.codec.meta;
+	param.meta_count = unicast_preset_16_2_1.codec.meta_count;
 
 	UNSET_FLAG(flag_updated);
 
@@ -817,59 +639,31 @@ static void test_main_cap_initiator_unicast(void)
 
 	WAIT_FOR_FLAG(flag_mtu_exchanged);
 
-	discover_cas();
-
-	discover_sink(default_conn);
-
-	for (size_t i = 0U; i < iterations; i++) {
-		unicast_group_create(&unicast_group);
-
-		for (size_t j = 0U; j < iterations; j++) {
-			unicast_audio_start(unicast_group, true);
-
-			unicast_audio_update();
-
-			unicast_audio_stop(unicast_group);
-		}
-
-		unicast_group_delete(unicast_group);
-		unicast_group = NULL;
-	}
-
-	PASS("CAP initiator unicast passed\n");
-}
-
-static void test_main_cap_initiator_unicast_inval(void)
-{
-	struct bt_bap_unicast_group *unicast_group;
-
-	init();
-
-	scan_and_connect();
-
-	WAIT_FOR_FLAG(flag_mtu_exchanged);
-
 	discover_cas_inval();
 	discover_cas();
 
 	discover_sink();
 
-	unicast_group_create(&unicast_group);
+	for (size_t i = 0U; i < iterations; i++) {
+		unicast_group_create(&unicast_group);
 
-	unicast_audio_start_inval(unicast_group);
-	unicast_audio_start(unicast_group, true);
+		for (size_t j = 0U; j < iterations; j++) {
+			unicast_audio_start_inval(unicast_group);
+			unicast_audio_start(unicast_group, true);
 
-	unicast_audio_update_inval();
-	unicast_audio_update();
+			unicast_audio_update_inval();
+			unicast_audio_update();
 
-	unicast_audio_stop_inval();
-	unicast_audio_stop(unicast_group);
+			unicast_audio_stop_inval();
+			unicast_audio_stop(unicast_group);
+		}
 
-	unicast_group_delete_inval();
-	unicast_group_delete(unicast_group);
-	unicast_group = NULL;
+		unicast_group_delete_inval();
+		unicast_group_delete(unicast_group);
+		unicast_group = NULL;
+	}
 
-	PASS("CAP initiator unicast inval passed\n");
+	PASS("CAP initiator unicast passed\n");
 }
 
 static void test_cap_initiator_unicast_timeout(void)
@@ -884,9 +678,9 @@ static void test_cap_initiator_unicast_timeout(void)
 
 	WAIT_FOR_FLAG(flag_mtu_exchanged);
 
-	discover_cas(default_conn);
+	discover_cas();
 
-	discover_sink(default_conn);
+	discover_sink();
 
 	unicast_group_create(&unicast_group);
 
@@ -908,7 +702,7 @@ static void test_cap_initiator_unicast_timeout(void)
 	unicast_group_delete(unicast_group);
 	unicast_group = NULL;
 
-	PASS("CAP initiator unicast timeout passed\n");
+	PASS("CAP initiator unicast passed\n");
 }
 
 static const struct bst_test_instance test_cap_initiator_unicast[] = {
@@ -923,12 +717,6 @@ static const struct bst_test_instance test_cap_initiator_unicast[] = {
 		.test_post_init_f = test_init,
 		.test_tick_f = test_tick,
 		.test_main_f = test_cap_initiator_unicast_timeout,
-	},
-	{
-		.test_id = "cap_initiator_unicast_inval",
-		.test_post_init_f = test_init,
-		.test_tick_f = test_tick,
-		.test_main_f = test_main_cap_initiator_unicast_inval,
 	},
 	BSTEST_END_MARKER,
 };

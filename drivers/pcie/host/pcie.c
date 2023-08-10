@@ -14,11 +14,6 @@ LOG_MODULE_REGISTER(pcie, LOG_LEVEL_ERR);
 #include <stdbool.h>
 #include <zephyr/drivers/pcie/pcie.h>
 #include <zephyr/sys/iterable_sections.h>
-#include <zephyr/acpi/acpi.h>
-
-#ifdef CONFIG_ACPI
-#include <zephyr/acpi/acpi.h>
-#endif
 
 #if CONFIG_PCIE_MSI
 #include <zephyr/drivers/pcie/msi.h>
@@ -290,13 +285,7 @@ unsigned int pcie_alloc_irq(pcie_bdf_t bdf)
 	if (irq == PCIE_CONF_INTR_IRQ_NONE ||
 	    irq >= CONFIG_MAX_IRQ_LINES ||
 	    arch_irq_is_used(irq)) {
-
-		if (IS_ENABLED(CONFIG_ACPI)) {
-			irq = acpi_legacy_irq_get(bdf);
-		} else {
-			irq = arch_irq_allocate();
-		}
-
+		irq = arch_irq_allocate();
 		if (irq == UINT_MAX) {
 			return PCIE_CONF_INTR_IRQ_NONE;
 		}
@@ -558,4 +547,4 @@ static int pcie_init(void)
 #define PCIE_SYS_INIT_LEVEL	PRE_KERNEL_1
 #endif
 
-SYS_INIT(pcie_init, PCIE_SYS_INIT_LEVEL, CONFIG_PCIE_INIT_PRIORITY);
+SYS_INIT(pcie_init, PCIE_SYS_INIT_LEVEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

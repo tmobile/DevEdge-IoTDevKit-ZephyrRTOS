@@ -508,7 +508,6 @@ config NET_TCP_PKT_ALLOC_TIMEOUT
 
 config NET_TCP_WORKQ_STACK_SIZE
 	int "TCP work queue thread stack size"
-	default 1200 if X86
 	default 1024
 	depends on NET_TCP
 	help
@@ -829,10 +828,6 @@ config NET_DEFAULT_IF_PPP
 	bool "PPP interface"
 	depends on NET_L2_PPP
 
-config NET_DEFAULT_IF_WIFI
-	bool "WiFi interface"
-	depends on NET_L2_ETHERNET
-
 endchoice
 
 config NET_PKT_TIMESTAMP
@@ -840,8 +835,7 @@ config NET_PKT_TIMESTAMP
 	help
 	  Enable network packet timestamp support. This is needed for
 	  example in gPTP which needs to know how long it takes to send
-	  a network packet or for timed radio protocols like IEEE 802.15.4
-	  CSL and TSCH.
+	  a network packet.
 
 config NET_PKT_TIMESTAMP_THREAD
 	bool "Create TX timestamp thread"

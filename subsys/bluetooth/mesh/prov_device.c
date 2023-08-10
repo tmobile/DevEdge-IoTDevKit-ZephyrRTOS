@@ -357,13 +357,6 @@ static void prov_pub_key(const uint8_t *data)
 			return;
 		}
 
-		if (!memcmp(bt_mesh_prov->public_key_be,
-			    bt_mesh_prov_link.conf_inputs.pub_key_provisioner, PDU_LEN_PUB_KEY)) {
-			LOG_ERR("Public keys are identical");
-			prov_fail(PROV_ERR_NVAL_FMT);
-			return;
-		}
-
 		/* No swap needed since user provides public key in big-endian */
 		memcpy(bt_mesh_prov_link.conf_inputs.pub_key_device, bt_mesh_prov->public_key_be,
 		       PDU_LEN_PUB_KEY);
@@ -466,7 +459,7 @@ static bool refresh_is_valid(const uint8_t *netkey, uint16_t net_idx,
 		return false;
 	}
 
-	if (!sub || bt_mesh_key_compare(netkey, &sub->keys[SUBNET_KEY_TX_IDX(sub)].net)) {
+	if (!sub || memcmp(netkey, sub->keys[SUBNET_KEY_TX_IDX(sub)].net, 16)) {
 		LOG_ERR("Invalid netkey");
 		return false;
 	}
@@ -488,7 +481,7 @@ static bool refresh_is_valid(const uint8_t *netkey, uint16_t net_idx,
 static void prov_data(const uint8_t *data)
 {
 	PROV_BUF(msg, PDU_LEN_COMPLETE);
-	struct bt_mesh_key session_key;
+	uint8_t session_key[16];
 	uint8_t nonce[13];
 	uint8_t dev_key[16];
 	uint8_t pdu[25];
@@ -501,28 +494,30 @@ static void prov_data(const uint8_t *data)
 	LOG_DBG("");
 
 	err = bt_mesh_session_key(bt_mesh_prov_link.dhkey,
-				  bt_mesh_prov_link.prov_salt, &session_key);
+				  bt_mesh_prov_link.prov_salt, session_key);
 	if (err) {
 		LOG_ERR("Unable to generate session key");
 		prov_fail(PROV_ERR_UNEXP_ERR);
 		return;
 	}
 
+	LOG_DBG("SessionKey: %s", bt_hex(session_key, 16));
+
 	err = bt_mesh_prov_nonce(bt_mesh_prov_link.dhkey,
 				 bt_mesh_prov_link.prov_salt, nonce);
 	if (err) {
 		LOG_ERR("Unable to generate session nonce");
 		prov_fail(PROV_ERR_UNEXP_ERR);
-		goto session_key_destructor;
+		return;
 	}
 
 	LOG_DBG("Nonce: %s", bt_hex(nonce, 13));
 
-	err = bt_mesh_prov_decrypt(&session_key, nonce, data, pdu);
+	err = bt_mesh_prov_decrypt(session_key, nonce, data, pdu);
 	if (err) {
 		LOG_ERR("Unable to decrypt provisioning data");
 		prov_fail(PROV_ERR_DECRYPT);
-		goto session_key_destructor;
+		return;
 	}
 
 	err = bt_mesh_dev_key(bt_mesh_prov_link.dhkey,
@@ -530,8 +525,10 @@ static void prov_data(const uint8_t *data)
 	if (err) {
 		LOG_ERR("Unable to generate device key");
 		prov_fail(PROV_ERR_UNEXP_ERR);
-		goto session_key_destructor;
+		return;
 	}
+
+	LOG_DBG("DevKey: %s", bt_hex(dev_key, 16));
 
 	net_idx = sys_get_be16(&pdu[16]);
 	flags = pdu[18];
@@ -542,7 +539,7 @@ static void prov_data(const uint8_t *data)
 	    atomic_test_bit(bt_mesh_prov_link.flags, REPROVISION) &&
 	    !refresh_is_valid(pdu, net_idx, iv_index)) {
 		prov_send_fail_msg(PROV_ERR_INVALID_DATA);
-		goto session_key_destructor;
+		return;
 	}
 
 	LOG_DBG("net_idx %u iv_index 0x%08x, addr 0x%04x",
@@ -551,7 +548,7 @@ static void prov_data(const uint8_t *data)
 	bt_mesh_prov_buf_init(&msg, PROV_COMPLETE);
 	if (bt_mesh_prov_send(&msg, NULL)) {
 		LOG_ERR("Failed to send Provisioning Complete");
-		goto session_key_destructor;
+		return;
 	}
 
 	/* Ignore any further PDUs on this link */
@@ -561,7 +558,7 @@ static void prov_data(const uint8_t *data)
 	if (IS_ENABLED(CONFIG_BT_MESH_RPR_SRV) &&
 	    atomic_test_bit(bt_mesh_prov_link.flags, REPROVISION)) {
 		bt_mesh_dev_key_cand(dev_key);
-		goto session_key_destructor;
+		return;
 	}
 
 	/* Store info, since bt_mesh_provision() will end up clearing it */
@@ -571,10 +568,11 @@ static void prov_data(const uint8_t *data)
 		identity_enable = false;
 	}
 
-	err = bt_mesh_provision(pdu, net_idx, flags, iv_index, bt_mesh_prov_link.addr, dev_key);
+	err = bt_mesh_provision(pdu, net_idx, flags, iv_index,
+				bt_mesh_prov_link.addr, dev_key);
 	if (err) {
 		LOG_ERR("Failed to provision (err %d)", err);
-		goto session_key_destructor;
+		return;
 	}
 
 	/* After PB-GATT provisioning we should start advertising
@@ -583,9 +581,6 @@ static void prov_data(const uint8_t *data)
 	if (IS_ENABLED(CONFIG_BT_MESH_GATT_PROXY) && identity_enable) {
 		bt_mesh_proxy_identity_enable();
 	}
-
-session_key_destructor:
-	bt_mesh_key_destroy(&session_key);
 }
 
 static void reprovision_complete(void)

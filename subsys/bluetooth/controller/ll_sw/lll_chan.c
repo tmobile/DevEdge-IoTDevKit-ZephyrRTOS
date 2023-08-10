@@ -5,7 +5,6 @@
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "hal/ccm.h"
 #include "hal/radio.h"
