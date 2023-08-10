@@ -10,7 +10,7 @@
 
 / {
 	model = "STM32F030 DEMO board";
-	compatible = "stm32f030-demo";
+	compatible = "st,stm32f030-demo";
 
 	chosen {
 		zephyr,console = &usart1;

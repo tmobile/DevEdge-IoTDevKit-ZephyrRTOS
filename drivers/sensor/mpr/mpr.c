@@ -113,10 +113,6 @@ static int mpr_channel_get(const struct device *dev,
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_PRESS);
 
-	if (chan != SENSOR_CHAN_PRESS) {
-		return -ENOTSUP;
-	}
-
 	uint64_t value;
 
 	mpr_convert_reg(&data->reg_val, &value);

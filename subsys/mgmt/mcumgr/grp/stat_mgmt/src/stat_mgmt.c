@@ -239,37 +239,6 @@ stat_mgmt_list(struct smp_streamer *ctxt)
 	return 0;
 }
 
-#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-/*
- * @brief	Translate stat mgmt group error code into MCUmgr error code
- *
- * @param ret	#stat_mgmt_ret_code_t error code
- *
- * @return	#mcumgr_err_t error code
- */
-static int stat_mgmt_translate_error_code(uint16_t ret)
-{
-	int rc;
-
-	switch (ret) {
-	case STAT_MGMT_RET_RC_INVALID_GROUP:
-	case STAT_MGMT_RET_RC_INVALID_STAT_NAME:
-		rc = MGMT_ERR_ENOENT;
-		break;
-
-	case STAT_MGMT_RET_RC_INVALID_STAT_SIZE:
-		rc = MGMT_ERR_EINVAL;
-		break;
-
-	case STAT_MGMT_RET_RC_WALK_ABORTED:
-	default:
-		rc = MGMT_ERR_EUNKNOWN;
-	}
-
-	return rc;
-}
-#endif
-
 static struct mgmt_handler stat_mgmt_handlers[] = {
 	[STAT_MGMT_ID_SHOW] = { stat_mgmt_show, NULL },
 	[STAT_MGMT_ID_LIST] = { stat_mgmt_list, NULL },
@@ -281,14 +250,35 @@ static struct mgmt_group stat_mgmt_group = {
 	.mg_handlers = stat_mgmt_handlers,
 	.mg_handlers_count = STAT_MGMT_HANDLER_CNT,
 	.mg_group_id = MGMT_GROUP_ID_STAT,
-#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
-	.mg_translate_error = stat_mgmt_translate_error_code,
-#endif
 };
 
 static void stat_mgmt_register_group(void)
 {
 	mgmt_register_group(&stat_mgmt_group);
 }
+
+#ifdef CONFIG_MCUMGR_SMP_SUPPORT_ORIGINAL_PROTOCOL
+int stat_mgmt_translate_error_code(uint16_t ret)
+{
+	int rc;
+
+	switch (ret) {
+	case STAT_MGMT_RET_RC_INVALID_GROUP:
+	case STAT_MGMT_RET_RC_INVALID_STAT_NAME:
+	rc = MGMT_ERR_ENOENT;
+	break;
+
+	case STAT_MGMT_RET_RC_INVALID_STAT_SIZE:
+	rc = MGMT_ERR_EINVAL;
+	break;
+
+	case STAT_MGMT_RET_RC_WALK_ABORTED:
+	default:
+	rc = MGMT_ERR_EUNKNOWN;
+	}
+
+	return rc;
+}
+#endif
 
 MCUMGR_HANDLER_DEFINE(stat_mgmt, stat_mgmt_register_group);

@@ -6,7 +6,7 @@ description: SiLabs Gecko Ethernet
 
 compatible: "silabs,gecko-ethernet"
 
-include: ethernet-controller.yaml
+include: ethernet.yaml
 
 properties:
   reg:

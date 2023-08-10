@@ -95,10 +95,6 @@ int coop_ctx_switch(void)
 {
 	ctx_switch_counter = 0U;
 	ctx_switch_balancer = 0;
-	char error_string[80];
-	const char *notes = "";
-	bool failed = false;
-	int  end;
 
 	timing_start();
 	bench_test_start();
@@ -110,24 +106,17 @@ int coop_ctx_switch(void)
 			(k_thread_entry_t)thread_two, NULL, NULL, NULL,
 			K_PRIO_COOP(6), 0, K_NO_WAIT);
 
-	end = bench_test_end();
-
 	if (ctx_switch_balancer > 3 || ctx_switch_balancer < -3) {
+		printk(" Balance is %d. FAILED", ctx_switch_balancer);
+	} else if (bench_test_end() != 0) {
 		error_count++;
-		snprintk(error_string, 78, " Balance is %d",
-			 ctx_switch_balancer);
-		notes = error_string;
-		failed = true;
-	} else if (end != 0) {
-		error_count++;
-		notes = TICK_OCCURRENCE_ERROR;
+		PRINT_OVERFLOW_ERROR();
+	} else {
+		uint32_t diff;
+
+		diff = timing_cycles_get(&timestamp_start, &timestamp_end);
+		PRINT_STATS_AVG("Average context switch time between threads (coop)", diff, ctx_switch_counter);
 	}
-
-	uint32_t diff;
-
-	diff = timing_cycles_get(&timestamp_start, &timestamp_end);
-	PRINT_STATS_AVG("Average context switch time between threads (coop)",
-			diff, ctx_switch_counter, failed, notes);
 
 	timing_stop();
 

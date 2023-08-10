@@ -7,7 +7,12 @@
  */
 
 #include "mesh_test.h"
+#if CONFIG_BT_SETTINGS
+#include "settings_test_backend.h"
+#endif
+
 #include <string.h>
+
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(test_sar, LOG_LEVEL_INF);
@@ -258,7 +263,7 @@ static void test_srv_cfg_store(void)
 	struct bt_mesh_sar_rx rx_cfg;
 	struct bt_mesh_sar_tx tx_cfg;
 
-	bt_mesh_test_host_files_remove();
+	settings_test_backend_clear();
 
 	bt_mesh_test_cfg_set(NULL, WAIT_TIME);
 	bt_mesh_device_setup(&prov, &comp);

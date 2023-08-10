@@ -8,7 +8,6 @@
 #include <st/h5/stm32h563Xi.dtsi>
 #include <st/h5/stm32h563zitx-pinctrl.dtsi>
 #include "arduino_r3_connector.dtsi"
-#include "st_morpho_connector.dtsi"
 
 / {
 	leds {
@@ -165,12 +164,6 @@
 			reg = <0x001f0000 DT_SIZE_K(64)>;
 		};
 	};
-};
-
-zephyr_udc0: &usb {
-	pinctrl-0 = <&usb_dm_pa11 &usb_dp_pa12>;
-	pinctrl-names = "default";
-	status = "okay";
 };
 
 &vref {

@@ -148,6 +148,7 @@ struct zbus_observer {
 
 #define ZBUS_REF(_value) &(_value)
 
+k_timeout_t _zbus_timeout_remainder(uint64_t end_ticks);
 /** @endcond */
 
 /**

@@ -7,7 +7,7 @@ description: Xilinx GEM Ethernet controller
 
 compatible: "xlnx,gem"
 
-include: ethernet-controller.yaml
+include: ethernet.yaml
 
 properties:
   reg:

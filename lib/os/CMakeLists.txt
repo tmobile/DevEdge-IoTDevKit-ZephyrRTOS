@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(
-  ${ZEPHYR_BASE}/include/zephyr/sys/mutex.h
-)
-
 zephyr_sources_ifdef(CONFIG_BASE64 base64.c)
 
 zephyr_sources(

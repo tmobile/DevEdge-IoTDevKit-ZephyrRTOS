@@ -179,7 +179,6 @@ void sys_clock_set_timeout(int32_t ticks, bool idle)
 {
 	/* new LPTIM AutoReload value to set (aligned on Kernel ticks) */
 	uint32_t next_arr = 0;
-	int err;
 
 	ARG_UNUSED(idle);
 
@@ -193,11 +192,8 @@ void sys_clock_set_timeout(int32_t ticks, bool idle)
 	}
 
 	/* if LPTIM clock was previously stopped, it must now be restored */
-	err = clock_control_on(clk_ctrl, (clock_control_subsys_t) &lptim_clk[0]);
+	clock_control_on(clk_ctrl, (clock_control_subsys_t) &lptim_clk[0]);
 
-	if (err < 0) {
-		return;
-	}
 	/* passing ticks==1 means "announce the next tick",
 	 * ticks value of zero (or even negative) is legal and
 	 * treated identically: it simply indicates the kernel would like the
@@ -332,6 +328,7 @@ static int sys_clock_driver_init(void)
 	uint32_t count_per_tick;
 	int err;
 
+
 	if (!device_is_ready(clk_ctrl)) {
 		return -ENODEV;
 	}
@@ -346,8 +343,6 @@ static int sys_clock_driver_init(void)
 	LL_APB1_GRP1_ReleaseReset(LL_APB1_GRP1_PERIPH_LPTIM1);
 #elif defined(LL_APB3_GRP1_PERIPH_LPTIM1)
 	LL_SRDAMR_GRP1_EnableAutonomousClock(LL_SRDAMR_GRP1_PERIPH_LPTIM1AMEN);
-#elif defined(LL_APB7_GRP1_PERIPH_LPTIM1)
-	LL_APB7_GRP1_ReleaseReset(LL_APB7_GRP1_PERIPH_LPTIM1);
 #endif
 
 	/* Enable LPTIM clock source */
@@ -418,8 +413,7 @@ static int sys_clock_driver_init(void)
 	LL_LPTIM_SetClockSource(LPTIM, LL_LPTIM_CLK_SOURCE_INTERNAL);
 	/* the LPTIM clock freq is affected by the prescaler */
 	LL_LPTIM_SetPrescaler(LPTIM, (__CLZ(__RBIT(LPTIM_CLOCK_RATIO)) << LPTIM_CFGR_PRESC_Pos));
-#if defined(CONFIG_SOC_SERIES_STM32U5X) || \
-	defined(CONFIG_SOC_SERIES_STM32WBAX)
+#ifdef CONFIG_SOC_SERIES_STM32U5X
 	LL_LPTIM_OC_SetPolarity(LPTIM, LL_LPTIM_CHANNEL_CH1,
 				LL_LPTIM_OUTPUT_POLARITY_REGULAR);
 #else
@@ -431,8 +425,7 @@ static int sys_clock_driver_init(void)
 	/* counting start is initiated by software */
 	LL_LPTIM_TrigSw(LPTIM);
 
-#if defined(CONFIG_SOC_SERIES_STM32U5X) || \
-	defined(CONFIG_SOC_SERIES_STM32WBAX)
+#ifdef CONFIG_SOC_SERIES_STM32U5X
 	/* Enable the LPTIM before proceeding with configuration */
 	LL_LPTIM_Enable(LPTIM);
 
@@ -458,8 +451,7 @@ static int sys_clock_driver_init(void)
 
 	accumulated_lptim_cnt = 0;
 
-#if !defined(CONFIG_SOC_SERIES_STM32U5X) && \
-	!defined(CONFIG_SOC_SERIES_STM32WBAX)
+#ifndef CONFIG_SOC_SERIES_STM32U5X
 	/* Enable the LPTIM counter */
 	LL_LPTIM_Enable(LPTIM);
 #endif

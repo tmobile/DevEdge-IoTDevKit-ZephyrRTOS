@@ -32,15 +32,6 @@ extern "C" {
 #endif
 
 /**
- * @file
- *
- * @defgroup base64 Base64
- * @brief Base64 encoding/decoding functions
- * @ingroup utilities
- * @{
- */
-
-/**
  * @brief          Encode a buffer into base64 format
  *
  * @param dst      destination buffer
@@ -80,10 +71,6 @@ int base64_encode(uint8_t *dst, size_t dlen, size_t *olen, const uint8_t *src,
  */
 int base64_decode(uint8_t *dst, size_t dlen, size_t *olen, const uint8_t *src,
 		  size_t slen);
-
-/**
- * @}
- */
 
 #ifdef __cplusplus
 }

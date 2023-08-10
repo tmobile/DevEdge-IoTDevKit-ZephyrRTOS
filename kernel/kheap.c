@@ -64,8 +64,10 @@ SYS_INIT_NAMED(statics_init_post, statics_init, POST_KERNEL, 0);
 void *k_heap_aligned_alloc(struct k_heap *h, size_t align, size_t bytes,
 			k_timeout_t timeout)
 {
-	k_timepoint_t end = sys_timepoint_calc(timeout);
+	int64_t now, end = sys_clock_timeout_end_calc(timeout);
 	void *ret = NULL;
+
+	end = K_TIMEOUT_EQ(timeout, K_FOREVER) ? INT64_MAX : end;
 
 	k_spinlock_key_t key = k_spin_lock(&h->lock);
 
@@ -78,8 +80,9 @@ void *k_heap_aligned_alloc(struct k_heap *h, size_t align, size_t bytes,
 	while (ret == NULL) {
 		ret = sys_heap_aligned_alloc(&h->heap, align, bytes);
 
+		now = sys_clock_tick_get();
 		if (!IS_ENABLED(CONFIG_MULTITHREADING) ||
-		    (ret != NULL) || K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		    (ret != NULL) || ((end - now) <= 0)) {
 			break;
 		}
 
@@ -93,8 +96,8 @@ void *k_heap_aligned_alloc(struct k_heap *h, size_t align, size_t bytes,
 			 */
 		}
 
-		timeout = sys_timepoint_timeout(end);
-		(void) z_pend_curr(&h->lock, key, &h->wait_q, timeout);
+		(void) z_pend_curr(&h->lock, key, &h->wait_q,
+				   K_TICKS(end - now));
 		key = k_spin_lock(&h->lock);
 	}
 

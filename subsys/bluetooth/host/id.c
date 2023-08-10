@@ -329,16 +329,6 @@ int bt_id_set_adv_private_addr(struct bt_le_ext_adv *adv)
 		return -EINVAL;
 	}
 
-	if (IS_ENABLED(CONFIG_BT_PRIVACY) &&
-	    (adv->options & BT_LE_ADV_OPT_USE_NRPA)) {
-		/* The host doesn't support setting NRPAs when BT_PRIVACY=y.
-		 * In that case you probably want to use an RPA anyway.
-		 */
-		LOG_ERR("NRPA not supported when BT_PRIVACY=y");
-
-		return -ENOSYS;
-	}
-
 	if (!(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
 		return bt_id_set_private_addr(adv->id);
@@ -1239,8 +1229,7 @@ static int id_create(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 	 */
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		bt_settings_save_id();
 	}
 
 	return 0;
@@ -1284,11 +1273,12 @@ int bt_id_create(bt_addr_le_t *addr, uint8_t *irk)
 		}
 	}
 
-	new_id = bt_dev.id_count++;
+	new_id = bt_dev.id_count;
 	err = id_create(new_id, addr, irk);
 	if (err) {
-		bt_dev.id_count--;
 		return err;
+	} else {
+		bt_dev.id_count++;
 	}
 
 	return new_id;
@@ -1388,8 +1378,7 @@ int bt_id_delete(uint8_t id)
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		bt_settings_save_id();
 	}
 
 	return 0;
@@ -1763,23 +1752,6 @@ int bt_id_set_adv_own_addr(struct bt_le_ext_adv *adv, uint32_t options,
 
 	/* Set which local identity address we're advertising with */
 	id_addr = &bt_dev.id_addr[adv->id];
-
-	/* Short-circuit to force NRPA usage */
-	if (options & BT_LE_ADV_OPT_USE_NRPA) {
-		if (options & BT_LE_ADV_OPT_USE_IDENTITY) {
-			LOG_ERR("Can't set both IDENTITY & NRPA");
-
-			return -EINVAL;
-		}
-
-		err = bt_id_set_adv_private_addr(adv);
-		if (err) {
-			return err;
-		}
-		*own_addr_type = BT_ADDR_LE_RANDOM;
-
-		return 0;
-	}
 
 	if (options & BT_LE_ADV_OPT_CONNECTABLE) {
 		if (dir_adv && (options & BT_LE_ADV_OPT_DIR_ADDR_RPA) &&

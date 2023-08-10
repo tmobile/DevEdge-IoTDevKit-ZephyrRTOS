@@ -48,5 +48,4 @@ properties:
     type: int
     description: |
       The size of the buffer used to send data between host and remote. Default
-      value is RPMSG_BUFFER_SIZE. This property must be the same for host and
-      remote and preferably a multiple of the cache line size.
+      value is RPMSG_BUFFER_SIZE. This property must be the same for host and remote.

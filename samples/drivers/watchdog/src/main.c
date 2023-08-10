@@ -2,7 +2,6 @@
  * Copyright (c) 2015 Intel Corporation
  * Copyright (c) 2018 Nordic Semiconductor
  * Copyright (c) 2019 Centaur Analytics, Inc
- * Copyright 2023 NXP
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,11 +34,6 @@
 #elif DT_HAS_COMPAT_STATUS_OKAY(intel_tco_wdt)
 #define WDT_ALLOW_CALLBACK 0
 #define WDT_MAX_WINDOW 3000U
-#elif DT_HAS_COMPAT_STATUS_OKAY(nxp_fs26_wdog)
-#define WDT_MAX_WINDOW  1024U
-#define WDT_MIN_WINDOW	320U
-#define WDT_OPT 0
-#define WDG_FEED_INTERVAL (WDT_MIN_WINDOW + ((WDT_MAX_WINDOW - WDT_MIN_WINDOW) / 4))
 #endif
 
 #ifndef WDT_ALLOW_CALLBACK
@@ -56,10 +50,6 @@
 
 #ifndef WDG_FEED_INTERVAL
 #define WDG_FEED_INTERVAL 50U
-#endif
-
-#ifndef WDT_OPT
-#define WDT_OPT WDT_OPT_PAUSE_HALTED_BY_DBG
 #endif
 
 #if WDT_ALLOW_CALLBACK
@@ -121,7 +111,7 @@ int main(void)
 		return 0;
 	}
 
-	err = wdt_setup(wdt, WDT_OPT);
+	err = wdt_setup(wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
 	if (err < 0) {
 		printk("Watchdog setup error\n");
 		return 0;

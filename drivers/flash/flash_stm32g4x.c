@@ -42,10 +42,8 @@ bool flash_stm32_valid_range(const struct device *dev, off_t offset,
 	}
 #endif
 
-	if (write && !flash_stm32_valid_write(offset, len)) {
-		return false;
-	}
-	return flash_stm32_range_exists(dev, offset, len);
+	return (!write || (offset % 8 == 0 && len % 8 == 0U)) &&
+		flash_stm32_range_exists(dev, offset, len);
 }
 
 static inline void flush_cache(FLASH_TypeDef *regs)

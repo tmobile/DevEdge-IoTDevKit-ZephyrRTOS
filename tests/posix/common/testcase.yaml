@@ -1,5 +1,5 @@
 common:
-  filter: not (CONFIG_NATIVE_BUILD and CONFIG_EXTERNAL_LIBC)
+  arch_exclude: posix
   # FIXME: qemu_leon3 is excluded because of the alignment-related failure
   #        reported in the GitHub issue zephyrproject-rtos/zephyr#48992.
   platform_exclude: qemu_leon3
@@ -75,23 +75,3 @@ tests:
       - qemu_x86
     extra_configs:
       - CONFIG_PICOLIBC=y
-  portability.posix.common.no_spin_validate:
-    extra_configs:
-      - CONFIG_SPIN_VALIDATE=n
-    integration_platforms:
-      - mps2_an385
-  portability.posix.common.signal.strsignal_no_desc:
-    extra_configs:
-      - CONFIG_POSIX_SIGNAL_STRING_DESC=n
-  portability.posix.common.signal.big_nsig:
-    extra_configs:
-      - CONFIG_POSIX_RTSIG_MAX=1024
-  portability.posix.common.dynamic_stack:
-    integration_platforms:
-      - qemu_x86
-      - qemu_riscv64
-    extra_configs:
-      - CONFIG_DYNAMIC_THREAD=y
-      - CONFIG_THREAD_STACK_INFO=y
-      - CONFIG_DYNAMIC_THREAD_POOL_SIZE=5
-      - CONFIG_HEAP_MEM_POOL_SIZE=16384

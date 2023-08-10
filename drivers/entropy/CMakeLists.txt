@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/entropy.h)
-
 zephyr_library()
 
 zephyr_library_sources_ifdef(CONFIG_ENTROPY_TELINK_B91_TRNG    entropy_b91_trng.c)

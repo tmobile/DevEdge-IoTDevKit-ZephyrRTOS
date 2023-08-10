@@ -19,10 +19,21 @@
 #endif
 
 #ifdef __clang__
-#include <zephyr/toolchain/llvm.h>
-#else
-#include <zephyr/toolchain/gcc.h>
+#if __clang_major__ >= 10
+#define __fallthrough __attribute__((fallthrough))
 #endif
+
+#define TOOLCHAIN_CLANG_VERSION \
+	((__clang_major__ * 10000) + (__clang_minor__ * 100) + \
+	__clang_patchlevel__)
+
+#if TOOLCHAIN_CLANG_VERSION >= 30800
+#define TOOLCHAIN_HAS_C_GENERIC 1
+#define TOOLCHAIN_HAS_C_AUTO_TYPE 1
+#endif
+#endif
+
+#include <zephyr/toolchain/gcc.h>
 
 #ifndef __clang__
 #undef __BYTE_ORDER__

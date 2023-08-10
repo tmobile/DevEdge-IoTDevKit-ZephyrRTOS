@@ -2343,10 +2343,6 @@ next_state:
 			}
 		}
 #endif
-		NET_ASSERT((conn->send_data_total == 0) ||
-			   k_work_delayable_is_pending(&conn->send_data_timer),
-			   "conn: %p, Missing a subscription "
-				"of the send_data queue timer", conn);
 
 		if (th && (net_tcp_seq_cmp(th_ack(th), conn->seq) > 0)) {
 			uint32_t len_acked = th_ack(th) - conn->seq;
@@ -2387,16 +2383,19 @@ next_state:
 
 			conn_send_data_dump(conn);
 
+			if (!k_work_delayable_remaining_get(
+				    &conn->send_data_timer)) {
+				NET_DBG("conn: %p, Missing a subscription "
+					"of the send_data queue timer", conn);
+				break;
+			}
 			conn->send_data_retries = 0;
+			k_work_cancel_delayable(&conn->send_data_timer);
 			if (conn->data_mode == TCP_DATA_MODE_RESEND) {
 				conn->unacked_len = 0;
 				tcp_derive_rto(conn);
 			}
 			conn->data_mode = TCP_DATA_MODE_SEND;
-			if (conn->send_data_total > 0) {
-				k_work_reschedule_for_queue(&tcp_work_q, &conn->send_data_timer,
-					    K_MSEC(TCP_RTO_MS));
-			}
 
 			/* We are closing the connection, send a FIN to peer */
 			if (conn->in_close && conn->send_data_total == 0) {
@@ -2458,20 +2457,6 @@ next_state:
 				verdict = NET_OK;
 			}
 		}
-
-		/* Check if there is any data left to retransmit possibly*/
-		if (conn->send_data_total == 0) {
-			conn->send_data_retries = 0;
-			k_work_cancel_delayable(&conn->send_data_timer);
-		}
-
-		/* A lot could have happened to the transmission window check the situation here */
-		if (tcp_window_full(conn)) {
-			(void)k_sem_take(&conn->tx_sem, K_NO_WAIT);
-		} else {
-			k_sem_give(&conn->tx_sem);
-		}
-
 		break;
 	case TCP_CLOSE_WAIT:
 		tcp_out(conn, FIN);
@@ -2775,11 +2760,41 @@ int net_tcp_queue_data(struct net_context *context, struct net_pkt *pkt)
 
 	k_mutex_lock(&conn->lock, K_FOREVER);
 
-	/* If there is no space to transmit, try at a later time.
-	 * The ZWP will make sure the window becomes available at
-	 * some point in time.
-	 */
 	if (tcp_window_full(conn)) {
+		if (conn->send_win == 0) {
+			/* No point retransmiting if the current TX window size
+			 * is 0.
+			 */
+			ret = -EAGAIN;
+			goto out;
+		}
+
+		/* Trigger resend if the timer is not active */
+		/* TODO: use k_work_delayable for send_data_timer so we don't
+		 * have to directly access the internals of the legacy object.
+		 *
+		 * NOTE: It is not permitted to access any fields of k_work or
+		 * k_work_delayable directly.  This replacement does so, but
+		 * only as a temporary workaround until the legacy
+		 * k_delayed_work structure is replaced with k_work_delayable;
+		 * at that point k_work_schedule() can be invoked to cause the
+		 * work to be scheduled if it is not already scheduled.
+		 *
+		 * This solution diverges from the original, which would
+		 * invoke the retransmit function directly here.  Because that
+		 * function is given a k_work pointer, again this cannot be
+		 * done without accessing the internal data of the
+		 * k_work_delayable structure.
+		 *
+		 * The original inline retransmission could be supported by
+		 * refactoring the work_handler to delegate to a function that
+		 * takes conn directly, rather than the work item in which
+		 * conn is embedded, and calling that function directly here
+		 * and in the work handler.
+		 */
+		(void)k_work_schedule_for_queue(&tcp_work_q,
+						&conn->send_data_timer,
+						K_NO_WAIT);
 		ret = -EAGAIN;
 		goto out;
 	}

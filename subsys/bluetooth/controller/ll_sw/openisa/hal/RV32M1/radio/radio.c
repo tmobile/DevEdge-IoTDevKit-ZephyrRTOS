@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/sys/dlist.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/bluetooth/addr.h>
 #include <zephyr/toolchain.h>

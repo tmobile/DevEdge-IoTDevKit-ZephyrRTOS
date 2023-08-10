@@ -22,7 +22,6 @@
 #include <zephyr/arch/posix/posix_trace.h>
 #include "soc.h"
 #include "cmdline.h" /* native_posix command line options header */
-#include "nsi_host_trampolines.h"
 
 static unsigned int seed = 0x5678;
 
@@ -37,7 +36,7 @@ static int entropy_native_posix_get_entropy(const struct device *dev,
 		 * Note that only 1 thread (Zephyr thread or HW models), runs at
 		 * a time, therefore there is no need to use random_r()
 		 */
-		long value = nsi_host_random();
+		long int value = random();
 
 		size_t to_copy = MIN(length, sizeof(long int));
 
@@ -65,7 +64,7 @@ static int entropy_native_posix_get_entropy_isr(const struct device *dev,
 static int entropy_native_posix_init(const struct device *dev)
 {
 	ARG_UNUSED(dev);
-	nsi_host_srandom(seed);
+	srandom(seed);
 	posix_print_warning("WARNING: "
 			    "Using a test - not safe - entropy source\n");
 	return 0;

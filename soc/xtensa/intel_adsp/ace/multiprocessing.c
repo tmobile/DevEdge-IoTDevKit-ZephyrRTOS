@@ -79,17 +79,6 @@ void soc_mp_init(void)
 	soc_cpus_active[0] = true;
 }
 
-#ifdef CONFIG_ADSP_IMR_CONTEXT_SAVE
-/*
- * Called after exiting D3 state when context restore is enabled.
- * Re-enables IDC interrupt again for all cores. Called once from core 0.
- */
-void soc_mp_on_d3_exit(void)
-{
-	soc_mp_init();
-}
-#endif
-
 void soc_start_core(int cpu_num)
 {
 	int retry = CORE_POWER_CHECK_NUM;
@@ -115,9 +104,9 @@ void soc_start_core(int cpu_num)
 #endif
 
 		sys_cache_data_flush_range(rom_jump_vector, sizeof(*rom_jump_vector));
-		soc_cpu_power_up(cpu_num);
+		ACE_PWRCTL->wpdsphpxpg |= BIT(cpu_num);
 
-		while (!soc_cpu_is_powered(cpu_num)) {
+		while ((ACE_PWRSTS->dsphpxpgs & BIT(cpu_num)) == 0) {
 			k_busy_wait(HW_STATE_CHECK_DELAY);
 		}
 
@@ -205,7 +194,7 @@ int soc_adsp_halt_cpu(int id)
 		return -EINVAL;
 	}
 
-	soc_cpu_power_down(id);
+	ACE_PWRCTL->wpdsphpxpg &= ~BIT(id);
 	return 0;
 }
 #endif

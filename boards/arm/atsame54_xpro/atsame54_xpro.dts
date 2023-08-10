@@ -121,14 +121,6 @@ zephyr_udc0: &usb0 {
 	pinctrl-names = "default";
 
 	mac-eeprom = <&eeprom>;
-	phy-handle = <&phy>;
-};
-
-&mdio {
-	status = "okay";
-
-	pinctrl-0 = <&mdio_default>;
-	pinctrl-names = "default";
 
 	phy: phy {
 		compatible = "ethernet-phy";
@@ -136,4 +128,11 @@ zephyr_udc0: &usb0 {
 		address = <0>;
 		mdio = <&mdio>;
 	};
+};
+
+&mdio {
+	status = "okay";
+
+	pinctrl-0 = <&mdio_default>;
+	pinctrl-names = "default";
 };

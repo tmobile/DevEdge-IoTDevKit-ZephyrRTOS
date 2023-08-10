@@ -77,27 +77,6 @@ ZTEST(rtio_api, test_rtio_simple)
 	}
 }
 
-ZTEST(rtio_api, test_rtio_no_response)
-{
-	int res;
-	uintptr_t userdata[2] = {0, 1};
-	struct rtio_sqe *sqe;
-	struct rtio_cqe cqe;
-
-	rtio_iodev_test_init(&iodev_test_simple);
-
-	sqe = rtio_sqe_acquire(&r_simple);
-	zassert_not_null(sqe, "Expected a valid sqe");
-	rtio_sqe_prep_nop(sqe, (struct rtio_iodev *)&iodev_test_simple, &userdata[0]);
-	sqe->flags |= RTIO_SQE_NO_RESPONSE;
-
-	res = rtio_submit(&r_simple, 0);
-	zassert_ok(res, "Should return ok from rtio_execute");
-
-	res = rtio_cqe_copy_out(&r_simple, &cqe, 1, K_MSEC(500));
-	zassert_equal(0, res, "Expected no CQEs");
-}
-
 RTIO_DEFINE(r_chain, SQE_POOL_SIZE, CQE_POOL_SIZE);
 
 RTIO_IODEV_TEST_DEFINE(iodev_test_chain0);
@@ -117,7 +96,6 @@ void test_rtio_chain_(struct rtio *r)
 	uint32_t userdata[4] = {0, 1, 2, 3};
 	struct rtio_sqe *sqe;
 	struct rtio_cqe *cqe;
-	uintptr_t cq_count = atomic_get(&r->cq_count);
 
 	for (int i = 0; i < 4; i++) {
 		sqe = rtio_sqe_acquire(r);
@@ -132,11 +110,10 @@ void test_rtio_chain_(struct rtio *r)
 	sqe->flags = 0;
 
 	TC_PRINT("submitting\n");
-
 	res = rtio_submit(r, 4);
 	TC_PRINT("checking cq\n");
 	zassert_ok(res, "Should return ok from rtio_execute");
-	zassert_equal(atomic_get(&r->cq_count) - cq_count, 4, "Should have 4 pending completions");
+	zassert_equal(rtio_cqe_consumable(r), 4, "Should have 4 pending completions");
 
 	for (int i = 0; i < 4; i++) {
 		cqe = rtio_cqe_consume(r);
@@ -244,7 +221,7 @@ RTIO_BMEM uint8_t syscall_bufs[4];
 RTIO_DEFINE(r_syscall, SQE_POOL_SIZE, CQE_POOL_SIZE);
 RTIO_IODEV_TEST_DEFINE(iodev_test_syscall);
 
-ZTEST_USER(rtio_api, test_rtio_syscalls)
+void rtio_syscall_test(void *p1, void *p2, void *p3)
 {
 	int res;
 	struct rtio_sqe sqe = {0};
@@ -273,6 +250,24 @@ ZTEST_USER(rtio_api, test_rtio_syscalls)
 				  "Expected in order completions");
 	}
 }
+
+#ifdef CONFIG_USERSPACE
+ZTEST(rtio_api, test_rtio_syscalls_usermode)
+{
+
+	TC_PRINT("syscalls from user mode test\n");
+	TC_PRINT("test iodev init\n");
+	rtio_iodev_test_init(&iodev_test_syscall);
+	TC_PRINT("mem domain add current\n");
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	TC_PRINT("rtio access grant\n");
+	rtio_access_grant(&r_syscall, k_current_get());
+	TC_PRINT("rtio iodev access grant, ptr %p\n", &iodev_test_syscall);
+	k_object_access_grant(&iodev_test_syscall, k_current_get());
+	TC_PRINT("user mode enter\n");
+	k_thread_user_mode_enter(rtio_syscall_test, NULL, NULL, NULL);
+}
+#endif /* CONFIG_USERSPACE */
 
 RTIO_BMEM uint8_t mempool_data[MEM_BLK_SIZE];
 
@@ -316,11 +311,30 @@ static void test_rtio_simple_mempool_(struct rtio *r, int run_count)
 	rtio_release_buffer(r, buffer, buffer_len);
 }
 
-ZTEST_USER(rtio_api, test_rtio_simple_mempool)
+static void rtio_simple_mempool_test(void *a, void *b, void *c)
 {
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
+	TC_PRINT("rtio simple mempool from thread %p\n", k_current_get());
 	for (int i = 0; i < TEST_REPEATS * 2; i++) {
 		test_rtio_simple_mempool_(&r_simple, i);
 	}
+
+}
+
+ZTEST(rtio_api, test_rtio_simple_mempool)
+{
+	rtio_iodev_test_init(&iodev_test_simple);
+#ifdef CONFIG_USERSPACE
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	rtio_access_grant(&r_simple, k_current_get());
+	k_object_access_grant(&iodev_test_simple, k_current_get());
+	k_thread_user_mode_enter(rtio_simple_mempool_test, NULL, NULL, NULL);
+#else
+	rtio_simple_mempool_test(NULL, NULL, NULL);
+#endif
 }
 
 static void test_rtio_simple_cancel_(struct rtio *r)
@@ -351,11 +365,28 @@ static void test_rtio_simple_cancel_(struct rtio *r)
 	}
 }
 
-ZTEST_USER(rtio_api, test_rtio_simple_cancel)
+static void rtio_simple_cancel_test(void *a, void *b, void *c)
 {
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
 	for (int i = 0; i < TEST_REPEATS; i++) {
 		test_rtio_simple_cancel_(&r_simple);
 	}
+}
+
+ZTEST(rtio_api, test_rtio_simple_cancel)
+{
+	rtio_iodev_test_init(&iodev_test_simple);
+#ifdef CONFIG_USERSPACE
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	rtio_access_grant(&r_simple, k_current_get());
+	k_object_access_grant(&iodev_test_simple, k_current_get());
+	k_thread_user_mode_enter(rtio_simple_cancel_test, NULL, NULL, NULL);
+#else
+	rtio_simple_cancel_test(NULL, NULL, NULL);
+#endif
 }
 
 static void test_rtio_chain_cancel_(struct rtio *r)
@@ -365,21 +396,14 @@ static void test_rtio_chain_cancel_(struct rtio *r)
 	struct rtio_sqe *handle;
 
 	/* Prepare the chain */
-	TC_PRINT("1\n");
-	k_msleep(20);
 	rtio_sqe_prep_nop(&sqe[0], (struct rtio_iodev *)&iodev_test_simple, NULL);
 	rtio_sqe_prep_nop(&sqe[1], (struct rtio_iodev *)&iodev_test_simple, NULL);
 	sqe[0].flags |= RTIO_SQE_CHAINED;
 
 	/* Copy the chain */
-	TC_PRINT("2\n");
-	k_msleep(20);
 	rtio_sqe_copy_in_get_handles(r, sqe, &handle, 2);
-	TC_PRINT("3\n");
-	k_msleep(20);
 	rtio_sqe_cancel(handle);
 	TC_PRINT("Submitting 2 to RTIO\n");
-	k_msleep(20);
 	rtio_submit(r, 0);
 
 	/* Check that we don't get a CQE */
@@ -398,13 +422,28 @@ static void test_rtio_chain_cancel_(struct rtio *r)
 	}
 }
 
-ZTEST_USER(rtio_api, test_rtio_chain_cancel)
+static void rtio_chain_cancel_test(void *a, void *b, void *c)
 {
-	TC_PRINT("start test\n");
-	k_msleep(20);
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
 	for (int i = 0; i < TEST_REPEATS; i++) {
 		test_rtio_chain_cancel_(&r_simple);
 	}
+}
+
+ZTEST(rtio_api, test_rtio_chain_cancel)
+{
+	rtio_iodev_test_init(&iodev_test_simple);
+#ifdef CONFIG_USERSPACE
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	rtio_access_grant(&r_simple, k_current_get());
+	k_object_access_grant(&iodev_test_simple, k_current_get());
+	k_thread_user_mode_enter(rtio_chain_cancel_test, NULL, NULL, NULL);
+#else
+	rtio_chain_cancel_test(NULL, NULL, NULL);
+#endif
 }
 
 static void test_rtio_transaction_cancel_(struct rtio *r)
@@ -440,11 +479,28 @@ static void test_rtio_transaction_cancel_(struct rtio *r)
 	}
 }
 
-ZTEST_USER(rtio_api, test_rtio_transaction_cancel)
+static void rtio_transaction_cancel_test(void *a, void *b, void *c)
 {
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
 	for (int i = 0; i < TEST_REPEATS; i++) {
 		test_rtio_transaction_cancel_(&r_simple);
 	}
+}
+
+ZTEST(rtio_api, test_rtio_transaction_cancel)
+{
+	rtio_iodev_test_init(&iodev_test_simple);
+#ifdef CONFIG_USERSPACE
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	rtio_access_grant(&r_simple, k_current_get());
+	k_object_access_grant(&iodev_test_simple, k_current_get());
+	k_thread_user_mode_enter(rtio_transaction_cancel_test, NULL, NULL, NULL);
+#else
+	rtio_transaction_cancel_test(NULL, NULL, NULL);
+#endif
 }
 
 static inline void test_rtio_simple_multishot_(struct rtio *r, int idx)
@@ -502,10 +558,38 @@ static inline void test_rtio_simple_multishot_(struct rtio *r, int idx)
 	}
 }
 
-ZTEST_USER(rtio_api, test_rtio_multishot)
+static void rtio_simple_multishot_test(void *a, void *b, void *c)
 {
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
 	for (int i = 0; i < TEST_REPEATS; i++) {
 		test_rtio_simple_multishot_(&r_simple, i);
+	}
+}
+
+ZTEST(rtio_api, test_rtio_multishot)
+{
+	rtio_iodev_test_init(&iodev_test_simple);
+#ifdef CONFIG_USERSPACE
+	k_mem_domain_add_thread(&rtio_domain, k_current_get());
+	rtio_access_grant(&r_simple, k_current_get());
+	k_object_access_grant(&iodev_test_simple, k_current_get());
+	k_thread_user_mode_enter(rtio_simple_multishot_test, NULL, NULL, NULL);
+#else
+	rtio_simple_multishot_test(NULL, NULL, NULL);
+#endif
+}
+
+
+ZTEST(rtio_api, test_rtio_syscalls)
+{
+	TC_PRINT("test iodev init\n");
+	rtio_iodev_test_init(&iodev_test_syscall);
+	TC_PRINT("syscalls from kernel mode\n");
+	for (int i = 0; i < TEST_REPEATS; i++) {
+		rtio_syscall_test(NULL, NULL, NULL);
 	}
 }
 
@@ -529,7 +613,6 @@ void test_rtio_transaction_(struct rtio *r)
 	struct rtio_sqe *sqe;
 	struct rtio_cqe *cqe;
 	bool seen[2] = { 0 };
-	uintptr_t cq_count = atomic_get(&r->cq_count);
 
 	sqe = rtio_sqe_acquire(r);
 	zassert_not_null(sqe, "Expected a valid sqe");
@@ -554,10 +637,9 @@ void test_rtio_transaction_(struct rtio *r)
 
 	TC_PRINT("submitting userdata 0 %p, userdata 1 %p\n", &userdata[0], &userdata[1]);
 	res = rtio_submit(r, 4);
-	TC_PRINT("checking cq, completions available, count at start %lu, current count %lu\n",
-		 cq_count, atomic_get(&r->cq_count));
+	TC_PRINT("checking cq, completions available %u\n", rtio_cqe_consumable(r));
 	zassert_ok(res, "Should return ok from rtio_execute");
-	zassert_equal(atomic_get(&r->cq_count) - cq_count, 4, "Should have 4 pending completions");
+	zassert_equal(rtio_cqe_consumable(r), 4, "Should have 4 pending completions");
 
 	for (int i = 0; i < 4; i++) {
 		TC_PRINT("consume %d\n", i);
@@ -657,16 +739,6 @@ static void rtio_api_before(void *a)
 		while (rtio_cqe_copy_out(r, &cqe, 1, K_MSEC(15))) {
 		}
 	}
-
-	rtio_iodev_test_init(&iodev_test_simple);
-	rtio_iodev_test_init(&iodev_test_syscall);
-#ifdef CONFIG_USERSPACE
-	k_mem_domain_add_thread(&rtio_domain, k_current_get());
-	rtio_access_grant(&r_simple, k_current_get());
-	rtio_access_grant(&r_syscall, k_current_get());
-	k_object_access_grant(&iodev_test_simple, k_current_get());
-	k_object_access_grant(&iodev_test_syscall, k_current_get());
-#endif
 }
 
 ZTEST_SUITE(rtio_api, NULL, rtio_api_setup, rtio_api_before, NULL, NULL);

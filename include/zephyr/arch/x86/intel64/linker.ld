@@ -192,12 +192,10 @@ SECTIONS
 
 /* Must be last in RAM */
 #include <zephyr/linker/kobject-data.ld>
-
-#define LAST_RAM_ALIGN MMU_PAGE_ALIGN
-
-#include <zephyr/linker/ram-end.ld>
-
-    GROUP_END(RAMABLE_REGION)
+	MMU_PAGE_ALIGN
+	_image_ram_end = .;
+	z_mapped_end = .;
+	_end = .;
 
 	/* All unused memory also owned by the kernel for heaps */
 	__kernel_ram_end = KERNEL_BASE_ADDR + KERNEL_RAM_SIZE;

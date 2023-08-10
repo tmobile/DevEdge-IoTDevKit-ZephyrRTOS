@@ -19,6 +19,3 @@ supported:
   - pwm
   - counter
   - spi
-  - usb_device
-  - usb
-  - rtc

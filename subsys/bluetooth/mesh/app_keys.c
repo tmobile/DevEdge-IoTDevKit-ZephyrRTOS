@@ -43,8 +43,8 @@ struct app_key_update {
 /* AppKey information for persistent storage. */
 struct app_key_val {
 	uint16_t net_idx;
-	bool updated;
-	struct bt_mesh_key val[2];
+	bool     updated;
+	uint8_t  val[2][16];
 } __packed;
 
 /** Mesh Application Key. */
@@ -54,7 +54,7 @@ struct app_key {
 	bool updated;
 	struct bt_mesh_app_cred {
 		uint8_t id;
-		struct bt_mesh_key val;
+		uint8_t val[16];
 	} keys[2];
 };
 
@@ -110,8 +110,8 @@ static void store_app_key(uint16_t app_idx)
 	key.net_idx = app->net_idx,
 	key.updated = app->updated,
 
-	memcpy(&key.val[0], &app->keys[0].val, sizeof(struct bt_mesh_key));
-	memcpy(&key.val[1], &app->keys[1].val, sizeof(struct bt_mesh_key));
+	memcpy(key.val[0], app->keys[0].val, 16);
+	memcpy(key.val[1], app->keys[1].val, 16);
 
 	err = settings_save_one(path, &key, sizeof(key));
 	if (err) {
@@ -214,9 +214,7 @@ static void app_key_del(struct app_key *app)
 
 	app->net_idx = BT_MESH_KEY_UNUSED;
 	app->app_idx = BT_MESH_KEY_UNUSED;
-	bt_mesh_key_destroy(&app->keys[0].val);
-	bt_mesh_key_destroy(&app->keys[1].val);
-	memset(app->keys, 0, sizeof(app->keys));
+	(void)memset(app->keys, 0, sizeof(app->keys));
 }
 
 static void app_key_revoke(struct app_key *app)
@@ -225,7 +223,6 @@ static void app_key_revoke(struct app_key *app)
 		return;
 	}
 
-	bt_mesh_key_destroy(&app->keys[0].val);
 	memcpy(&app->keys[0], &app->keys[1], sizeof(app->keys[0]));
 	memset(&app->keys[1], 0, sizeof(app->keys[1]));
 	app->updated = false;
@@ -258,7 +255,7 @@ uint8_t bt_mesh_app_key_add(uint16_t app_idx, uint16_t net_idx,
 			return STATUS_INVALID_NETKEY;
 		}
 
-		if (bt_mesh_key_compare(key, &app->keys[0].val)) {
+		if (memcmp(key, app->keys[0].val, 16)) {
 			return STATUS_IDX_ALREADY_STORED;
 		}
 
@@ -274,10 +271,7 @@ uint8_t bt_mesh_app_key_add(uint16_t app_idx, uint16_t net_idx,
 	app->net_idx = net_idx;
 	app->app_idx = app_idx;
 	app->updated = false;
-	if (bt_mesh_key_import(BT_MESH_KEY_TYPE_APP, key, &app->keys[0].val)) {
-		LOG_ERR("Unable to import application key");
-		return STATUS_CANNOT_SET;
-	}
+	memcpy(app->keys[0].val, key, 16);
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		LOG_DBG("Storing AppKey persistently");
@@ -321,7 +315,7 @@ uint8_t bt_mesh_app_key_update(uint16_t app_idx, uint16_t net_idx,
 	}
 
 	if (app->updated) {
-		if (bt_mesh_key_compare(key, &app->keys[1].val)) {
+		if (memcmp(app->keys[1].val, key, 16)) {
 			return STATUS_IDX_ALREADY_STORED;
 		}
 
@@ -335,10 +329,7 @@ uint8_t bt_mesh_app_key_update(uint16_t app_idx, uint16_t net_idx,
 	LOG_DBG("app_idx 0x%04x AID 0x%02x", app_idx, app->keys[1].id);
 
 	app->updated = true;
-	if (bt_mesh_key_import(BT_MESH_KEY_TYPE_APP, key, &app->keys[1].val)) {
-		LOG_ERR("Unable to import application key");
-		return STATUS_CANNOT_UPDATE;
-	}
+	memcpy(app->keys[1].val, key, 16);
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		LOG_DBG("Storing AppKey persistently");
@@ -377,28 +368,8 @@ uint8_t bt_mesh_app_key_del(uint16_t app_idx, uint16_t net_idx)
 	return STATUS_SUCCESS;
 }
 
-static int app_id_set(struct app_key *app, int key_idx, const struct bt_mesh_key *key)
-{
-	uint8_t raw_key[16];
-	int err;
-
-	err = bt_mesh_key_export(raw_key, key);
-	if (err) {
-		return err;
-	}
-
-	err = bt_mesh_app_id(raw_key, &app->keys[key_idx].id);
-	if (err) {
-		return err;
-	}
-
-	bt_mesh_key_assign(&app->keys[key_idx].val, key);
-
-	return 0;
-}
-
 int bt_mesh_app_key_set(uint16_t app_idx, uint16_t net_idx,
-			const struct bt_mesh_key *old_key, const struct bt_mesh_key *new_key)
+		    const uint8_t old_key[16], const uint8_t new_key[16])
 {
 	struct app_key *app;
 
@@ -413,12 +384,16 @@ int bt_mesh_app_key_set(uint16_t app_idx, uint16_t net_idx,
 
 	LOG_DBG("AppIdx 0x%04x AID 0x%02x", app_idx, app->keys[0].id);
 
-	if (app_id_set(app, 0, old_key)) {
+	memcpy(app->keys[0].val, old_key, 16);
+	if (bt_mesh_app_id(old_key, &app->keys[0].id)) {
 		return -EIO;
 	}
 
-	if (new_key != NULL && app_id_set(app, 1, new_key)) {
-		return -EIO;
+	if (new_key) {
+		memcpy(app->keys[1].val, new_key, 16);
+		if (bt_mesh_app_id(new_key, &app->keys[1].id)) {
+			return -EIO;
+		}
 	}
 
 	app->net_idx = net_idx;
@@ -472,7 +447,7 @@ ssize_t bt_mesh_app_keys_get(uint16_t net_idx, uint16_t app_idxs[], size_t max,
 
 int bt_mesh_keys_resolve(struct bt_mesh_msg_ctx *ctx,
 			 struct bt_mesh_subnet **sub,
-			 const struct bt_mesh_key **app_key, uint8_t *aid)
+			 const uint8_t **app_key, uint8_t *aid)
 {
 	struct app_key *app = NULL;
 
@@ -501,9 +476,9 @@ int bt_mesh_keys_resolve(struct bt_mesh_msg_ctx *ctx,
 				return -EINVAL;
 			}
 
-			*app_key = &node->dev_key;
+			*app_key = node->dev_key;
 		} else {
-			*app_key = &bt_mesh.dev_key;
+			*app_key = bt_mesh.dev_key;
 		}
 
 		*aid = 0;
@@ -524,10 +499,10 @@ int bt_mesh_keys_resolve(struct bt_mesh_msg_ctx *ctx,
 
 	if ((*sub)->kr_phase == BT_MESH_KR_PHASE_2 && app->updated) {
 		*aid = app->keys[1].id;
-		*app_key = &app->keys[1].val;
+		*app_key = app->keys[1].val;
 	} else {
 		*aid = app->keys[0].id;
-		*app_key = &app->keys[0].val;
+		*app_key = app->keys[0].val;
 	}
 
 	return 0;
@@ -536,7 +511,7 @@ int bt_mesh_keys_resolve(struct bt_mesh_msg_ctx *ctx,
 uint16_t bt_mesh_app_key_find(bool dev_key, uint8_t aid,
 			      struct bt_mesh_net_rx *rx,
 			      int (*cb)(struct bt_mesh_net_rx *rx,
-					const struct bt_mesh_key *key, void *cb_data),
+					const uint8_t key[16], void *cb_data),
 			      void *cb_data)
 {
 	int err, i;
@@ -551,7 +526,7 @@ uint16_t bt_mesh_app_key_find(bool dev_key, uint8_t aid,
 			struct bt_mesh_cdb_node *node;
 
 			node = bt_mesh_cdb_node_get(rx->ctx.addr);
-			if (node && !cb(rx, &node->dev_key, cb_data)) {
+			if (node && !cb(rx, node->dev_key, cb_data)) {
 				return BT_MESH_KEY_DEV_REMOTE;
 			}
 		}
@@ -560,14 +535,14 @@ uint16_t bt_mesh_app_key_find(bool dev_key, uint8_t aid,
 		 *  The Device key is only valid for unicast addresses.
 		 */
 		if (BT_MESH_ADDR_IS_UNICAST(rx->ctx.recv_dst)) {
-			err = cb(rx, &bt_mesh.dev_key, cb_data);
+			err = cb(rx, bt_mesh.dev_key, cb_data);
 			if (!err) {
 				return BT_MESH_KEY_DEV_LOCAL;
 			}
 
 #if defined(CONFIG_BT_MESH_RPR_SRV)
 			if (atomic_test_bit(bt_mesh.flags, BT_MESH_DEVKEY_CAND)) {
-				err = cb(rx, &bt_mesh.dev_key_cand, cb_data);
+				err = cb(rx, bt_mesh.dev_key_cand, cb_data);
 				if (!err) {
 					/* Bluetooth Mesh Specification v1.1.0, section 3.6.4.2:
 					 * If a message is successfully decrypted using the device
@@ -606,7 +581,7 @@ uint16_t bt_mesh_app_key_find(bool dev_key, uint8_t aid,
 			continue;
 		}
 
-		err = cb(rx, &cred->val, cb_data);
+		err = cb(rx, cred->val, cb_data);
 		if (err) {
 			continue;
 		}
@@ -663,7 +638,6 @@ static int app_key_set(const char *name, size_t len_rd,
 		       settings_read_cb read_cb, void *cb_arg)
 {
 	struct app_key_val key;
-	struct bt_mesh_key val[2];
 	uint16_t app_idx;
 	int err;
 
@@ -683,13 +657,8 @@ static int app_key_set(const char *name, size_t len_rd,
 		return -EINVAL;
 	}
 
-	/* One extra copying since key.val array is from packed structure
-	 * and might be unaligned.
-	 */
-	memcpy(val, key.val, sizeof(key.val));
-
-	err = bt_mesh_app_key_set(app_idx, key.net_idx, &val[0],
-			      key.updated ? &val[1] : NULL);
+	err = bt_mesh_app_key_set(app_idx, key.net_idx, key.val[0],
+			      key.updated ? key.val[1] : NULL);
 	if (err) {
 		LOG_ERR("Failed to set \'app-key\'");
 		return err;

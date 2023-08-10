@@ -63,15 +63,30 @@ Other hardware features have not been enabled yet for this board.
 Connections and IOs
 ===================
 
+Default Zephyr Peripheral Mapping:
+----------------------------------
+
+- UART_1 TX/RX: PA9/PA10
+- UART_2 TX/RX: PA2/PA3
+- UART_3 TX/RX: PC10/PC11 (not enabled)
+- I2C_1 SCL/SDA : PB6/PB7
+- I2C_2 SCL/SDA : PB10/PB11
+- PWM_1_CH1: PA8
+- SPI_1 NSS_OE/SCK/MISO/MOSI: PA4/PA5/PA6/PA7
+- SPI_2 NSS_OE/SCK/MISO/MOSI: PB12/PB13/PB14/PB15
+- USB_DC DM/DP/DISC/PWR: PA11/PA12/PC11/PC4 (not enabled)
+- ADC_1: PA1
+
 System Clock
 ------------
 
 The on-board 8 MHz crystal is used to produce a 72 MHz system clock with PLL.
 
-Zephyr Console
---------------
+Serial Port
+-----------
 
-UART2 is used as Zephyr's console. Default settings are 115200 8N1.
+The board has 3 U(S)ARTs, UART1 and UART2 are enabled by default, with UART2
+used as Zephyr's console. Default settings are 115200 8N1.
 
 On-Board LEDs
 -------------
@@ -89,13 +104,11 @@ The board has one user button connected to PA0.
 USB
 ---
 
-USB is not enabled by default.
+USB is not enabled by default, however PC4 is configured by default as an ADC
+input to sense the USB voltage (see schematic). It is possible to disconnect
+it by desoldering the appropriate pad in the PCB.
 
-PC4 can be configured as a GPIO input to detect power on the USB port. It is
-possible to disconnect it by desoldering the appropriate pad in the PCB.
-
-PC11 can be used to disconnect the pull-up resistor on the USB-DP line by
-setting it high.
+The board uses PC11 to disconnect the pull-up resistor on the USB-DP line.
 
 External Connectors
 -------------------
@@ -105,7 +118,7 @@ JTAG/SWD debug
 +-------+----------------------+-------+--------------+
 | PIN # | Signal Name          | PIN # | Signal Name  |
 +=======+======================+=======+==============+
-| 1     | TVCC +3.3V           | 2     | TVCC 3.3V    |
+| 1     | +3.3V                | 2     | TVCC 3.3V    |
 +-------+----------------------+-------+--------------+
 | 3     | PB4 / TRST           | 4     | GND          |
 +-------+----------------------+-------+--------------+
@@ -131,27 +144,27 @@ EXTENSION 1
 +-------+-----------------------+-------+-----------------------+
 | PIN # | Name / STM32F103 Port | PIN # | Name / STM32F103 Port |
 +=======+=======================+=======+=======================+
-| 1     | PA11 / **USB_DM**     | 2     | PA8                   |
+| 1     | PA11 / USB_DM         | 2     | PA8 / **PWM_1_CH1**   |
 +-------+-----------------------+-------+-----------------------+
-| 3     | PA12 / **USB_DP**     | 4     | PA9                   |
+| 3     | PA12 / USB_DP         | 4     | PA9 / **UART1_TX**    |
 +-------+-----------------------+-------+-----------------------+
 | 5     | +3.3V                 | 6     | GND                   |
 +-------+-----------------------+-------+-----------------------+
-| 7     | PA10                  | 8     | PC10                  |
+| 7     | PA10 / **UART1_RX**   | 8     | PC10                  |
 +-------+-----------------------+-------+-----------------------+
 | 9     | PC11 / **USB_DISC**   | 10    | PC12 / **LED**        |
 +-------+-----------------------+-------+-----------------------+
-| 11    | PD2                   | 12    | PB5                   |
+| 11    | PD2                   | 12    | PB5/I2C1_SMBA         |
 +-------+-----------------------+-------+-----------------------+
-| 13    | PB6                   | 14    | PA6                   |
+| 13    | PB6 / **I2C1_SCL**    | 14    | PA6 / **SPI1_MISO**   |
 +-------+-----------------------+-------+-----------------------+
-| 15    | PB7                   | 16    | PB8                   |
+| 15    | PB7 / **I2C1_SDA**    | 16    | PB8                   |
 +-------+-----------------------+-------+-----------------------+
-| 17    | PB9                   | 18    | PA5                   |
+| 17    | PB9                   | 18    | PA5 / **SPI1_SCK**    |
 +-------+-----------------------+-------+-----------------------+
 | 19    | PC0                   | 20    | PC1                   |
 +-------+-----------------------+-------+-----------------------+
-| 21    | PB0                   | 22    | PA7                   |
+| 21    | PB0                   | 22    | PA7 / **SPI1_MOSI**   |
 +-------+-----------------------+-------+-----------------------+
 | 23    | VBAT                  | 24    | PC13                  |
 +-------+-----------------------+-------+-----------------------+
@@ -169,19 +182,19 @@ EXTENSION 2
 +-------+------------------------+-------+-----------------------+
 | 5     | +3.3V                  | 6     | GND                   |
 +-------+------------------------+-------+-----------------------+
-| 7     | PA2 / **USART2_TX**    | 8     | PA1                   |
+| 7     | PA2 / **USART2_TX**    | 8     | PA1 / **ADC_1**       |
 +-------+------------------------+-------+-----------------------+
 | 9     | PC3                    | 10    | PA3 / **USART2_RX**   |
 +-------+------------------------+-------+-----------------------+
-| 11    | PA4                    | 12    | PC4 / **USB_POWER**   |
+| 11    | PA4 / **SPI1_NSS**     | 12    | PC4 / **USB-P**       |
 +-------+------------------------+-------+-----------------------+
-| 13    | PC5                    | 14    | PB10                  |
+| 13    | PC5                    | 14    | PB10 / **I2C2_SCL**   |
 +-------+------------------------+-------+-----------------------+
-| 15    | P11                    | 16    | PB13                  |
+| 15    | P11 / **I2C2_SDA**     | 16    | PB13 / **SPI2_SCK**   |
 +-------+------------------------+-------+-----------------------+
-| 17    | PB12                   | 18    | PB14                  |
+| 17    | PB12 / **SPI2_NSS**    | 18    | PB14 / **SPI2_MISO**  |
 +-------+------------------------+-------+-----------------------+
-| 19    | PB15                   | 20    | PC6                   |
+| 19    | PB15 / **SPI2_MOSI**   | 20    | PC6                   |
 +-------+------------------------+-------+-----------------------+
 | 21    | PC7                    | 22    | PC8                   |
 +-------+------------------------+-------+-----------------------+
@@ -202,8 +215,6 @@ By default when using ``west debug`` ST-Link will be used with OpenOCD's
 SWD transport, but it is also possible to use JTAG with the Olimex ARM-USB-OCD-H
 probe, for instance. For the latter, you should replace the file ``openocd.cfg``
 by ``openocd_olimex_jtag.cfg``, located in the board's support directory.
-
-The ``blackmagicprobe`` can also be used to program the device.
 
 Flashing
 ========
@@ -229,10 +240,6 @@ You can debug an application in the usual way.  Here is an example for the
 
 References
 **********
-
-- `OLIMEX-STM32-H103 website`_
-- `OLIMEX-STM32-H103 user manual`_
-- `OLIMEX-STM32-H103 schematic`_
 
 .. _OLIMEX-STM32-H103 website:
    https://www.olimex.com/Products/ARM/ST/STM32-H103/

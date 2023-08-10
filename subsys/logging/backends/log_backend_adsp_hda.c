@@ -332,10 +332,8 @@ void adsp_hda_log_init(adsp_hda_log_hook_t fn, uint32_t channel)
 static inline void hda_ipc_msg(const struct device *dev, uint32_t data,
 			       uint32_t ext, k_timeout_t timeout)
 {
-	int ret = intel_adsp_ipc_send_message_sync(dev, data, ext, timeout);
-
-	__ASSERT(!ret, "Unexpected ipc send message failure, error code: %d",
-		ret);
+	__ASSERT(intel_adsp_ipc_send_message_sync(dev, data, ext, timeout),
+		"Unexpected ipc send message failure, try increasing IPC_TIMEOUT");
 }
 
 
@@ -344,20 +342,20 @@ void adsp_hda_log_cavstool_hook(uint32_t written)
 	/* We *must* send this, but we may be in a timer ISR, so we are
 	 * forced into a retry loop without timeouts and such.
 	 */
-	int ret = -1;
+	bool done = false;
 
 	/*  Send IPC message notifying log data has been written */
 	do {
-		ret = intel_adsp_ipc_send_message(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_PRINT,
+		done = intel_adsp_ipc_send_message(INTEL_ADSP_IPC_HOST_DEV, IPCCMD_HDA_PRINT,
 					     (written << 8) | CHANNEL);
-		if (ret == -ESHUTDOWN) {
-			return;
-		}
-	} while (ret);
+	} while (!done);
+
 
 	/* Wait for confirmation log data has been received */
-	while (!intel_adsp_ipc_is_complete(INTEL_ADSP_IPC_HOST_DEV))
-		;
+	do {
+		done = intel_adsp_ipc_is_complete(INTEL_ADSP_IPC_HOST_DEV);
+	} while (!done);
+
 }
 
 int adsp_hda_log_cavstool_init(void)

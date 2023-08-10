@@ -14,7 +14,6 @@ supported:
   - arduino_spi
   - spi
   - netif:eth
-  - qspi
   - memc
   - usb_cdc
   - usb_device

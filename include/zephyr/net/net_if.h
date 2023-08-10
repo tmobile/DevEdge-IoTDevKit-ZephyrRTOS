@@ -465,8 +465,7 @@ typedef int (*net_socket_create_t)(int, int, int);
  * and the network device.
  *
  * Because of the strong relationship between a device driver and such
- * network interface, each net_if_dev should be instantiated by one of the
- * network device init macros found in net_if.h.
+ * network interface, each net_if_dev should be instantiated by
  */
 struct net_if_dev {
 	/** The actually device driver instance the net_if is related to */
@@ -1210,29 +1209,6 @@ __syscall bool net_if_ipv6_addr_rm_by_index(int index,
 					    const struct in6_addr *addr);
 
 /**
- * @typedef net_if_ip_addr_cb_t
- * @brief Callback used while iterating over network interface IP addresses
- *
- * @param iface Pointer to the network interface the address belongs to
- * @param addr Pointer to current IP address
- * @param user_data A valid pointer to user data or NULL
- */
-typedef void (*net_if_ip_addr_cb_t)(struct net_if *iface,
-				    struct net_if_addr *addr,
-				    void *user_data);
-
-/**
- * @brief Go through all IPv6 addresses on a network interface and call callback
- * for each used address.
- *
- * @param iface Pointer to the network interface
- * @param cb User-supplied callback function to call
- * @param user_data User specified data
- */
-void net_if_ipv6_addr_foreach(struct net_if *iface, net_if_ip_addr_cb_t cb,
-			      void *user_data);
-
-/**
  * @brief Add a IPv6 multicast address to an interface
  *
  * @param iface Network interface
@@ -1862,17 +1838,6 @@ __syscall bool net_if_ipv4_addr_add_by_index(int index,
  */
 __syscall bool net_if_ipv4_addr_rm_by_index(int index,
 					    const struct in_addr *addr);
-
-/**
- * @brief Go through all IPv4 addresses on a network interface and call callback
- * for each used address.
- *
- * @param iface Pointer to the network interface
- * @param cb User-supplied callback function to call
- * @param user_data User specified data
- */
-void net_if_ipv4_addr_foreach(struct net_if *iface, net_if_ip_addr_cb_t cb,
-			      void *user_data);
 
 /**
  * @brief Add a IPv4 multicast address to an interface
@@ -2561,23 +2526,6 @@ int net_if_resume(struct net_if *iface);
 bool net_if_is_suspended(struct net_if *iface);
 #endif /* CONFIG_NET_POWER_MANAGEMENT */
 
-/**
- * @brief Check if the network interface supports Wi-Fi.
- *
- * @param iface Pointer to network interface
- *
- * @return True if interface supports Wi-Fi, False otherwise.
- */
-bool net_if_is_wifi(struct net_if *iface);
-
-/**
- * @brief Get first Wi-Fi network interface.
- *
- * @return Pointer to network interface, NULL if not found.
- */
-struct net_if *net_if_get_first_wifi(void);
-
-
 /** @cond INTERNAL_HIDDEN */
 struct net_if_api {
 	void (*init)(struct net_if *iface);
@@ -2614,7 +2562,6 @@ struct net_if_api {
 		.l2 = &(NET_L2_GET_NAME(_l2)),				\
 		.l2_data = &(NET_L2_GET_DATA(dev_id, sfx)),		\
 		.mtu = _mtu,						\
-		.flags = {BIT(NET_IF_LOWER_UP)},			\
 	};								\
 	static Z_DECL_ALIGN(struct net_if)				\
 		       NET_IF_GET_NAME(dev_id, sfx)[_num_configs]	\
@@ -2632,7 +2579,6 @@ struct net_if_api {
 		.dev = &(DEVICE_NAME_GET(dev_id)),			\
 		.mtu = _mtu,						\
 		.l2 = &(NET_L2_GET_NAME(OFFLOADED_NETDEV)),		\
-		.flags = {BIT(NET_IF_LOWER_UP)},			\
 	};								\
 	static Z_DECL_ALIGN(struct net_if)				\
 		NET_IF_GET_NAME(dev_id, sfx)[NET_IF_MAX_CONFIGS]	\

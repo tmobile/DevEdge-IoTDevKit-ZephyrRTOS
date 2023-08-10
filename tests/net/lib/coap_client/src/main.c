@@ -17,8 +17,7 @@ DEFINE_FFF_GLOBALS;
 
 static uint8_t last_response_code;
 static const char *test_path = "test";
-
-static uint16_t messages_needing_response[2];
+static uint16_t last_message_id;
 
 static struct coap_client client;
 
@@ -34,20 +33,10 @@ static char *long_payload = "Lorem ipsum dolor sit amet, consectetur adipiscing 
 static ssize_t z_impl_zsock_recvfrom_custom_fake(int sock, void *buf, size_t max_len, int flags,
 					  struct sockaddr *src_addr, socklen_t *addrlen)
 {
-	uint16_t last_message_id = 0;
-
 	LOG_INF("Recvfrom");
-	uint8_t ack_data[] = {
+	static uint8_t ack_data[] = {
 		0x68, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
-
-	if (messages_needing_response[0] != 0) {
-		last_message_id = messages_needing_response[0];
-		messages_needing_response[0] = 0;
-	} else {
-		last_message_id = messages_needing_response[1];
-		messages_needing_response[1] = 0;
-	}
 
 	ack_data[2] = (uint8_t) (last_message_id >> 8);
 	ack_data[3] = (uint8_t) last_message_id;
@@ -61,16 +50,10 @@ static ssize_t z_impl_zsock_sendto_custom_fake(int sock, void *buf, size_t len,
 			       int flags, const struct sockaddr *dest_addr,
 			       socklen_t addrlen)
 {
-	uint16_t last_message_id = 0;
-
+	LOG_INF("Sendto");
+	last_message_id = 0;
 	last_message_id |= ((uint8_t *) buf)[2] << 8;
 	last_message_id |= ((uint8_t *) buf)[3];
-
-	if (messages_needing_response[0] == 0) {
-		messages_needing_response[0] = last_message_id;
-	} else {
-		messages_needing_response[1] = last_message_id;
-	}
 
 	last_response_code = ((uint8_t *) buf)[1];
 
@@ -82,19 +65,9 @@ static ssize_t z_impl_zsock_recvfrom_custom_fake_response(int sock, void *buf, s
 							  int flags, struct sockaddr *src_addr,
 							  socklen_t *addrlen)
 {
-	uint16_t last_message_id = 0;
-
 	static uint8_t ack_data[] = {
 		0x48, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
-
-	if (messages_needing_response[0] != 0) {
-		last_message_id = messages_needing_response[0];
-		messages_needing_response[0] = 0;
-	} else {
-		last_message_id = messages_needing_response[1];
-		messages_needing_response[1] = 0;
-	}
 
 	ack_data[2] = (uint8_t) (last_message_id >> 8);
 	ack_data[3] = (uint8_t) last_message_id;
@@ -108,19 +81,9 @@ static ssize_t z_impl_zsock_recvfrom_custom_fake_empty_ack(int sock, void *buf, 
 							   int flags, struct sockaddr *src_addr,
 							   socklen_t *addrlen)
 {
-	uint16_t last_message_id = 0;
-
 	static uint8_t ack_data[] = {
 		0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
-
-	if (messages_needing_response[0] != 0) {
-		last_message_id = messages_needing_response[0];
-		messages_needing_response[0] = 0;
-	} else {
-		last_message_id = messages_needing_response[1];
-		messages_needing_response[1] = 0;
-	}
 
 	ack_data[2] = (uint8_t) (last_message_id >> 8);
 	ack_data[3] = (uint8_t) last_message_id;
@@ -136,19 +99,9 @@ static ssize_t z_impl_zsock_recvfrom_custom_fake_unmatching(int sock, void *buf,
 							    int flags, struct sockaddr *src_addr,
 							    socklen_t *addrlen)
 {
-	uint16_t last_message_id = 0;
-
 	static uint8_t ack_data[] = {
 		0x68, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
 	};
-
-	if (messages_needing_response[0] != 0) {
-		last_message_id = messages_needing_response[0];
-		messages_needing_response[0] = 0;
-	} else {
-		last_message_id = messages_needing_response[1];
-		messages_needing_response[1] = 0;
-	}
 
 	ack_data[2] = (uint8_t) (last_message_id >> 8);
 	ack_data[3] = (uint8_t) last_message_id;
@@ -188,7 +141,7 @@ ZTEST_SUITE(coap_client, NULL, suite_setup, test_setup, NULL, NULL);
 ZTEST(coap_client, test_get_request)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -217,7 +170,7 @@ ZTEST(coap_client, test_get_request)
 ZTEST(coap_client, test_get_no_path)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -242,7 +195,7 @@ ZTEST(coap_client, test_get_no_path)
 ZTEST(coap_client, test_send_large_data)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -271,7 +224,7 @@ ZTEST(coap_client, test_send_large_data)
 ZTEST(coap_client, test_no_response)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -289,7 +242,7 @@ ZTEST(coap_client, test_no_response)
 
 	LOG_INF("Send request");
 	clear_socket_events();
-	ret = coap_client_req(&client, 0, &address, &client_request, 0);
+	ret = coap_client_req(&client, 0, &address, &client_request, -1);
 
 	zassert_true(ret >= 0, "Sending request failed, %d", ret);
 	k_sleep(K_MSEC(1000));
@@ -298,7 +251,7 @@ ZTEST(coap_client, test_no_response)
 ZTEST(coap_client, test_separate_response)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -332,7 +285,7 @@ ZTEST(coap_client, test_separate_response)
 ZTEST(coap_client, test_multiple_requests)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,
@@ -354,11 +307,14 @@ ZTEST(coap_client, test_multiple_requests)
 	zassert_true(ret >= 0, "Sending request failed, %d", ret);
 
 	ret = coap_client_req(&client, 0, &address, &client_request, -1);
-	zassert_true(ret >= 0, "Sending request failed, %d", ret);
+	zassert_equal(ret, -EAGAIN, "Shouldn't be able to send 2 requests at same time");
 
 	k_sleep(K_MSEC(5));
 	k_sleep(K_MSEC(1000));
 	zassert_equal(last_response_code, COAP_RESPONSE_CODE_OK, "Unexpected response");
+
+	ret = coap_client_req(&client, 0, &address, &client_request, -1);
+	zassert_true(ret >= 0, "Sending request failed, %d", ret);
 
 	k_sleep(K_MSEC(5));
 	k_sleep(K_MSEC(1000));
@@ -368,7 +324,7 @@ ZTEST(coap_client, test_multiple_requests)
 ZTEST(coap_client, test_unmatching_tokens)
 {
 	int ret = 0;
-	struct sockaddr address = {0};
+	struct sockaddr address;
 	struct coap_client_request client_request = {
 		.method = COAP_METHOD_GET,
 		.confirmable = true,

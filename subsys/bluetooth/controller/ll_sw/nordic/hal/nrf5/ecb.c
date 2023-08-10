@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#include <zephyr/sys/dlist.h>
+
 #include <hal/nrf_ecb.h>
 
 #include "util/mem.h"

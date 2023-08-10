@@ -268,9 +268,7 @@ class KconfigCheck(ComplianceTest):
     doc = "See https://docs.zephyrproject.org/latest/guides/kconfig/index.html for more details."
     path_hint = "<zephyr-base>"
 
-    def run(self, full=True, no_modules=False):
-        self.no_modules = no_modules
-
+    def run(self, full=True):
         kconf = self.parse_kconfig()
 
         self.check_top_menu_not_too_long(kconf)
@@ -289,11 +287,6 @@ class KconfigCheck(ComplianceTest):
         This is needed to complete Kconfig sanity tests.
 
         """
-        if self.no_modules:
-            with open(modules_file, 'w') as fp_module_file:
-                fp_module_file.write("# Empty\n")
-            return
-
         # Invoke the script directly using the Python executable since this is
         # not a module nor a pip-installed Python utility
         zephyr_module_path = os.path.join(ZEPHYR_BASE, "scripts",
@@ -447,13 +440,9 @@ deliberately adding new entries, then bump the 'max_top_items' variable in
         # Checks that no symbols are (re)defined in defconfigs.
 
         for node in kconf.node_iter():
-            # 'kconfiglib' is global
-            # pylint: disable=undefined-variable
             if "defconfig" in node.filename and (node.prompt or node.help):
-                name = (node.item.name if node.item not in
-                        (kconfiglib.MENU, kconfiglib.COMMENT) else str(node))
                 self.failure(f"""
-Kconfig node '{name}' found with prompt or help in {node.filename}.
+Kconfig node '{node.item.name}' found with prompt or help in {node.filename}.
 Options must not be defined in defconfig files.
 """)
                 continue
@@ -660,9 +649,6 @@ flagged.
         "MCUBOOT_CLEANUP_ARM_CORE", # Used in (sysbuild-based) test
         "MCUBOOT_SERIAL",           # Used in (sysbuild-based) test/
                                     # documentation
-        "MCUMGR_GRP_EXAMPLE", # Used in documentation
-        "MCUMGR_GRP_EXAMPLE_LOG_LEVEL", # Used in documentation
-        "MCUMGR_GRP_EXAMPLE_OTHER_HOOK", # Used in documentation
         "MISSING",
         "MODULES",
         "MYFEATURE",
@@ -720,18 +706,6 @@ class KconfigBasicCheck(KconfigCheck):
 
     def run(self):
         super().run(full=False)
-
-class KconfigBasicNoModulesCheck(KconfigCheck):
-    """
-    Checks if we are introducing any new warnings/errors with Kconfig when no
-    modules are available. Catches symbols used in the main repository but
-    defined only in a module.
-    """
-    name = "KconfigBasicNoModules"
-    doc = "See https://docs.zephyrproject.org/latest/guides/kconfig/index.html for more details."
-    path_hint = "<zephyr-base>"
-    def run(self):
-        super().run(full=False, no_modules=True)
 
 
 class Nits(ComplianceTest):
@@ -1073,8 +1047,8 @@ class MaintainersFormat(ComplianceTest):
     def run(self):
         MAINTAINERS_FILES = ["MAINTAINERS.yml", "MAINTAINERS.yaml"]
 
-        for file in MAINTAINERS_FILES:
-            if not os.path.exists(file):
+        for file in get_files(filter="d"):
+            if file not in MAINTAINERS_FILES:
                 continue
 
             try:

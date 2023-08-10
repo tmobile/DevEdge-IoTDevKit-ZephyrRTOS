@@ -318,7 +318,7 @@ Date-time request header fields:
 
 The command sends an empty CBOR map as data.
 
-Date-time get response
+Data-time get response
 ----------------------
 
 Date-time get response header fields:
@@ -399,7 +399,7 @@ where:
     |                       | yyyy-MM-dd'T'HH:mm:ss.SSSSSSZZZZZ                 |
     +-----------------------+---------------------------------------------------+
 
-Date-time set response
+Data-time set response
 ----------------------
 
 Date-time set response header fields:

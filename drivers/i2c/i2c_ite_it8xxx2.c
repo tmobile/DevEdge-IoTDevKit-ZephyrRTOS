@@ -1232,9 +1232,11 @@ static const struct i2c_driver_api i2c_it8xxx2_driver_api = {
 };
 
 #ifdef CONFIG_I2C_IT8XXX2_FIFO_MODE
-BUILD_ASSERT(!((DT_INST_PROP(SMB_CHANNEL_B, fifo_enable) == true) &&
+BUILD_ASSERT(((DT_INST_PROP(SMB_CHANNEL_B, fifo_enable) == true) &&
+	     (DT_INST_PROP(SMB_CHANNEL_C, fifo_enable) == false)) ||
+	     ((DT_INST_PROP(SMB_CHANNEL_B, fifo_enable) == false) &&
 	     (DT_INST_PROP(SMB_CHANNEL_C, fifo_enable) == true)),
-	     "Channel B and C cannot support FIFO mode at the same time.");
+	     "FIFO2 only supports one channel of B or C.");
 #endif
 
 #define I2C_ITE_IT8XXX2_INIT(inst)                                              \

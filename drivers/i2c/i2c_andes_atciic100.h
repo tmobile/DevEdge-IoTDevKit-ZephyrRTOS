@@ -223,8 +223,7 @@ struct _i2c_status {
 };
 
 struct i2c_atciic100_dev_data_t {
-	struct k_sem			bus_lock;
-	struct k_sem			device_sync_sem;
+	struct k_sem			i2c_busy_sem;
 	volatile uint32_t		driver_state;
 	uint8_t				*middleware_rx_buf;
 	uint8_t				*middleware_tx_buf;

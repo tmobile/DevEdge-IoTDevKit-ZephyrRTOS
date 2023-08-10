@@ -8,6 +8,7 @@
 #include <zephyr/init.h>
 #include <soc.h>
 #include <zephyr/arch/cpu.h>
+#include <zephyr/irq.h>
 
 /**
  * @brief Perform basic hardware initialization at boot.
@@ -19,7 +20,13 @@
  */
 static int viper_init(void)
 {
+	uint32_t key;
 	uint32_t data;
+
+
+	key = irq_lock();
+
+	NMI_INIT();
 
 	/* pcie pmon lite init */
 	data = sys_read32(LS_ICFG_PMON_LITE_CLK_CTRL);
@@ -29,6 +36,8 @@ static int viper_init(void)
 	data = sys_read32(LS_ICFG_PMON_LITE_SW_RESETN);
 	data |= PCIE_PMON_LITE_SW_RESETN;
 	sys_write32(data, LS_ICFG_PMON_LITE_SW_RESETN);
+
+	irq_unlock(key);
 
 	return 0;
 }

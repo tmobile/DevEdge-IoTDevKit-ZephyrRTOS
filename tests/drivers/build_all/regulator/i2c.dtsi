@@ -58,19 +58,3 @@ apd356x@3 {
 		BUCKBOOST {};
 	};
 };
-
-axp192@4 {
-	compatible = "x-powers,axp192";
-	reg = <0x4>;
-
-	regulators {
-		compatible = "x-powers,axp192-regulator";
-
-		DCDC1 {};
-		DCDC2 {};
-		DCDC3 {};
-		LDO1 {};
-		LDO2 {};
-		LDO3 {};
-	};
-};

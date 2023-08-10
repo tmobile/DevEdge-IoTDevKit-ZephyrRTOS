@@ -511,6 +511,7 @@ CBOR data of successful response:
 
 .. code-block:: none
 
+    format (0 = int, 1 = byte array)
     {
         (str)"types" : {
             (str)<hash_checksum_name> : {
