@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
+set(GEN_DIR ${ZEPHYR_BINARY_DIR}/include/generated)
+
 zephyr_syscall_header(
   ${ZEPHYR_BASE}/include/zephyr/posix/time.h
 )
@@ -43,6 +45,7 @@ zephyr_library_sources_ifdef(CONFIG_POSIX_CLOCK sleep.c)
 zephyr_library_sources_ifdef(CONFIG_POSIX_CLOCK timer.c)
 zephyr_library_sources_ifdef(CONFIG_POSIX_FS fs.c)
 zephyr_library_sources_ifdef(CONFIG_POSIX_MQUEUE mqueue.c)
+zephyr_library_sources_ifdef(CONFIG_POSIX_SIGNAL signal.c ${STRSIGNAL_TABLE_H})
 zephyr_library_sources_ifdef(CONFIG_POSIX_UNAME uname.c)
 zephyr_library_sources_ifdef(CONFIG_PTHREAD_IPC _common.c)
 zephyr_library_sources_ifdef(CONFIG_PTHREAD_IPC barrier.c)

@@ -285,29 +285,7 @@ static void ase_set_state_qos_configured(struct bt_ascs_ase *ase)
 	struct bt_bap_stream *stream = ase->ep.stream;
 	struct bt_bap_stream_ops *ops;
 
-	if (state_changed && old_state == BT_BAP_EP_STATE_STREAMING) {
-		/* We left the streaming state, let the upper layers know that the stream is stopped
-		 */
-		struct bt_bap_stream_ops *ops = stream->ops;
-		uint8_t reason = ep->reason;
-
-		if (reason == BT_HCI_ERR_SUCCESS) {
-			/* Default to BT_HCI_ERR_UNSPECIFIED if no other reason is set */
-			reason = BT_HCI_ERR_UNSPECIFIED;
-		} else {
-			/* Reset reason */
-			ep->reason = BT_HCI_ERR_SUCCESS;
-		}
-
-		if (ops != NULL && ops->stopped != NULL) {
-			ops->stopped(stream, reason);
-		} else {
-			LOG_WRN("No callback for stopped set");
-		}
-	}
-
-	if (stream->ops != NULL) {
-		const struct bt_bap_stream_ops *ops = stream->ops;
+	__ASSERT_NO_MSG(stream != NULL);
 
 	ase->ep.receiver_ready = false;
 
@@ -1563,6 +1541,37 @@ static int ase_config(struct bt_ascs_ase *ase, const struct bt_ascs_config *cfg)
 	return 0;
 }
 
+void copy_codec_cfg_pointers(struct bt_audio_codec_cfg *dst,
+			     struct bt_audio_codec_cfg *src)
+{
+#if CONFIG_BT_AUDIO_CODEC_CFG_MAX_DATA_COUNT > 0 && CONFIG_BT_AUDIO_CODEC_MAX_DATA_LEN > 0
+	/* Need to update the `bt_data.data` pointer to the new value after copying the codec */
+	for (size_t i = 0U; i < ARRAY_SIZE(dst->data); i++) {
+		const struct bt_audio_codec_data *codec_data = &src->data[i];
+		struct bt_audio_codec_data *data = &dst->data[i];
+		const uint8_t data_len = codec_data->data.data_len;
+
+		data->data.data = data->value;
+		data->data.data_len = data_len;
+		memcpy(data->value, codec_data->data.data, data_len);
+	}
+#endif /* CONFIG_BT_AUDIO_CODEC_CFG_MAX_DATA_COUNT > 0 && CONFIG_BT_AUDIO_CODEC_MAX_DATA_LEN > 0 */
+
+#if CONFIG_BT_AUDIO_CODEC_CFG_MAX_METADATA_COUNT > 0 && CONFIG_BT_AUDIO_CODEC_MAX_DATA_LEN > 0
+	for (size_t i = 0U; i < ARRAY_SIZE(dst->meta); i++) {
+		const struct bt_audio_codec_data *meta_data = &src->meta[i];
+		struct bt_audio_codec_data *data = &dst->meta[i];
+		const uint8_t data_len = meta_data->data.data_len;
+
+		data->data.data = data->value;
+		data->data.data_len = data_len;
+		memcpy(data->value, meta_data->data.data, data_len);
+	}
+#endif /* CONFIG_BT_AUDIO_CODEC_CFG_MAX_METADATA_COUNT > 0 &&
+	* CONFIG_BT_AUDIO_CODEC_MAX_DATA_LEN > 0
+	*/
+}
+
 int bt_ascs_config_ase(struct bt_conn *conn, struct bt_bap_stream *stream,
 		       struct bt_audio_codec_cfg *codec_cfg,
 		       const struct bt_audio_codec_qos_pref *qos_pref)
@@ -1597,11 +1606,20 @@ int bt_ascs_config_ase(struct bt_conn *conn, struct bt_bap_stream *stream,
 
 	ep = &ase->ep;
 
-	err = ascs_ep_set_codec(ep, codec_cfg->id, sys_le16_to_cpu(codec_cfg->cid),
-				sys_le16_to_cpu(codec_cfg->vid), NULL, 0, &rsp);
-	if (err) {
-		ase_free(ase);
-		return err;
+	if (ep == NULL) {
+		return -EINVAL;
+	}
+
+	lookup_data.id = codec_cfg->id;
+	lookup_data.cid = codec_cfg->cid;
+	lookup_data.vid = codec_cfg->vid;
+
+	bt_pacs_cap_foreach(ep->dir, codec_lookup_id, &lookup_data);
+
+	if (lookup_data.codec_cap == NULL) {
+		LOG_DBG("Codec with id %u for dir %s is not supported by our capabilities",
+			codec_cfg->id, bt_audio_dir_str(ep->dir));
+		return -ENOENT;
 	}
 
 	(void)memcpy(&ep->codec_cfg, codec_cfg, sizeof(ep->codec_cfg));

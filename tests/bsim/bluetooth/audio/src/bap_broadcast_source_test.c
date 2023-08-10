@@ -1128,13 +1128,8 @@ static void test_main(void)
 		return;
 	}
 
-	printk("Reconfiguring broadcast source\n");
-	err = bt_bap_broadcast_source_reconfig(source, &preset_16_2_1.codec_cfg,
-					       &preset_16_2_1.qos);
-	if (err != 0) {
-		FAIL("Unable to reconfigure broadcast source: %d\n", err);
-		return;
-	}
+	test_broadcast_source_reconfig_inval(source);
+	test_broadcast_source_reconfig(source);
 
 	test_broadcast_source_start_inval(source, adv);
 	test_broadcast_source_start(source, adv);

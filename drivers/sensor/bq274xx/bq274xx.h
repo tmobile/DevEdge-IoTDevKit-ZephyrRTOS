@@ -11,8 +11,10 @@
 #include <zephyr/drivers/gpio.h>
 
 /*** General Constant ***/
-#define BQ274XX_UNSEAL_KEY 0x8000 /* Secret code to unseal the BQ27441-G1A */
-#define BQ274XX_DEVICE_ID  0x0421 /* Default device ID */
+#define BQ274XX_UNSEAL_KEY_A 0x8000 /* Unseal code one on BQ27441-G1A and similar */
+#define BQ274XX_UNSEAL_KEY_B 0x8000 /* Unseal code two on BQ27441-G1A and similar */
+#define BQ27421_DEVICE_ID  0x0421
+#define BQ27427_DEVICE_ID  0x0427
 
 /*** Standard Commands ***/
 #define BQ274XX_CMD_CONTROL_LOW    0x00 /* Control() low register */
@@ -67,14 +69,7 @@
 #define BQ274XX_EXT_BLKDAT_END                 0x5F /* BlockData_end() */
 #define BQ274XX_EXT_CHECKSUM                   0x60 /* BlockDataCheckSum() */
 #define BQ274XX_EXT_DATA_CONTROL               0x61 /* BlockDataControl() */
-#define BQ274XX_EXT_BLKDAT_DESIGN_CAP_HIGH     0x4A /* BlockData */
-#define BQ274XX_EXT_BLKDAT_DESIGN_CAP_LOW      0x4B
-#define BQ274XX_EXT_BLKDAT_DESIGN_ENR_HIGH     0x4C
-#define BQ274XX_EXT_BLKDAT_DESIGN_ENR_LOW      0x4D
-#define BQ274XX_EXT_BLKDAT_TERMINATE_VOLT_HIGH 0x50
-#define BQ274XX_EXT_BLKDAT_TERMINATE_VOLT_LOW  0x51
-#define BQ274XX_EXT_BLKDAT_TAPERRATE_HIGH      0x5B
-#define BQ274XX_EXT_BLKDAT_TAPERRATE_LOW       0x5C
+#define BQ274XX_EXT_BLKDAT(off)                (BQ274XX_EXT_BLKDAT_START + off)
 
 /* Hold the register offset for a device variant. */
 struct bq274xx_regs {

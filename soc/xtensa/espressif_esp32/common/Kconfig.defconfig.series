@@ -10,9 +10,11 @@ config XTENSA_RESET_VECTOR
 config XTENSA_USE_CORE_CRT1
 	default n
 
-	config ROM_START_OFFSET
-		default 0x20
-endif
+config GEN_ISR_TABLES
+	default y
+
+config GEN_IRQ_VECTOR_TABLE
+	default n
 
 config CLOCK_CONTROL
 	default y

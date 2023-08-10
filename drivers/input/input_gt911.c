@@ -50,6 +50,8 @@ struct gt911_data {
 	const struct device *dev;
 	/** Work queue (for deferred read). */
 	struct k_work work;
+	/** Actual device I2C address */
+	uint8_t actual_address;
 #ifdef CONFIG_INPUT_GT911_INTERRUPT
 	/** Interrupt GPIO callback. */
 	struct gpio_callback int_gpio_cb;
@@ -80,6 +82,7 @@ static int gt911_i2c_write(const struct device *dev,
 			   const uint8_t *buf, uint32_t num_bytes)
 {
 	const struct gt911_config *config = dev->config;
+	struct gt911_data *data = dev->data;
 
 	return i2c_write(config->bus.bus, buf, num_bytes, data->actual_address);
 }
@@ -340,7 +343,11 @@ static int gt911_init(const struct device *dev)
 	}
 
 #ifdef CONFIG_INPUT_GT911_INTERRUPT
-	gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
+	r = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
+	if (r < 0) {
+		LOG_ERR("Could not set gpio callback");
+		return r;
+	}
 #else
 	k_timer_start(&data->timer, K_MSEC(CONFIG_INPUT_GT911_PERIOD_MS),
 		      K_MSEC(CONFIG_INPUT_GT911_PERIOD_MS));
@@ -349,7 +356,7 @@ static int gt911_init(const struct device *dev)
 	return 0;
 }
 
-#define GT911_INIT(index)                                                     \
+#define GT911_INIT(index)                                                      \
 	static const struct gt911_config gt911_config_##index = {	       \
 		.bus = I2C_DT_SPEC_INST_GET(index),			       \
 		.rst_gpio = GPIO_DT_SPEC_INST_GET(index, reset_gpios),	       \
@@ -358,7 +365,7 @@ static int gt911_init(const struct device *dev)
 	};								       \
 	static struct gt911_data gt911_data_##index;			       \
 	DEVICE_DT_INST_DEFINE(index, gt911_init, NULL,			       \
-			    &gt911_data_##index, &gt911_config_##index,      \
+			    &gt911_data_##index, &gt911_config_##index,        \
 			    POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY,	       \
 			    NULL);
 

@@ -182,6 +182,13 @@ static void xpt2046_work_handler(struct k_work *kw)
 		k_work_reschedule(&data->dwork, K_MSEC(100));
 	}
 
+	ret = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
+	if (ret < 0) {
+		LOG_ERR("Could not set gpio callback");
+		return;
+	}
+}
+
 static int xpt2046_init(const struct device *dev)
 {
 	int r;

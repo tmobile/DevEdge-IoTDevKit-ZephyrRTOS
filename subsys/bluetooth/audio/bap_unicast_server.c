@@ -138,9 +138,6 @@ int bt_bap_unicast_server_metadata(struct bt_bap_stream *stream, struct bt_audio
 	}
 
 	/* Set the state to the same state to trigger the notifications */
-	ascs_ep_set_state(ep, ep->status.state);
-
-	/* Set the state to the same state to trigger the notifications */
 	return ascs_ep_set_state(ep, ep->status.state);
 }
 

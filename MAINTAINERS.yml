@@ -1800,7 +1800,7 @@ Native POSIX/Sim and POSIX arch:
     - drivers/*/*/*native*
     - dts/posix/
     - include/zephyr/arch/posix/
-    - scripts/native_simulator/*
+    - scripts/native_simulator/
     - scripts/valgrind.supp
     - soc/posix/
     - tests/boards/native_posix/

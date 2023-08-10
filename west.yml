@@ -147,7 +147,7 @@ manifest:
       groups:
         - hal
     - name: hal_espressif
-      revision: 9531c1c17873aa4935f85864ebafd20c02062a8f
+      revision: ae1bd648a1ac701672c46b6ff4eadfa716937ce3
       path: modules/hal/espressif
       west-commands: west/west-commands.yml
       groups:
@@ -178,17 +178,17 @@ manifest:
       groups:
         - hal
     - name: hal_nordic
-      revision: 20ae0a7be9030dd58fb59db1c74315a60efb076f
+      revision: cf6e9fc5f7c2c98df26f2a4227a95df9a50823e7
       path: modules/hal/nordic
       groups:
         - hal
     - name: hal_nuvoton
-      revision: 8a2b5de1670b59fcacd20d7495cb1c0f26fbe7bd
+      revision: 3e0a4c4d3328b2f72b164219add19d5308b53cb5
       path: modules/hal/nuvoton
       groups:
         - hal
     - name: hal_nxp
-      revision: e0116b8eae46c2d90f2c1b23baef73bb082d00bd
+      revision: 1a55ccfde649a97df74a8853cbd9787ddd34bfc4
       path: modules/hal/nxp
       groups:
         - hal
@@ -224,7 +224,7 @@ manifest:
       groups:
         - hal
     - name: hal_stm32
-      revision: 65b641345a5bfccd93de1fc21103d69c4a9ff1d6
+      revision: 1bc72c299d0365c0ee2575a97918b22df0899e10
       path: modules/hal/stm32
       groups:
         - hal
@@ -265,7 +265,7 @@ manifest:
       revision: ce57712f3e426bbbb13acaec97b45369f716f43a
       path: modules/lib/loramac-node
     - name: lvgl
-      revision: f7cf01d413aa9e76f376e25aa7b5c08dfdbc3c24
+      revision: 5da257f782a8f9c6e265bdc60ebc2a93fdee24de
       path: modules/lib/gui/lvgl
     - name: lz4
       revision: 8e303c264fc21c2116dc612658003a22e933124d
@@ -276,7 +276,7 @@ manifest:
       groups:
         - crypto
     - name: mcuboot
-      revision: 6a8746d7acd75ff81fb6888d7776f412663f7897
+      revision: 76d19b3b8885ea7ae25a6f4f5d8501f7ec646447
       path: bootloader/mcuboot
     - name: mipi-sys-t
       path: modules/debug/mipi-sys-t
@@ -292,7 +292,7 @@ manifest:
       groups:
         - tools
     - name: nrf_hw_models
-      revision: 33b999d50093da88cf935383da2bdac70ffd9456
+      revision: cee41373eb0bb720a370586de1ee5eb693e62c95
       path: modules/bsim_hw_models/nrf_hw_models
     - name: open-amp
       revision: 42b7c577714b8f22ce82a901e19c1814af4609a8

@@ -6,6 +6,8 @@
 
 dir_path=$(dirname "$0")
 
+set -e # Exit on error
+
 $dir_path/cap_unicast_inval.sh
 
 $dir_path/cap_unicast.sh

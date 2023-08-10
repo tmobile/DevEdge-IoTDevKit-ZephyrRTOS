@@ -556,7 +556,7 @@ static uint64_t target_time_convert_to_64_bits(uint64_t target_time_ns_wrapped)
 }
 
 static bool nrf5_tx_at(struct nrf5_802154_data *nrf5_radio, struct net_pkt *pkt,
-		   uint8_t *payload, bool cca)
+		   uint8_t *payload, enum ieee802154_tx_mode mode)
 {
 	bool cca = false;
 #if defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA)
@@ -595,7 +595,7 @@ static bool nrf5_tx_at(struct nrf5_802154_data *nrf5_radio, struct net_pkt *pkt,
 #endif
 		},
 #if defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA)
-		.extra_cca_attempts = nrf5_radio->extra_cca_attempts
+		.extra_cca_attempts = max_extra_cca_attempts,
 #endif
 	};
 	uint64_t tx_at = target_time_convert_to_64_bits(net_ptp_time_to_ns(net_pkt_timestamp(pkt)));
@@ -645,8 +645,7 @@ static int nrf5_tx(const struct device *dev,
 	case IEEE802154_OPENTHREAD_TX_MODE_TXTIME_MULTIPLE_CCA:
 #endif
 		__ASSERT_NO_MSG(pkt);
-		ret = nrf5_tx_at(nrf5_radio, pkt, nrf5_radio->tx_psdu,
-				 mode == IEEE802154_TX_MODE_TXTIME_CCA);
+		ret = nrf5_tx_at(nrf5_radio, pkt, nrf5_radio->tx_psdu, mode);
 		break;
 #endif /* CONFIG_NET_PKT_TXTIME */
 	default:
@@ -1007,8 +1006,8 @@ static int nrf5_configure(const struct device *dev,
 		 */
 		uint64_t start = target_time_convert_to_64_bits(config->rx_slot.start);
 
-		nrf_802154_receive_at(start, config->rx_slot.duration, config->rx_slot.channel,
-				      DRX_SLOT_RX);
+		nrf_802154_receive_at(start, config->rx_slot.duration / NSEC_PER_USEC,
+				      config->rx_slot.channel, DRX_SLOT_RX);
 	} break;
 
 	case IEEE802154_CONFIG_CSL_PERIOD:
@@ -1233,22 +1232,6 @@ void nrf_802154_serialization_error(const nrf_802154_ser_err_data_t *err)
 	k_oops();
 }
 #endif
-
-#if defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA)
-void ieee802154_nrf5_extra_cca_attempts_set(const struct device *dev, uint8_t value)
-{
-	struct nrf5_802154_data *nrf5_radio = NRF5_802154_DATA(dev);
-
-	nrf5_radio->extra_cca_attempts = value;
-}
-
-uint8_t ieee802154_nrf5_extra_cca_attempts_get(const struct device *dev)
-{
-	struct nrf5_802154_data *nrf5_radio = NRF5_802154_DATA(dev);
-
-	return nrf5_radio->extra_cca_attempts;
-}
-#endif /* defined(CONFIG_IEEE802154_NRF5_MULTIPLE_CCA) */
 
 static const struct nrf5_802154_config nrf5_radio_cfg = {
 	.irq_config_func = nrf5_irq_config,

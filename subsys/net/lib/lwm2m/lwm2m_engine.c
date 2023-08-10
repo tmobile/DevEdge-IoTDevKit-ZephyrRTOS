@@ -1018,9 +1018,6 @@ int lwm2m_set_default_sockopt(struct lwm2m_ctx *ctx)
 			if (ret) {
 				LOG_ERR("Failed to set TLS_PEER_VERIFY");
 			}
-			break;
-		default:
-			return -EOPNOTSUPP;
 		}
 
 		switch (lwm2m_security_mode(ctx)) {
@@ -1065,10 +1062,6 @@ int lwm2m_socket_start(struct lwm2m_ctx *client_ctx)
 	}
 	if (ret < 0) {
 		return ret;
-	}
-#else
-	if (!IS_ENABLED(CONFIG_LWM2M_DTLS_SUPPORT) && ctx->use_dtls) {
-		return -EOPNOTSUPP;
 	}
 #endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 

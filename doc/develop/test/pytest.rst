@@ -63,7 +63,7 @@ Following import is required to include in .py sources:
 
    from twister_harness import Device
 
-It is important for type checking and enabling IDE hints for ``dut``s (objects representing
+It is important for type checking and enabling IDE hints for ``dut`` s (objects representing
 Devices Under Test). The ``dut`` fixture is the core of pytest harness plugin. When used as an
 argument of a test function it gives access to a DeviceAbstract type object. The fixture yields a
 device prepared according to the requested type (native posix, qemu, hardware, etc.). All types of

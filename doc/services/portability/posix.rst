@@ -398,16 +398,6 @@ required for error and event handling.
     pthread_spin_trylock(),yes
     pthread_spin_unlock(),yes
 
-.. csv-table:: POSIX_SPIN_LOCKS
-   :header: API, Supported
-   :widths: 50,10
-
-    pthread_spin_destroy(),yes
-    pthread_spin_init(),yes
-    pthread_spin_lock(),yes
-    pthread_spin_trylock(),yes
-    pthread_spin_unlock(),yes
-
 
 POSIX_DEVICE_IO
 +++++++++++++++

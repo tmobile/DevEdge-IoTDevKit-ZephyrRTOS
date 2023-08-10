@@ -62,6 +62,7 @@ enum npm1300_gpio_type {
 #define SHIP_OFFSET_SHIP 0x02U
 
 struct regulator_npm1300_pconfig {
+	const struct device *mfd;
 	struct gpio_dt_spec dvs_state_pins[5];
 };
 
@@ -552,6 +553,7 @@ static const struct regulator_driver_api api = {.enable = regulator_npm1300_enab
 
 #define REGULATOR_NPM1300_DEFINE_ALL(inst)                                                         \
 	static const struct regulator_npm1300_pconfig config_##inst = {                            \
+		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
 		.dvs_state_pins = {GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 0, {0}),       \
 				   GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 1, {0}),       \
 				   GPIO_DT_SPEC_INST_GET_BY_IDX_OR(inst, dvs_gpios, 2, {0}),       \

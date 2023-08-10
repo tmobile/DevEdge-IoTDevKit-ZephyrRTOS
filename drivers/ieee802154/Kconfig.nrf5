@@ -91,12 +91,7 @@ config IEEE802154_NRF5_LOG_RX_FAILURES
 config IEEE802154_NRF5_MULTIPLE_CCA
 	bool "Support for multiple CCA attempts before transmission"
 	help
-	  This is an optional extension not conforming to IEEE Std. 802.15.4-2015.
-	  When this option is enabled the user of ieee802154_nrf5 has possibility
-	  to express the maximum number of extra CCA attempts for a transmission.
-	  The CCA procedure is repeated back-to-back either until it returns
-	  idle channel and the transmission starts, or until 1 + `extra cca attempts`
-	  CCA attempts are performed. Because of that the moment of transmission can be
-	  delayed by the time taken by the extra CCA operations performed.
+	  When this option is enabled the OpenThread capability
+	  IEEE802154_OPENTHREAD_HW_MULTIPLE_CCA is supported by the ieee802154_nrf5.
 
 endif

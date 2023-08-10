@@ -48,6 +48,7 @@
 #define ERPREFIX   PREFIX"error on "
 #define NO_MEM_ERR PREFIX"Can't allocate memory\n"
 
+#define PC_ENABLE_CANCEL 0 /* See Note.c1 */
 #define PC_ALLOC_CHUNK_SIZE 64
 #define PC_REUSE_ABORTED_ENTRIES 0
 /* tests/kernel/threads/scheduling/schedule_api fails when setting

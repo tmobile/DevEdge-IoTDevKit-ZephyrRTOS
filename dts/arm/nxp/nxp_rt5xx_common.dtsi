@@ -362,6 +362,9 @@
 		reg = <0x104000 0x1000>;
 		interrupts = <1 0>;
 		dma-channels = <37>;
+		nxp,dma-num-of-otrigs = <4>;
+		nxp,dma-otrig-base-address = <RT595_DMA0_OTRIG_BASE>;
+		nxp,dma-itrig-base-address = <RT595_DMA0_ITRIG_BASE>;
 		status = "disabled";
 		#dma-cells = <1>;
 	};
@@ -371,6 +374,9 @@
 		reg = <0x105000 0x1000>;
 		interrupts = <54 0>;
 		dma-channels = <37>;
+		nxp,dma-num-of-otrigs = <4>;
+		nxp,dma-otrig-base-address = <RT595_DMA1_OTRIG_BASE>;
+		nxp,dma-itrig-base-address = <RT595_DMA1_ITRIG_BASE>;
 		status = "disabled";
 		#dma-cells = <1>;
 	};
