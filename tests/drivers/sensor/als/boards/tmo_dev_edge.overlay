@@ -1,0 +1,18 @@
+/* Copyright (c) 2023 T-Mobile
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		als-0 = &tsl2540_i2c;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	tsl2540_i2c: tsl2540@39 {
+		status = "okay";
+		compatible = "ams,tsl2540";
+		reg = <0x39 0x4>;
+	};
+};

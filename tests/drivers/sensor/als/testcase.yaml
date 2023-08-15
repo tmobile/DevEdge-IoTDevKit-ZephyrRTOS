@@ -1,0 +1,8 @@
+tests:
+  drivers.sensor.als:
+    tags:
+      - drivers
+      - sensor
+      - subsys
+    integration_platforms:
+      - tmo_dev_edge

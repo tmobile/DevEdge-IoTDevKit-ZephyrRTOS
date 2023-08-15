@@ -5,7 +5,9 @@
 
 menuconfig TSL2540
 	bool "TSL2540 Ambient Light Sensor"
-	depends on I2C
+	default y
+	depends on DT_HAS_AMS_TSL2540_ENABLED
+	select I2C
 	help
 	  Enable driver for TSL2540 sensors.
 

@@ -843,3 +843,9 @@ test_i2c_bmi08x_gyro: bmi08x@6e {
 	gyro-hz = "1000_116";
 	gyro-fs = <1000>;
 };
+
+test_i2c_tsl2540: tsl2540@73 {
+	compatible = "ams,tsl2540";
+	reg = <0x73>;
+	int-gpios = <&test_gpio 0 0>;
+};
