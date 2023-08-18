@@ -265,7 +265,7 @@ class KconfigCheck(ComplianceTest):
     for example using undefined Kconfig variables.
     """
     name = "Kconfig"
-    doc = "See https://docs.zephyrproject.org/latest/guides/kconfig/index.html for more details."
+    doc = "See https://docs.zephyrproject.org/latest/build/kconfig/tips.html for more details."
     path_hint = "<zephyr-base>"
 
     def run(self, full=True, no_modules=False):
@@ -631,6 +631,7 @@ flagged.
         "CDC_ACM_PORT_NAME_",
         "CLOCK_STM32_SYSCLK_SRC_",
         "CMU",
+        "COMPILER_RT_RTLIB",
         "BT_6LOWPAN",  # Defined in Linux, mentioned in docs
         "CMD_CACHE",  # Defined in U-Boot, mentioned in docs
         "COUNTER_RTC_STM32_CLOCK_SRC",
@@ -647,6 +648,7 @@ flagged.
         "FOO_SETTING_1",
         "FOO_SETTING_2",
         "LSM6DSO_INT_PIN",
+        "LIBGCC_RTLIB",
         "LLVM_USE_LD",   # Both LLVM_USE_* are in cmake/toolchain/llvm/Kconfig
         "LLVM_USE_LLD",  # which are only included if LLVM is selected but
                          # not other toolchains. Compliance check would complain,
@@ -715,7 +717,7 @@ class KconfigBasicCheck(KconfigCheck):
     references inside the Kconfig tree.
     """
     name = "KconfigBasic"
-    doc = "See https://docs.zephyrproject.org/latest/guides/kconfig/index.html for more details."
+    doc = "See https://docs.zephyrproject.org/latest/build/kconfig/tips.html for more details."
     path_hint = "<zephyr-base>"
 
     def run(self):
@@ -728,7 +730,7 @@ class KconfigBasicNoModulesCheck(KconfigCheck):
     defined only in a module.
     """
     name = "KconfigBasicNoModules"
-    doc = "See https://docs.zephyrproject.org/latest/guides/kconfig/index.html for more details."
+    doc = "See https://docs.zephyrproject.org/latest/build/kconfig/tips.html for more details."
     path_hint = "<zephyr-base>"
     def run(self):
         super().run(full=False, no_modules=True)
@@ -773,7 +775,7 @@ class Nits(ComplianceTest):
         if re.match(r"\s*#\s*(K|k)config[\w.-]*\s*-", contents):
             self.failure(f"""
 Please use this format for the header in '{fname}' (see
-https://docs.zephyrproject.org/latest/guides/kconfig/index.html#header-comments-and-other-nits):
+https://docs.zephyrproject.org/latest/build/kconfig/tips.html#header-comments-and-other-nits):
 
     # <Overview of symbols defined in the file, preferably in plain English>
     (Blank line)

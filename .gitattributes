@@ -208,6 +208,7 @@ include/zephyr/net/http/client.h merge=ours
 include/zephyr/net/net_if.h merge=ours
 include/zephyr/net/ping.h merge=ours
 include/zephyr/net/wifi_mgmt.h merge=ours
+lib/posix/uname.c
 samples/bluetooth/peripheral_hr/boards/tmo_dev_edge.conf merge=ours
 samples/bluetooth/peripheral_ht/boards/tmo_dev_edge.conf merge=ours
 samples/drivers/counter/gecko_rtcc/CMakeLists.txt merge=ours

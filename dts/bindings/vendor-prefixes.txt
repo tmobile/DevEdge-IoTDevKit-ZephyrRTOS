@@ -37,6 +37,7 @@ alphascale	AlphaScale Integrated Circuits Systems, Inc.
 alps	Alps Electric Co., Ltd.
 alt	Altus-Escon-Company BV
 altr	Altera Corp.
+ambiq	Ambiq Micro, Inc.
 amarula	Amarula Solutions
 amazon	Amazon.com, Inc.
 amcc	Applied Micro Circuits Corporation (APM, formally AMCC)
@@ -204,7 +205,7 @@ evervision	Evervision Electronics Co. Ltd.
 exar	Exar Corporation
 excito	Excito
 ezchip	EZchip Semiconductor
-facebook	Facebook
+facebook	Facebook (deprecated, use meta)
 fairphone	Fairphone B.V.
 faraday	Faraday Technology Corporation
 fastrax	Fastrax Oy
@@ -291,6 +292,7 @@ invensense	InvenSense Inc.
 inversepath	Inverse Path
 iom	Iomega Corporation
 isee	ISEE 2007 S.L.
+isentek	Isentek Inc.
 isil	Intersil
 issi	Integrated Silicon Solutions Inc.
 ite	ITE Tech. Inc.
@@ -373,6 +375,7 @@ menlo	Menlo Systems GmbH
 mentor	Mentor Graphics
 meraki	Cisco Meraki, LLC
 merrii	Merrii Technology Co., Ltd.
+meta	Meta Platforms, Inc.
 micrel	Micrel Inc.
 microbit	Micro:bit Educational Foundation
 microchip	Microchip Technology Inc.

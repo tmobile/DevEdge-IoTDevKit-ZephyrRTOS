@@ -456,6 +456,14 @@ config NET_TCP_FAST_RETRANSMIT
 	  In that case a retransmission is triggerd to avoid having to wait for
 	  the retransmit timer to elapse.
 
+config NET_TCP_CONGESTION_AVOIDANCE
+	bool "Implement a congestion avoidance algorithm in TCP"
+	depends on NET_TCP
+	default y
+	help
+	  To avoid overstressing a link reduce the transmission rate as soon as
+	  packets are starting to drop.
+
 config NET_TCP_MAX_SEND_WINDOW_SIZE
 	int "Maximum sending window size to use"
 	depends on NET_TCP
@@ -525,6 +533,22 @@ config NET_TCP_ISN_RFC6528
 	  Implement Initial Sequence Number calculation as described in
 	  RFC 6528 chapter 3. https://tools.ietf.org/html/rfc6528
 	  If this is not set, then sys_rand32_get() is used for ISN value.
+
+config NET_TCP_WORKER_PRIO
+	int "Priority of the TCP work queue"
+	default 2
+	depends on NET_TCP
+	help
+	  Set the priority of the the TCP worker queue, that handles all
+	  transmission and maintenance within the TCP stack.
+	  Value 0 = highest priortity.
+	  When CONFIG_NET_TC_THREAD_COOPERATIVE = y, lowest priority is
+	  CONFIG_NUM_COOP_PRIORITIES-1 else lowest priority is
+	  CONFIG_NUM_PREEMPT_PRIORITIES-1.
+	  Make sure the priority is lower than lower layer TX threads to
+	  avoid the TCP stack consume all net_bufs before transferring
+	  execution to the lower layer network stack, with a high risk of
+	  running out of net_bufs.
 
 config NET_TEST_PROTOCOL
 	bool "JSON based test protocol (UDP)"
