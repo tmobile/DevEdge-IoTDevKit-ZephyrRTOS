@@ -12,14 +12,14 @@ description: |
 
   Example configuration:
 
-  #include <dt-bindings/input/input-event-codes.h>
+  #include <zephyr/dt-bindings/input/input-event-codes.h>
 
   qdec {
           compatible = "gpio-qdec";
           gpios = <&gpio0 14 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>,
                   <&gpio0 13 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;
           steps-per-period = <4>;
-          zephyr,axis = <INPUT_REL_Y>;
+          zephyr,axis = <INPUT_REL_WHEEL>;
           sample-time-us = <2000>;
           idle-timeout-ms = <200>;
   };

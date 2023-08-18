@@ -178,6 +178,22 @@ MIPS arch:
   labels:
     - "area: MIPS"
 
+Ambiq Platforms:
+  status: maintained
+  maintainers:
+    - fkokosinski
+  collaborators:
+    - tgorochowik
+    - msobkowski
+  files:
+    - soc/arm/ambiq/
+    - boards/arm/apollo*/
+    - dts/arm/ambiq/
+    - dts/bindings/*/ambiq*
+    - drivers/*/*_ambiq*
+  labels:
+    - "platform: Ambiq"
+
 Bluetooth:
   status: maintained
   maintainers:
@@ -1288,6 +1304,7 @@ Release Notes:
     - dts/bindings/serial/
     - samples/drivers/uart/
     - tests/drivers/uart/
+    - tests/drivers/build_all/uart/
     - doc/hardware/peripherals/uart.rst
   labels:
     - "area: UART"
@@ -1300,6 +1317,7 @@ Release Notes:
     - avisconti
     - teburd
     - yperess
+    - tristan-google
   files:
     - drivers/sensor/
     - include/zephyr/drivers/sensor.h
@@ -1527,6 +1545,7 @@ Google Platforms:
     - keith-zephyr
   files:
     - boards/*/google_*/
+    - samples/boards/google_*/
 
 Hash Utilities:
   status: maintained
@@ -2291,6 +2310,22 @@ Intel Platforms (Xtensa):
   labels:
     - "platform: Intel ADSP"
 
+Intel Platforms (ISH):
+  status: maintained
+  maintainers:
+    - kwd-doodling
+  collaborators:
+    - teburd
+    - likongintel
+  files:
+    - boards/x86/intel_ish/
+    - soc/x86/intel_ish/
+    - dts/x86/intel/intel_ish*
+    - dts/bindings/*/intel,sedi*
+    - drivers/*/*sedi*
+  labels:
+    - "platform: Intel ISH"
+
 Intel Platforms (Agilex):
   status: maintained
   maintainers:
@@ -2319,6 +2354,8 @@ NXP Platforms:
     - EmilioCBen
     - decsny
     - manuargue
+    - PetervdPerk-NXP
+    - bperseghetti
     - dbaluta
     - iuliana-prodan
   files:
@@ -2328,6 +2365,7 @@ NXP Platforms:
     - boards/arm/twr_*/
     - boards/arm/s32*/
     - boards/arm/mr_canhubk3/
+    - boards/arm/vmu_rt*/
     - soc/arm/nxp_*/
     - drivers/*/*imx*
     - drivers/*/*lpc*.c
@@ -2834,6 +2872,17 @@ West:
   labels:
     - manifest-hal_altera
 
+"West project: hal_ambiq":
+  status: maintained
+  maintainers:
+    - fkokosinski
+  collaborators:
+    - tgorochowik
+    - msobkowski
+  files: []
+  labels:
+    - manifest-hal_ambiq
+
 "West project: hal_atmel":
   status: maintained
   maintainers:
@@ -2936,6 +2985,8 @@ West:
     - mmahadevan108
     - danieldegrasse
     - manuargue
+    - PetervdPerk-NXP
+    - bperseghetti
   files:
     - modules/hal_nxp/
     - modules/Kconfig.imx
@@ -3055,6 +3106,18 @@ West:
     - modules/Kconfig.xtensa
   labels:
     - manifest-hal_xtensa
+
+"West project: hal_intel":
+  status: maintained
+  maintainers:
+    - kwd-doodling
+  collaborators:
+    - teburd
+    - likongintel
+  files:
+    - modules/Kconfig.intel
+  labels:
+    - manifest-hal_intel
 
 "West project: libmetal":
   status: odd fixes
@@ -3423,6 +3486,7 @@ Emulation:
     - jeremybettis
     - alevkoy
     - asemjonovs
+    - tristan-google
   files:
     - subsys/emul/
     - include/zephyr/drivers/emul.h

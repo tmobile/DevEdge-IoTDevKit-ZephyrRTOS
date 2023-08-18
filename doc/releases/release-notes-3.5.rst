@@ -50,15 +50,40 @@ Stable API changes in this release
 New APIs in this release
 ========================
 
+* Introduced MCUmgr client support with handlers for img_mgmt and os_mgmt.
+
 Kernel
 ******
 
 Architectures
 *************
 
-* ARM
+* ARC
 
 * ARM
+
+  * Fixed the Cortex-A/-R linker command file:
+
+    * The sections for zero-initialized (.bss) and uninitialized (.noinit) data
+      are now the last sections within the binary. This allows the linker to just
+      account for the required memory, but not having to actually include large
+      empty spaces within the binary. With the .bss and .noinit sections placed
+      somewhere in the middle of the resulting binary, as was the case with
+      previous releases, the linker had to pad the space for zero-/uninitialized
+      data due to subsequent sections containing initialized data. The inclusion
+      of large zero-initialized arrays or statically defined heaps reflected
+      directly in the size of the resulting binary, resulting in unnecessarily
+      large binaries, even when stripped.
+    * Fixed the location of the z_mapped_start address marker to point to the
+      base of RAM instead of to the start of the .text section. Therefore, the
+      single 4k page .vectors section, which is located right at the base of RAM
+      before the .text section and which was previously not included in the
+      mapped memory range, is now considered mapped and unavailable for dynamic
+      memory mapping via the MMU at run-time. This prevents the 4k page containing
+      the exception vectors data being mapped as regular memory at run-time, with
+      any subsequently mapped pages being located beyond the permanently mapped
+      memory regions (beyond z_mapped_end), resulting in non-contiguous memory
+      allocation for any first memory request greater than 4k.
 
 * ARM64
 
@@ -91,6 +116,12 @@ Boards & SoC Support
 * Removed support for these SoC series:
 
 * Made these changes in other SoC series:
+
+  * i.MX RT SOCs no longer enable CONFIG_DEVICE_CONFIGURATION_DATA by default.
+    boards using external SDRAM should set CONFIG_DEVICE_CONFIGURATION_DATA
+    and CONFIG_NXP_IMX_EXTERNAL_SDRAM to enabled.
+  * i.MX RT SOCs no longer support CONFIG_OCRAM_NOCACHE, as this functionality
+    can be achieved using devicetree memory regions
 
 * Added support for these ARC boards:
 
@@ -289,6 +320,8 @@ Devicetree
   :c:macro:`DT_FOREACH_STATUS_OKAY_NODE_VARGS`
   :c:macro:`DT_MEMORY_ATTR_FOREACH_NODE`
   :c:macro:`DT_MEMORY_ATTR_APPLY`
+  :c:macro:`DT_MEM_FROM_FIXED_PARTITION`
+  :c:macro:`DT_FIXED_PARTITION_ADDR`
 
 Libraries / Subsystems
 **********************
@@ -302,6 +335,27 @@ Libraries / Subsystems
     supported in function handlers by setting ``mg_translate_error`` of
     :c:struct:`mgmt_group` when registering a transport. See
     :c:type:`smp_translate_error_fn` for function details.
+
+  * Fixed an issue with MCUmgr img_mgmt group whereby the size of the upload in
+    the initial packet was not checked.
+
+  * Fixed an issue with MCUmgr fs_mgmt group whereby some status codes were not
+    checked properly, this meant that the error returned might not be the
+    correct error, but would only occur in situations where an error was
+    already present.
+
+  * Fixed an issue whereby the SMP response function did not check to see if
+    the initial zcbor map was created successfully.
+
+  * Fixes an issue with MCUmgr shell_mgmt group whereby the length of a
+    received command was not properly checked.
+
+  * Added optional mutex locking support to MCUmgr img_mgmt group, which can
+    be enabled with :kconfig:option:`CONFIG_MCUMGR_GRP_IMG_MUTEX`.
+
+* File systems
+
+  * Added support for ext2 file system.
 
 HALs
 ****
@@ -332,6 +386,9 @@ Documentation
 
 Tests and Samples
 *****************
+
+* Created common sample for file systems (`fs_sample`). It originates from sample for FAT
+  (`fat_fs`) and supports both FAT and ext2 file systems.
 
 Known Issues
 ************

@@ -16,11 +16,12 @@
 #define UTSNAME_NODENAME "zephyr"
 #endif
 
-#if defined(__DATE__) && defined(__TIME__)
-#define UTSNAME_VERSION(_ver) _ver " " __DATE__ " " __TIME__
-#else
+//DaR ToDo: How do I do this better to avoid the build failures?
+//#if defined(__DATE__) && defined(__TIME__)
+//#define UTSNAME_VERSION(_ver) _ver " " __DATE__ " " __TIME__
+//#else
 #define UTSNAME_VERSION(_ver) _ver
-#endif
+//#endif
 
 #ifdef BUILD_VERSION
 #define VERSION_BUILD STRINGIFY(BUILD_VERSION)

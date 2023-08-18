@@ -7,6 +7,7 @@
 /dts-v1/;
 #include <arm/nxp/nxp_s32k344_m7.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <freq.h>
 #include "mr_canhubk3-pinctrl.dtsi"
 
@@ -56,10 +57,12 @@
 		user_button_1: button_0 {
 			label = "User SW1";
 			gpios = <&gpiod_l 15 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
 		};
 		user_button_2: button_1 {
 			label = "User SW2";
 			gpios = <&gpioa_h 9 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_1>;
 		};
 	};
 
@@ -361,4 +364,17 @@
 	pinctrl-0 = <&lpspi5_default>;
 	pinctrl-names = "default";
 	data-pin-config = "sdo-in,sdi-out";
+};
+
+&emac0 {
+	pinctrl-0 = <&emac0_default>;
+	pinctrl-names = "default";
+	phy-connection-type = "rmii";
+	local-mac-address = [02 04 9f aa bb cc];
+	status = "okay";
+
+	fixed-link {
+		speed = <100>;
+		full-duplex;
+	};
 };
