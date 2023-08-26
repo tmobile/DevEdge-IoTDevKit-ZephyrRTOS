@@ -72,7 +72,7 @@ static int lis2dw12_set_odr(const struct device *dev, uint16_t odr)
 		return lis2dw12_data_rate_set(ctx, LIS2DW12_XL_ODR_OFF);
 	}
 
-	val = LIS2DW12_ODR_TO_REG(odr);
+	val =  LIS2DW12_ODR_TO_REG(odr);
 	if (val > LIS2DW12_XL_ODR_1k6Hz) {
 		LOG_ERR("ODR too high");
 		return -ENOTSUP;
@@ -129,12 +129,11 @@ static inline void lis2dw12_channel_get_acc(const struct device *dev,
 		ofs_start = ofs_stop = 2U;
 		break;
 	default:
-		ofs_start = 0U;
-		ofs_stop = 2U;
+		ofs_start = 0U; ofs_stop = 2U;
 		break;
 	}
 
-	for (i = ofs_start; i <= ofs_stop; i++) {
+	for (i = ofs_start; i <= ofs_stop ; i++) {
 		lis2dw12_convert(pval++, lis2dw12->acc[i], lis2dw12->gain);
 	}
 }

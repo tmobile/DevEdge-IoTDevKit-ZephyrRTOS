@@ -1392,7 +1392,7 @@ uint8_t ll_adv_enable(uint8_t enable)
 			 * started.
 			 */
 			if (sync) {
-				uint32_t ticks_slot_overhead;
+				uint32_t ticks_slot_overhead2;
 				uint32_t ticks_slot_aux;
 
 #if defined(CONFIG_BT_CTLR_ADV_RESERVE_MAX)
@@ -1436,10 +1436,10 @@ uint8_t ll_adv_enable(uint8_t enable)
 
 #endif /* CONFIG_BT_CTLR_ADV_AUX_SYNC_OFFSET */
 
-				ticks_slot_overhead = ull_adv_sync_evt_init(adv, sync, NULL);
+				ticks_slot_overhead2 = ull_adv_sync_evt_init(adv, sync, NULL);
 				ret = ull_adv_sync_start(adv, sync,
 							 ticks_anchor_sync,
-							 ticks_slot_overhead);
+							 ticks_slot_overhead2);
 				if (ret) {
 					goto failure_cleanup;
 				}
@@ -2124,16 +2124,12 @@ const uint8_t *ull_adv_pdu_update_addrs(struct ll_adv_set *adv,
 uint8_t ull_adv_time_update(struct ll_adv_set *adv, struct pdu_adv *pdu,
 			    struct pdu_adv *pdu_scan)
 {
-	uint32_t volatile ret_cb;
-	uint32_t ticks_minus;
-	uint32_t ticks_plus;
 	struct lll_adv *lll;
 	uint32_t time_ticks;
 	uint8_t phy_flags;
 	uint16_t time_us;
 	uint8_t chan_map;
 	uint8_t chan_cnt;
-	uint32_t ret;
 	uint8_t phy;
 
 	lll = &adv->lll;
@@ -2150,6 +2146,13 @@ uint8_t ull_adv_time_update(struct ll_adv_set *adv, struct pdu_adv *pdu,
 	chan_cnt = util_ones_count_get(&chan_map, sizeof(chan_map));
 	time_us = adv_time_get(pdu, pdu_scan, chan_cnt, phy, phy_flags);
 	time_ticks = HAL_TICKER_US_TO_TICKS(time_us);
+
+#if !defined(CONFIG_BT_CTLR_JIT_SCHEDULING)
+	uint32_t volatile ret_cb;
+	uint32_t ticks_minus;
+	uint32_t ticks_plus;
+	uint32_t ret;
+
 	if (adv->ull.ticks_slot > time_ticks) {
 		ticks_minus = adv->ull.ticks_slot - time_ticks;
 		ticks_plus = 0U;
@@ -2171,6 +2174,7 @@ uint8_t ull_adv_time_update(struct ll_adv_set *adv, struct pdu_adv *pdu,
 	if (ret != TICKER_STATUS_SUCCESS) {
 		return BT_HCI_ERR_CMD_DISALLOWED;
 	}
+#endif /* !CONFIG_BT_CTLR_JIT_SCHEDULING */
 
 	adv->ull.ticks_slot = time_ticks;
 

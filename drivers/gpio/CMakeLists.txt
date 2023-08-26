@@ -4,6 +4,7 @@ zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/gpio.h)
 
 zephyr_library()
 
+zephyr_library_sources_ifdef(CONFIG_GPIO_AXP192     gpio_axp192.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_TELINK_B91 gpio_b91.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_INFINEON_CAT1 gpio_ifx_cat1.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_CC13XX_CC26XX gpio_cc13xx_cc26xx.c)
@@ -60,7 +61,7 @@ zephyr_library_sources_ifdef(CONFIG_GPIO_ANDES_ATCGPIO100 gpio_andes_atcgpio100.
 zephyr_library_sources_ifdef(CONFIG_GPIO_NEORV32    gpio_neorv32.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_NCT38XX    gpio_nct38xx.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_NCT38XX    gpio_nct38xx_port.c)
-zephyr_library_sources_ifdef(CONFIG_GPIO_NCT38XX_INTERRUPT gpio_nct38xx_alert.c)
+zephyr_library_sources_ifdef(CONFIG_GPIO_NCT38XX_ALERT  gpio_nct38xx_alert.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_TEST       gpio_test.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_GD32       gpio_gd32.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO_XLNX_PS    gpio_xlnx_ps.c gpio_xlnx_ps_bank.c)

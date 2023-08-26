@@ -13,6 +13,36 @@
 	chosen {
 	};
 
+	power-states {
+		d0i0: d0i0 {
+			compatible = "zephyr,power-state";
+			power-state-name = "runtime-idle";
+			min-residency-us = <500>;
+			substate-id = <1>;
+		};
+
+		d0i1: d0i1 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <2000>;
+			substate-id = <2>;
+		};
+
+		d0i2: d0i2 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-ram";
+			min-residency-us = <4000>;
+			substate-id = <3>;
+		};
+
+		d0i3: d0i3 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-disk";
+			min-residency-us = <3000000>;
+			substate-id = <4>;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -21,20 +51,29 @@
 			device_type = "cpu";
 			compatible = "intel,ish";
 			reg = <0>;
+			cpu-power-states = <&d0i0 &d0i1 &d0i2 &d0i3>;
 		};
 	};
 
 	intc: ioapic@fec00000  {
 		compatible = "intel,ioapic";
+		#address-cells = <1>;
+		#interrupt-cells = <3>;
 		reg = <0xfec00000 0x100000>;
 		interrupt-controller;
-		#interrupt-cells = <3>;
 	};
 
 	sram: memory@ff200000 {
 		device_type = "memory";
 		compatible = "mmio-sram";
 		reg = <0xff200000 DT_SIZE_K(640)>;
+	};
+
+	aon: memory@ff800000 {
+		device_type = "memory";
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0xff800000 DT_SIZE_K(8)>;
+		zephyr,memory-region = "AON";
 	};
 
 	soc {

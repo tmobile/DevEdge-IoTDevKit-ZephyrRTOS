@@ -1300,6 +1300,14 @@ function(zephyr_linker_sources location)
   endforeach()
 endfunction(zephyr_linker_sources)
 
+# Helper macro for conditionally calling zephyr_code_relocate() when a
+# specific Kconfig symbol is enabled. See zephyr_code_relocate() description
+# for supported arguments.
+macro(zephyr_code_relocate_ifdef feature_toggle)
+  if(${${feature_toggle}})
+    zephyr_code_relocate(${ARGN})
+  endif()
+endmacro()
 
 # Helper function for CONFIG_CODE_DATA_RELOCATION
 # This function may either be invoked with a list of files, or a library
@@ -1346,8 +1354,17 @@ function(zephyr_code_relocate)
     # supporting relative and absolute paths
     set(genex_src_dir "$<TARGET_PROPERTY:${CODE_REL_LIBRARY},SOURCE_DIR>")
     set(genex_src_list "$<TARGET_PROPERTY:${CODE_REL_LIBRARY},SOURCES>")
-    set(src_list_abs "$<FILTER:${genex_src_list},INCLUDE,^/>")
-    set(src_list_rel "$<FILTER:${genex_src_list},EXCLUDE,^/>")
+
+    if(CMAKE_HOST_WIN32)
+      # Note that this assumes windows absolute filenames start with a letter and colon, this does
+      # not support \\x network paths and is untested under the likes of msys2/cygwin
+      set(src_list_abs "$<FILTER:${genex_src_list},INCLUDE,^[A-Za-z]\:>")
+      set(src_list_rel "$<FILTER:${genex_src_list},EXCLUDE,^[A-Za-z]\:>")
+    else()
+      set(src_list_abs "$<FILTER:${genex_src_list},INCLUDE,^/>")
+      set(src_list_rel "$<FILTER:${genex_src_list},EXCLUDE,^/>")
+    endif()
+
     set(src_list "${genex_src_dir}/$<JOIN:${src_list_rel},$<SEMICOLON>${genex_src_dir}/>")
     set(nonempty_src_list "$<$<BOOL:${src_list_rel}>:${src_list}>")
     set(sep_list "$<$<AND:$<BOOL:${src_list_abs}>,$<BOOL:${src_list_rel}>>:$<SEMICOLON>>")
@@ -2283,26 +2300,27 @@ endfunction()
 #
 # returns an updated list of absolute paths
 #
-# CONF_FILES <path>: Find all configuration files in path and return them in a
-#                    list. Configuration files will be:
-#                    - DTS:       Overlay files (.overlay)
-#                    - Kconfig:   Config fragments (.conf)
-#                    The conf file search will return existing configuration
-#                    files for the current board.
-#                    CONF_FILES takes the following additional arguments:
-#                    BOARD <board>:             Find configuration files for specified board.
-#                    BOARD_REVISION <revision>: Find configuration files for specified board
-#                                               revision. Requires BOARD to be specified.
+# CONF_FILES <paths>: Find all configuration files in the list of paths and
+#                     return them in a list. If paths is empty then no configuration
+#                     files are returned. Configuration files will be:
+#                     - DTS:       Overlay files (.overlay)
+#                     - Kconfig:   Config fragments (.conf)
+#                     The conf file search will return existing configuration
+#                     files for the current board.
+#                     CONF_FILES takes the following additional arguments:
+#                     BOARD <board>:             Find configuration files for specified board.
+#                     BOARD_REVISION <revision>: Find configuration files for specified board
+#                                                revision. Requires BOARD to be specified.
 #
-#                                               If no board is given the current BOARD and
-#                                               BOARD_REVISION will be used.
+#                                                If no board is given the current BOARD and
+#                                                BOARD_REVISION will be used.
 #
-#                    DTS <list>:   List to append DTS overlay files in <path> to
-#                    KCONF <list>: List to append Kconfig fragment files in <path> to
-#                    BUILD <type>: Build type to include for search.
-#                                  For example:
-#                                  BUILD debug, will look for <board>_debug.conf
-#                                  and <board>_debug.overlay, instead of <board>.conf
+#                     DTS <list>:   List to append DTS overlay files in <path> to
+#                     KCONF <list>: List to append Kconfig fragment files in <path> to
+#                     BUILD <type>: Build type to include for search.
+#                                   For example:
+#                                   BUILD debug, will look for <board>_debug.conf
+#                                   and <board>_debug.overlay, instead of <board>.conf
 #
 function(zephyr_file)
   set(file_options APPLICATION_ROOT CONF_FILES)
@@ -2314,10 +2332,11 @@ Please provide one of following: APPLICATION_ROOT, CONF_FILES")
   if(${ARGV0} STREQUAL APPLICATION_ROOT)
     set(single_args APPLICATION_ROOT)
   elseif(${ARGV0} STREQUAL CONF_FILES)
-    set(single_args CONF_FILES BOARD BOARD_REVISION DTS KCONF BUILD)
+    set(single_args BOARD BOARD_REVISION DTS KCONF BUILD)
+    set(multi_args CONF_FILES)
   endif()
 
-  cmake_parse_arguments(FILE "" "${single_args}" "" ${ARGN})
+  cmake_parse_arguments(FILE "" "${single_args}" "${multi_args}" ${ARGN})
   if(FILE_UNPARSED_ARGUMENTS)
       message(FATAL_ERROR "zephyr_file(${ARGV0} <val> ...) given unknown arguments: ${FILE_UNPARSED_ARGUMENTS}")
   endif()
@@ -2389,10 +2408,12 @@ Relative paths are only allowed with `-D${ARGV1}=<path>`")
     list(REMOVE_DUPLICATES filename_list)
 
     if(FILE_DTS)
-      foreach(filename ${filename_list})
-        if(EXISTS ${FILE_CONF_FILES}/${filename}.overlay)
-          list(APPEND ${FILE_DTS} ${FILE_CONF_FILES}/${filename}.overlay)
-        endif()
+      foreach(path ${FILE_CONF_FILES})
+        foreach(filename ${filename_list})
+          if(EXISTS ${path}/${filename}.overlay)
+            list(APPEND ${FILE_DTS} ${path}/${filename}.overlay)
+          endif()
+        endforeach()
       endforeach()
 
       # This updates the provided list in parent scope (callers scope)
@@ -2400,10 +2421,12 @@ Relative paths are only allowed with `-D${ARGV1}=<path>`")
     endif()
 
     if(FILE_KCONF)
-      foreach(filename ${filename_list})
-        if(EXISTS ${FILE_CONF_FILES}/${filename}.conf)
-          list(APPEND ${FILE_KCONF} ${FILE_CONF_FILES}/${filename}.conf)
-        endif()
+      foreach(path ${FILE_CONF_FILES})
+        foreach(filename ${filename_list})
+          if(EXISTS ${path}/${filename}.conf)
+            list(APPEND ${FILE_KCONF} ${path}/${filename}.conf)
+          endif()
+        endforeach()
       endforeach()
 
       # This updates the provided list in parent scope (callers scope)
@@ -2633,14 +2656,17 @@ function(zephyr_get variable)
     if(SYSBUILD)
       get_property(sysbuild_name TARGET sysbuild_cache PROPERTY SYSBUILD_NAME)
       get_property(sysbuild_main_app TARGET sysbuild_cache PROPERTY SYSBUILD_MAIN_APP)
-      get_property(sysbuild_${var} TARGET sysbuild_cache PROPERTY ${sysbuild_name}_${var})
-      if(NOT DEFINED sysbuild_${var} AND
-         ("${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL" OR sysbuild_main_app)
-      )
-        get_property(sysbuild_${var} TARGET sysbuild_cache PROPERTY ${var})
+      get_property(sysbuild_local_${var} TARGET sysbuild_cache PROPERTY ${sysbuild_name}_${var})
+      get_property(sysbuild_global_${var} TARGET sysbuild_cache PROPERTY ${var})
+      if(NOT DEFINED sysbuild_local_${var} AND sysbuild_main_app)
+        set(sysbuild_local_${var} ${sysbuild_global_${var}})
+      endif()
+      if(NOT "${GET_VAR_SYSBUILD}" STREQUAL "GLOBAL")
+        set(sysbuild_global_${var})
       endif()
     else()
-      set(sysbuild_${var})
+      set(sysbuild_local_${var})
+      set(sysbuild_global_${var})
     endif()
 
     if(TARGET snippets_scope)
@@ -2648,7 +2674,8 @@ function(zephyr_get variable)
     endif()
   endforeach()
 
-  set(scopes "sysbuild;CACHE;snippets;ENV;current")
+  set(${variable} "")
+  set(scopes "sysbuild_local;sysbuild_global;CACHE;snippets;ENV;current")
   if(GET_VAR_REVERSE)
     list(REVERSE scopes)
   endif()

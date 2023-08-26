@@ -63,6 +63,7 @@ static struct bt_ascs_ase {
 	struct k_work_delayable disconnect_work;
 	struct k_work state_transition_work;
 	enum bt_bap_ep_state state_pending;
+	bool unexpected_iso_link_loss;
 } ase_pool[CONFIG_BT_ASCS_MAX_ACTIVE_ASES];
 
 #define MAX_CODEC_CONFIG                                                                           \
@@ -150,7 +151,6 @@ static void ase_status_changed(struct bt_ascs_ase *ase, uint8_t state)
 			const uint8_t att_ntf_header_size = 3; /* opcode (1) + handle (2) */
 			const uint16_t max_ntf_size = bt_gatt_get_mtu(conn) - att_ntf_header_size;
 			uint16_t ntf_size;
-			int err;
 
 			err = k_sem_take(&ase_buf_sem, ASE_BUF_SEM_TIMEOUT);
 			if (err != 0) {
@@ -354,6 +354,10 @@ static void ase_set_state_disabling(struct bt_ascs_ase *ase)
 	if (ops != NULL && ops->disabled != NULL) {
 		ops->disabled(stream);
 	}
+
+	if (ase->unexpected_iso_link_loss) {
+		ascs_ep_set_state(&ase->ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
+	}
 }
 
 static void ase_set_state_releasing(struct bt_ascs_ase *ase)
@@ -399,9 +403,6 @@ static void state_transition_work_handler(struct k_work *work)
 		if (reason == BT_HCI_ERR_SUCCESS) {
 			/* Default to BT_HCI_ERR_UNSPECIFIED if no other reason is set */
 			reason = BT_HCI_ERR_UNSPECIFIED;
-		} else {
-			/* Reset reason */
-			ep->reason = BT_HCI_ERR_SUCCESS;
 		}
 
 		if (ops != NULL && ops->stopped != NULL) {
@@ -823,6 +824,7 @@ static void ascs_update_sdu_size(struct bt_bap_ep *ep)
 
 static void ascs_ep_iso_connected(struct bt_bap_ep *ep)
 {
+	struct bt_ascs_ase *ase = CONTAINER_OF(ep, struct bt_ascs_ase, ep);
 	struct bt_bap_stream *stream;
 
 	if (ep->status.state != BT_BAP_EP_STATE_ENABLING) {
@@ -836,6 +838,10 @@ static void ascs_ep_iso_connected(struct bt_bap_ep *ep)
 		LOG_ERR("No stream for ep %p", ep);
 		return;
 	}
+
+	/* Reset reason */
+	ep->reason = BT_HCI_ERR_SUCCESS;
+	ase->unexpected_iso_link_loss = false;
 
 	/* Some values are not provided by the HCI events when the CIS is established for the
 	 * peripheral, so we update them here based on the parameters provided by the BAP Unicast
@@ -885,30 +891,29 @@ static void ascs_ep_iso_disconnected(struct bt_bap_ep *ep, uint8_t reason)
 
 	LOG_DBG("stream %p ep %p reason 0x%02x", stream, stream->ep, reason);
 
-	if (ep->status.state == BT_BAP_EP_STATE_ENABLING &&
-	    reason == BT_HCI_ERR_CONN_FAIL_TO_ESTAB) {
-		LOG_DBG("Waiting for retry");
-		return;
-	}
-
 	/* Cancel ASE disconnect work if pending */
 	(void)k_work_cancel_delayable(&ase->disconnect_work);
 	ep->reason = reason;
 
 	if (ep->status.state == BT_BAP_EP_STATE_RELEASING) {
 		ascs_ep_set_state(ep, BT_BAP_EP_STATE_IDLE);
-	} else {
+	} else if (ep->status.state == BT_BAP_EP_STATE_STREAMING) {
+		/* CIS has been unexpectedly disconnected */
+		ase->unexpected_iso_link_loss = true;
+
 		/* The ASE state machine goes into different states from this operation
 		 * based on whether it is a source or a sink ASE.
 		 */
-		if (ep->status.state == BT_BAP_EP_STATE_STREAMING ||
-		    ep->status.state == BT_BAP_EP_STATE_ENABLING) {
-			if (ep->dir == BT_AUDIO_DIR_SOURCE) {
-				ascs_ep_set_state(ep, BT_BAP_EP_STATE_DISABLING);
-			} else {
-				ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
-			}
+		if (ep->dir == BT_AUDIO_DIR_SOURCE) {
+			ascs_ep_set_state(ep, BT_BAP_EP_STATE_DISABLING);
+		} else {
+			ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
 		}
+	} else if (ep->status.state == BT_BAP_EP_STATE_DISABLING) {
+		/* CIS has been unexpectedly disconnected */
+		ase->unexpected_iso_link_loss = true;
+
+		ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
 	}
 }
 
@@ -1335,7 +1340,7 @@ struct codec_cap_lookup_id_data {
 	uint8_t id;
 	uint16_t cid;
 	uint16_t vid;
-	struct bt_audio_codec_cap *codec_cap;
+	const struct bt_audio_codec_cap *codec_cap;
 };
 
 static bool codec_lookup_id(const struct bt_pacs_cap *cap, void *user_data)
@@ -2033,30 +2038,62 @@ static bool ascs_parse_metadata(struct bt_data *data, void *user_data)
 		return false;
 	}
 
-	/* The CAP acceptor shall not accept metadata with
-	 * unsupported stream context.
-	 */
-	if (IS_ENABLED(CONFIG_BT_CAP_ACCEPTOR)) {
-		if (data_type == BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT) {
-			const uint16_t context = sys_get_le16(data_value);
+	if (!BT_AUDIO_METADATA_TYPE_IS_KNOWN(data_type)) {
+		LOG_WRN("Unknown metadata type 0x%02x", data_type);
+		return true;
+	}
 
+	switch (data_type) {
+	/* TODO: Consider rejecting BT_AUDIO_METADATA_TYPE_PREF_CONTEXT type */
+	case BT_AUDIO_METADATA_TYPE_PREF_CONTEXT:
+	case BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT: {
+		uint16_t context;
+
+		if (data_len != sizeof(context)) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EBADMSG;
+			return false;
+		}
+
+		context = sys_get_le16(data_value);
+		if (context == BT_AUDIO_CONTEXT_TYPE_PROHIBITED) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EINVAL;
+			return false;
+		}
+
+		/* The CAP acceptor shall not accept metadata with unsupported stream context. */
+		if (IS_ENABLED(CONFIG_BT_CAP_ACCEPTOR) &&
+		    data_type == BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT) {
 			if (!bt_pacs_context_available(ep->dir, context)) {
 				LOG_WRN("Context 0x%04x is unavailable", context);
 				*result->rsp = BT_BAP_ASCS_RSP(
 					BT_BAP_ASCS_RSP_CODE_METADATA_REJECTED, data_type);
 				result->err = -EACCES;
-
 				return false;
 			}
-		} else if (data_type == BT_AUDIO_METADATA_TYPE_CCID_LIST) {
-			/* Verify that the CCID is a known CCID on the
-			 * writing device
-			 */
+		}
+
+		break;
+	}
+	case BT_AUDIO_METADATA_TYPE_STREAM_LANG:
+		if (data_len != 3) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EBADMSG;
+			return false;
+		}
+
+		break;
+	case BT_AUDIO_METADATA_TYPE_CCID_LIST: {
+		/* Verify that the CCID is a known CCID on the writing device */
+		if (IS_ENABLED(CONFIG_BT_CAP_ACCEPTOR)) {
 			for (uint8_t i = 0; i < data_len; i++) {
 				const uint8_t ccid = data_value[i];
 
-				if (!bt_cap_acceptor_ccid_exist(ep->stream->conn,
-								ccid)) {
+				if (!bt_cap_acceptor_ccid_exist(ep->stream->conn, ccid)) {
 					LOG_WRN("CCID %u is unknown", ccid);
 
 					/* TBD:
@@ -2071,6 +2108,42 @@ static bool ascs_parse_metadata(struct bt_data *data, void *user_data)
 				}
 			}
 		}
+
+		break;
+	}
+	case BT_AUDIO_METADATA_TYPE_PARENTAL_RATING:
+		if (data_len != 1) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EBADMSG;
+			return false;
+		}
+
+		break;
+	case BT_AUDIO_METADATA_TYPE_AUDIO_STATE: {
+		uint8_t state;
+
+		if (data_len != sizeof(state)) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EBADMSG;
+			return false;
+		}
+
+		break;
+	}
+	/* TODO: Consider rejecting BT_AUDIO_METADATA_TYPE_BROADCAST_IMMEDIATE type */
+	case BT_AUDIO_METADATA_TYPE_BROADCAST_IMMEDIATE:
+		if (data_len != 0) {
+			*result->rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
+						       data_type);
+			result->err = -EBADMSG;
+			return false;
+		}
+
+		break;
+	default:
+		break;
 	}
 
 	return true;
@@ -2092,22 +2165,6 @@ static int ascs_verify_metadata(const struct net_buf_simple *buf, struct bt_bap_
 
 	/* Parse LTV entries */
 	bt_data_parse(&meta_ltv, ascs_parse_metadata, &result);
-
-	/* Check if all entries could be parsed */
-	if (meta_ltv.len != 0) {
-		LOG_ERR("Unable to parse Metadata: len %u", meta_ltv.len);
-
-		if (meta_ltv.len > 2) {
-			/* Value of the Metadata Type field in error */
-			*rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
-					       meta_ltv.data[2]);
-			return meta_ltv.data[2];
-		}
-
-		*rsp = BT_BAP_ASCS_RSP(BT_BAP_ASCS_RSP_CODE_METADATA_INVALID,
-				       BT_BAP_ASCS_REASON_NONE);
-		return -EINVAL;
-	}
 
 	return result.err;
 }

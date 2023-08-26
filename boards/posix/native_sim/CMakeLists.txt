@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
-set(NSI_DIR ${ZEPHYR_BASE}/scripts/native_simulator)
-
 zephyr_library()
 
 zephyr_library_compile_definitions(NO_POSIX_CHEATS)
@@ -40,6 +38,7 @@ set(nsi_config_content
   "NSI_EXTRA_SRCS:=$<JOIN:$<TARGET_PROPERTY:native_simulator,INTERFACE_SOURCES>,\ >"
   "NSI_LINK_OPTIONS:=$<JOIN:$<TARGET_PROPERTY:native_simulator,INTERFACE_LINK_OPTIONS>,\ >"
   "NSI_PATH:=${NSI_DIR}/"
+  "NSI_NATIVE=1"
 )
 
 string(REPLACE ";" "\n" nsi_config_content "${nsi_config_content}")

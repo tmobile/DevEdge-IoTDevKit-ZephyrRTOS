@@ -216,25 +216,28 @@ struct ll_conn_iso_stream *ll_conn_iso_stream_get_by_acl(struct ll_conn *conn, u
 
 		handle_iter = UINT16_MAX;
 
-		for (cis_idx = 0; cis_idx < cig->lll.num_cis; cis_idx++) {
+		/* Find next connected CIS in the group */
+		for (cis_idx = 0; cis_idx < CONFIG_BT_CTLR_CONN_ISO_STREAMS_PER_GROUP; cis_idx++) {
 			cis = ll_conn_iso_stream_get_by_group(cig, &handle_iter);
-			LL_ASSERT(cis);
+			if (cis) {
+				uint16_t cis_handle = cis->lll.handle;
 
-			uint16_t cis_handle = cis->lll.handle;
-
-			cis = ll_iso_stream_connected_get(cis_handle);
-			if (!cis) {
-				continue;
-			}
-
-			if (!cis_iter_start) {
-				/* Look for iterator start handle */
-				cis_iter_start = cis_handle == (*cis_iter);
-			} else if (cis->lll.acl_handle == conn->lll.handle) {
-				if (cis_iter) {
-					(*cis_iter) = cis_handle;
+				cis = ll_iso_stream_connected_get(cis_handle);
+				if (!cis) {
+					/* CIS is not connected */
+					continue;
 				}
-				return cis;
+
+				if (!cis_iter_start) {
+					/* Look for iterator start handle */
+					cis_iter_start = cis_handle == (*cis_iter);
+				} else if (cis->lll.acl_handle == conn->lll.handle) {
+					if (cis_iter) {
+						(*cis_iter) = cis_handle;
+					}
+
+					return cis;
+				}
 			}
 		}
 	}
@@ -1190,14 +1193,17 @@ static void cis_disabled_cb(void *param)
 		cis = ll_conn_iso_stream_get_by_group(cig, &handle_iter);
 		LL_ASSERT(cis);
 
-		if (!cis->lll.active && !cis->lll.flushed) {
+		if (!cis->lll.active && (cis->lll.flush != LLL_CIS_FLUSH_COMPLETE)) {
 			/* CIS is not active and did not just complete LLL flush - skip it */
 			continue;
 		}
 
 		active_cises++;
 
-		if (cis->lll.flushed) {
+		if (cis->lll.flush == LLL_CIS_FLUSH_PENDING) {
+			/* CIS has LLL flush pending - wait for completion */
+			continue;
+		} else if (cis->lll.flush == LLL_CIS_FLUSH_COMPLETE) {
 			ll_iso_stream_released_cb_t cis_released_cb;
 
 			conn = ll_conn_get(cis->lll.acl_handle);
@@ -1223,7 +1229,7 @@ static void cis_disabled_cb(void *param)
 				cis->teardown = 0U;
 
 				/* Prevent referencing inactive CIS */
-				cis->lll.flushed = 0U;
+				cis->lll.flush = LLL_CIS_FLUSH_NONE;
 				cis->lll.acl_handle = LLL_HANDLE_INVALID;
 
 			} else {
@@ -1286,6 +1292,8 @@ static void cis_disabled_cb(void *param)
 			 * More than one CIG may be terminating at the same time, so
 			 * enqueue a mayfly instance for this CIG.
 			 */
+			cis->lll.flush = LLL_CIS_FLUSH_PENDING;
+
 			mfys[cig->lll.handle].param = &cis->lll;
 			ret = mayfly_enqueue(TICKER_USER_ID_ULL_HIGH,
 					     TICKER_USER_ID_LLL, 1, &mfys[cig->lll.handle]);
@@ -1324,7 +1332,6 @@ static void cis_tx_lll_flush(void *param)
 	memq_link_t *link;
 
 	lll = param;
-	lll->flushed = 1U;
 	lll->active = 0U;
 
 	cis = ll_conn_iso_stream_get(lll->handle);
@@ -1347,6 +1354,8 @@ static void cis_tx_lll_flush(void *param)
 	link = memq_deinit(&lll->memq_tx.head, &lll->memq_tx.tail);
 	LL_ASSERT(link);
 	lll->link_tx_free = link;
+
+	lll->flush = LLL_CIS_FLUSH_COMPLETE;
 
 	/* Resume CIS teardown in ULL_HIGH context */
 	mfys[cig->lll.handle].param = &cig->lll;

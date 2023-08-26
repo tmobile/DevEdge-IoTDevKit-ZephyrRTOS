@@ -6,8 +6,6 @@
 #include "mesh_test.h"
 #include "argparse.h"
 #include <bs_pc_backchannel.h>
-#include "settings_test_backend.h"
-#include "distribute_keyid.h"
 #include "mesh/crypto.h"
 
 #define LOG_MODULE_NAME mesh_test
@@ -257,7 +255,10 @@ void bt_mesh_device_setup(const struct bt_mesh_prov *prov, const struct bt_mesh_
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		LOG_INF("Loading stored settings");
-		settings_load();
+		if (IS_ENABLED(CONFIG_BT_MESH_USES_MBEDTLS_PSA)) {
+			settings_load_subtree("itsemul");
+		}
+		settings_load_subtree("bt");
 	}
 
 	LOG_INF("Mesh initialized");
@@ -551,13 +552,3 @@ void bt_mesh_test_sar_conf_set(struct bt_mesh_sar_tx *tx_set, struct bt_mesh_sar
 	}
 }
 #endif /* defined(CONFIG_BT_MESH_SAR_CFG) */
-
-void bt_mesh_test_host_files_remove(void)
-{
-#if defined(CONFIG_SETTINGS)
-	/* crypto library initialization to be able to remove stored keys. */
-	bt_mesh_crypto_init();
-	stored_keys_clear();
-	settings_test_backend_clear();
-#endif
-}
