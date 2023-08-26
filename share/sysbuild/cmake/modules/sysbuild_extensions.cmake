@@ -34,6 +34,11 @@ function(load_cache)
       set_property(TARGET ${LOAD_CACHE_IMAGE}_cache APPEND PROPERTY "CACHE:VARIABLES" "${CMAKE_MATCH_1}")
       set_property(TARGET ${LOAD_CACHE_IMAGE}_cache PROPERTY "${CMAKE_MATCH_1}:TYPE" "${CMAKE_MATCH_2}")
       set_property(TARGET ${LOAD_CACHE_IMAGE}_cache PROPERTY "${CMAKE_MATCH_1}" "${variable_value}")
+      if("${CMAKE_MATCH_1}" MATCHES "^BYPRODUCT_.*")
+        set_property(TARGET ${LOAD_CACHE_IMAGE}_cache APPEND
+                     PROPERTY "EXTRA_BYPRODUCTS" "${variable_value}"
+        )
+      endif()
     endif()
   endforeach()
 endfunction()
@@ -266,6 +271,11 @@ function(ExternalZephyrProject_Add)
     set_target_properties(${ZBUILD_APPLICATION} PROPERTIES MAIN_APP True)
   endif()
 
+  if(DEFINED ZBUILD_APP_TYPE)
+    set(image_default "${CMAKE_SOURCE_DIR}/image_configurations/${ZBUILD_APP_TYPE}_image_default.cmake")
+    set_target_properties(${ZBUILD_APPLICATION} PROPERTIES IMAGE_CONF_SCRIPT ${image_default})
+  endif()
+
   if(DEFINED ZBUILD_BOARD)
     # Only set image specific board if provided.
     # The sysbuild BOARD is exported through sysbuild cache, and will be used
@@ -296,6 +306,17 @@ endfunction()
 #
 # If the application is not due to ExternalZephyrProject_Add() being called,
 # then an error is raised.
+#
+# The image output files are added as target properties on the image target as:
+# ELF_OUT: property specifying the generated elf file.
+# BIN_OUT: property specifying the generated bin file.
+# HEX_OUT: property specifying the generated hex file.
+# S19_OUT: property specifying the generated s19 file.
+# UF2_OUT: property specifying the generated uf2 file.
+# EXE_OUT: property specifying the generated exe file.
+#
+# the property is only set if the image is configured to generate the output
+# format. Elf files are always created.
 #
 # APPLICATION: <name>: Name of the application.
 #
@@ -332,6 +353,10 @@ function(ExternalZephyrProject_Cmake)
   get_target_property(${ZCMAKE_APPLICATION}_CACHE_FILE ${ZCMAKE_APPLICATION} CACHE_FILE)
   get_target_property(${ZCMAKE_APPLICATION}_BOARD      ${ZCMAKE_APPLICATION} BOARD)
   get_target_property(${ZCMAKE_APPLICATION}_MAIN_APP   ${ZCMAKE_APPLICATION} MAIN_APP)
+
+  get_property(${ZCMAKE_APPLICATION}_CONF_SCRIPT TARGET ${ZCMAKE_APPLICATION}
+               PROPERTY IMAGE_CONF_SCRIPT
+  )
 
   # Update ROOT variables with relative paths to use absolute paths based on
   # the source application directory.
@@ -384,6 +409,10 @@ function(ExternalZephyrProject_Cmake)
                    ${${ZCMAKE_APPLICATION}_CACHE_FILE} ONLY_IF_DIFFERENT
   )
 
+  foreach(script ${${ZCMAKE_APPLICATION}_CONF_SCRIPT})
+    include(${script})
+  endforeach()
+
   set(dotconfigsysbuild ${BINARY_DIR}/zephyr/.config.sysbuild)
   get_target_property(config_content ${ZCMAKE_APPLICATION} CONFIG)
   string(CONFIGURE "${config_content}" config_content)
@@ -408,6 +437,15 @@ function(ExternalZephyrProject_Cmake)
   endif()
   load_cache(IMAGE ${ZCMAKE_APPLICATION} BINARY_DIR ${BINARY_DIR})
   import_kconfig(CONFIG_ ${BINARY_DIR}/zephyr/.config TARGET ${ZCMAKE_APPLICATION})
+
+  # This custom target informs CMake how the BYPRODUCTS are generated if a target
+  # depends directly on the BYPRODUCT instead of depending on the image target.
+  get_target_property(${ZCMAKE_APPLICATION}_byproducts ${ZCMAKE_APPLICATION}_cache EXTRA_BYPRODUCTS)
+  add_custom_target(${ZCMAKE_APPLICATION}_extra_byproducts
+                    COMMAND ${CMAKE_COMMAND} -E true
+                    BYPRODUCTS ${${ZCMAKE_APPLICATION}_byproducts}
+                    DEPENDS ${ZCMAKE_APPLICATION}
+  )
 endfunction()
 
 # Usage:

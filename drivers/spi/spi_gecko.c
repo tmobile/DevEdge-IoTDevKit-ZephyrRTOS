@@ -96,8 +96,10 @@ struct spi_gecko_config {
 #endif /* CONFIG_PINCTRL */
 };
 
+
 /* Helper Functions */
-static int spi_config(const struct device *dev, const struct spi_config *config,
+static int spi_config(const struct device *dev,
+		      const struct spi_config *config,
 		      uint16_t *control)
 {
 	const struct spi_gecko_config *gecko_config = dev->config;
@@ -161,9 +163,9 @@ static int spi_config(const struct device *dev, const struct spi_config *config,
 	}
 
 	/* Set word size */
-	gecko_config->base->FRAME = usartDatabits8 |
-				    USART_FRAME_STOPBITS_DEFAULT |
-				    USART_FRAME_PARITY_DEFAULT;
+	gecko_config->base->FRAME = usartDatabits8
+	    | USART_FRAME_STOPBITS_DEFAULT
+	    | USART_FRAME_PARITY_DEFAULT;
 
 	if (data->ctx.config != config) {
 		uint32_t ref_freq;
@@ -253,6 +255,7 @@ static int spi_gecko_shift_frames(USART_TypeDef *usart,
 	return 0;
 }
 
+
 static void spi_gecko_xfer(const struct device *dev,
 			   const struct spi_config *config)
 {
@@ -294,9 +297,10 @@ static void spi_gecko_init_pins(const struct device *dev)
 	config->base->ROUTELOC1 = _USART_ROUTELOC1_RESETVALUE;
 
 	config->base->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN |
-				 USART_ROUTEPEN_CLKPEN;
+		USART_ROUTEPEN_CLKPEN;
 }
 #endif /* !CONFIG_PINCTRL */
+
 
 /* API Functions */
 
@@ -350,7 +354,7 @@ static int spi_gecko_init(const struct device *dev)
 	}
 
 	/* Enable the peripheral */
-	config->base->CMD = (uint32_t)usartEnable;
+	config->base->CMD = (uint32_t) usartEnable;
 
 	return 0;
 }

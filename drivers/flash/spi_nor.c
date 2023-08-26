@@ -68,6 +68,10 @@ struct spi_nor_config {
 	/* Devicetree SPI configuration */
 	struct spi_dt_spec spi;
 
+#if DT_INST_NODE_HAS_PROP(0, reset_gpios)
+	const struct gpio_dt_spec reset;
+#endif
+
 	/* Runtime SFDP stores no static configuration. */
 
 #ifndef CONFIG_SPI_NOR_SFDP_RUNTIME
@@ -776,7 +780,7 @@ static int spi_nor_erase(const struct device *dev, off_t addr, size_t size)
 
 				if ((etp->exp != 0)
 				    && SPI_NOR_IS_ALIGNED(addr, etp->exp)
-				    && SPI_NOR_IS_ALIGNED(size, etp->exp)
+				    && (size >= BIT(etp->exp))
 				    && ((bet == NULL)
 					|| (etp->exp > bet->exp))) {
 					bet = etp;
@@ -1145,6 +1149,23 @@ static int spi_nor_configure(const struct device *dev)
 		return -ENODEV;
 	}
 
+#if DT_INST_NODE_HAS_PROP(0, reset_gpios)
+	if (cfg->reset) {
+		if (!device_is_ready(cfg->reset->port)) {
+			LOG_ERR("Reset pin not ready");
+			return -ENODEV;
+		}
+		if (gpio_pin_configure_dt(cfg->reset, GPIO_OUTPUT_ACTIVE)) {
+			LOG_ERR("Couldn't configure reset pin");
+			return -ENODEV;
+		}
+		rc = gpio_pin_set_dt(cfg->reset, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+#endif
+
 	/* After a soft-reset the flash might be in DPD or busy writing/erasing.
 	 * Exit DPD and wait until flash is ready.
 	 */
@@ -1405,6 +1426,10 @@ BUILD_ASSERT(DT_INST_PROP(0, has_lock) == (DT_INST_PROP(0, has_lock) & 0xFF),
 static const struct spi_nor_config spi_nor_config_0 = {
 	.spi = SPI_DT_SPEC_INST_GET(0, SPI_WORD_SET(8),
 				    CONFIG_SPI_NOR_CS_WAIT_DELAY),
+#if DT_INST_NODE_HAS_PROP(0, reset_gpios)
+	.reset = GPIO_DT_SPEC_INST_GET(0, reset_gpios)
+#endif
+
 #if !defined(CONFIG_SPI_NOR_SFDP_RUNTIME)
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
