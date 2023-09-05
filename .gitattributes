@@ -27,6 +27,7 @@
 .github/workflows/assigner.yml merge=ours
 .github/workflows/backport.yml merge=ours
 .github/workflows/backport_issue_check.yml merge=ours
+.github/workflows/blackbox_tests.yml merge=ours
 .github/workflows/bluetooth-tests-publish.yaml merge=ours
 .github/workflows/bluetooth-tests.yaml merge=ours
 .github/workflows/bsim-tests-publish.yaml merge=ours
@@ -56,6 +57,7 @@
 .github/workflows/scripts_tests.yml merge=ours
 .github/workflows/stale-workflow-queue-cleanup.yml merge=ours
 .github/workflows/stale_issue.yml merge=ours
+.github/workflows/tmo-mirror.yml merge=ours
 .github/workflows/tmo-nightly-merge-main-tmo-main.yml merge=ours
 .github/workflows/tmo-nightly-upstream-mirror-main.yml merge=ours
 .github/workflows/tmo-nightly-upstream-mirror.yml merge=ours
@@ -208,7 +210,7 @@ include/zephyr/net/http/client.h merge=ours
 include/zephyr/net/net_if.h merge=ours
 include/zephyr/net/ping.h merge=ours
 include/zephyr/net/wifi_mgmt.h merge=ours
-lib/posix/uname.c
+lib/posix/uname.c merge=ours
 samples/bluetooth/peripheral_hr/boards/tmo_dev_edge.conf merge=ours
 samples/bluetooth/peripheral_ht/boards/tmo_dev_edge.conf merge=ours
 samples/drivers/counter/gecko_rtcc/CMakeLists.txt merge=ours

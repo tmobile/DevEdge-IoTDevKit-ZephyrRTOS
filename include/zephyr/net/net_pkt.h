@@ -1326,10 +1326,10 @@ static inline bool net_pkt_filter_local_in_recv_ok(struct net_pkt *pkt)
  *
  * A net_pkt slab is used to store meta-information about
  * network packets. It must be coupled with a data fragment pool
- * (:c:macro:`NET_PKT_DATA_POOL_DEFINE`) used to store the actual
+ * (@ref NET_PKT_DATA_POOL_DEFINE) used to store the actual
  * packet data. The macro can be used by an application to define
  * additional custom per-context TX packet slabs (see
- * :c:func:`net_context_setup_pools`).
+ * net_context_setup_pools()).
  *
  * @param name Name of the slab.
  * @param count Number of net_pkt in this slab.
@@ -1345,10 +1345,10 @@ static inline bool net_pkt_filter_local_in_recv_ok(struct net_pkt *pkt)
  *
  * A net_buf pool is used to store actual data for
  * network packets. It must be coupled with a net_pkt slab
- * (:c:macro:`NET_PKT_SLAB_DEFINE`) used to store the packet
+ * (@ref NET_PKT_SLAB_DEFINE) used to store the packet
  * meta-information. The macro can be used by an application to
  * define additional custom per-context TX packet pools (see
- * :c:func:`net_context_setup_pools`).
+ * net_context_setup_pools()).
  *
  * @param name Name of the pool.
  * @param count Number of net_buf in this pool.
@@ -2239,8 +2239,8 @@ struct net_pkt_data_access {
  * @brief Get data from a network packet in a contiguous way
  *
  * @details net_pkt's cursor should be properly initialized and,
- *          if needed, positioned using net_pkt_skip.
- *          Cursor position will be updated after the operation.
+ *          if needed, positioned using net_pkt_skip. Unlike other functions,
+ *          cursor position will not be updated after the operation.
  *
  * @param pkt    The network packet from where to get the data.
  * @param access A pointer to a valid net_pkt_data_access describing the
