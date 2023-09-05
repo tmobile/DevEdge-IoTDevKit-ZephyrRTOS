@@ -174,12 +174,12 @@ manifest:
       groups:
         - hal
     - name: hal_infineon
-      revision: 0bebc14d8bd1a249ee7fbc70b37db6f01f72544f
+      revision: 815e84a5150f95627201f192779a0180d5052de7
       path: modules/hal/infineon
       groups:
         - hal
     - name: hal_intel
-      revision: 3d4d4a6195710595e4e5028e687f37525febcf60
+      revision: c72eea412d2563463043a2a6cfe41dc46e845d47
       path: modules/hal/intel
       groups:
         - hal
@@ -199,7 +199,7 @@ manifest:
       groups:
         - hal
     - name: hal_nxp
-      revision: 6f11dd49e7fab534a6925d7103e573622effdaef
+      revision: b0274481021b6343740f1970ef167d65ea67d30b
       path: modules/hal/nxp
       groups:
         - hal
@@ -273,7 +273,7 @@ manifest:
         - fs
       revision: ca583fd297ceb48bced3c2548600dc615d67af24
     - name: loramac-node
-      revision: ce57712f3e426bbbb13acaec97b45369f716f43a
+      revision: 3029c9f304bf46a6e5205f3c8455dbc23108efec
       path: modules/lib/loramac-node
     - name: lvgl
       revision: 8a6a2d1d29d17d1e4bdc94c243c146a39d635fdd
@@ -287,7 +287,7 @@ manifest:
       groups:
         - crypto
     - name: mcuboot
-      revision: 010019e0f934d0d1288ad522c86600cd066920ae
+      revision: 11ecbf639d826c084973beed709a63d51d9b684e
       path: bootloader/mcuboot
     - name: mipi-sys-t
       path: modules/debug/mipi-sys-t

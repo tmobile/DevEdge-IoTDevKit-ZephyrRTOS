@@ -10,9 +10,6 @@
 #include <mem.h>
 
 / {
-	chosen {
-	};
-
 	power-states {
 		d0i0: d0i0 {
 			compatible = "zephyr,power-state";
@@ -59,8 +56,16 @@
 		compatible = "intel,ioapic";
 		#address-cells = <1>;
 		#interrupt-cells = <3>;
-		reg = <0xfec00000 0x100000>;
+		reg = <0xfec00000 0x1000>;
 		interrupt-controller;
+	};
+
+	intc_loapic: loapic@fee00000  {
+		compatible = "intel,loapic";
+		reg = <0xfee00000 0x1000>;
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		#address-cells = <1>;
 	};
 
 	sram: memory@ff200000 {
