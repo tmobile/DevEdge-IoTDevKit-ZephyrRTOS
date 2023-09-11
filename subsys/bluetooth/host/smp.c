@@ -1650,11 +1650,11 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
 
 	LOG_DBG("got status 0x%x", status);
 
-	if (conn->state != BT_CONN_CONNECTED) {
-		/* If disconnection has been triggered in between the security update
-		 * and the call to this function we need to abort the pairing.
+	if (conn->le.keys == NULL) {
+		/* We can get here if the application calls `bt_unpair` in the
+		 * `security_changed` callback.
 		 */
-		LOG_WRN("Not connected!");
+		LOG_WRN("The in-progress pairing has been deleted!");
 		status = BT_SMP_ERR_UNSPECIFIED;
 	}
 
@@ -1677,7 +1677,7 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
 			bt_keys_show_sniffer_info(conn->le.keys, NULL);
 		}
 
-		if (bond_flag) {
+		if (bond_flag && conn->le.keys) {
 			bt_keys_store(conn->le.keys);
 		}
 
@@ -3815,6 +3815,20 @@ static uint8_t smp_id_add_replace(struct bt_smp *smp, struct bt_keys *new_bond)
 	return 0;
 }
 
+struct addr_match {
+	const bt_addr_le_t *rpa;
+	const bt_addr_le_t *id_addr;
+};
+
+static void convert_to_id_on_match(struct bt_conn *conn, void *data)
+{
+	struct addr_match *addr_match = data;
+
+	if (bt_addr_le_eq(&conn->le.dst, addr_match->rpa)) {
+		bt_addr_le_copy(&conn->le.dst, addr_match->id_addr);
+	}
+}
+
 static uint8_t smp_ident_addr_info(struct bt_smp *smp, struct net_buf *buf)
 {
 	struct bt_conn *conn = smp->chan.chan.conn;
@@ -3876,8 +3890,15 @@ static uint8_t smp_ident_addr_info(struct bt_smp *smp, struct net_buf *buf)
 			 * present before ie. due to re-pairing.
 			 */
 			if (!bt_addr_le_is_identity(&conn->le.dst)) {
+				struct addr_match addr_match = {
+					.rpa = &conn->le.dst,
+					.id_addr = &req->addr,
+				};
+
+				bt_conn_foreach(BT_CONN_TYPE_LE,
+						convert_to_id_on_match,
+						&addr_match);
 				bt_addr_le_copy(&keys->addr, &req->addr);
-				bt_addr_le_copy(&conn->le.dst, &req->addr);
 
 				bt_conn_identity_resolved(conn);
 			}
