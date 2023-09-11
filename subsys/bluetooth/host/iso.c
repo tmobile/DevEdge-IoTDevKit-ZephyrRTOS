@@ -970,6 +970,14 @@ int bt_iso_chan_disconnect(struct bt_iso_chan *chan)
 		return -EALREADY;
 	}
 
+	if (IS_ENABLED(CONFIG_BT_ISO_PERIPHERAL) && chan->iso->role == BT_HCI_ROLE_PERIPHERAL &&
+	    chan->state == BT_ISO_STATE_CONNECTING) {
+		/* A CIS peripheral is not allowed to disconnect a CIS in the connecting state - It
+		 * has to wait for a CIS Established event
+		 */
+		return -EAGAIN;
+	}
+
 	err = bt_conn_disconnect(chan->iso, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 	if (err == 0) {
 		bt_iso_chan_set_state(chan, BT_ISO_STATE_DISCONNECTING);
@@ -1027,8 +1035,14 @@ void hci_le_cis_established(struct net_buf *buf)
 	/* ISO connection handles are already assigned at this point */
 	iso = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ISO);
 	if (!iso) {
-		LOG_ERR("No connection found for handle %u", handle);
-		bt_conn_unref(iso);
+		/* If it is a local disconnect, then we may have received the disconnect complete
+		 * event before this event, and in which case we do not expect to find the CIS
+		 * object
+		 */
+		if (evt->status != BT_HCI_ERR_OP_CANCELLED_BY_HOST) {
+			LOG_ERR("No connection found for handle %u", handle);
+		}
+
 		return;
 	}
 
@@ -1099,10 +1113,11 @@ void hci_le_cis_established(struct net_buf *buf)
 		bt_conn_set_state(iso, BT_CONN_CONNECTED);
 		bt_conn_unref(iso);
 		return;
-	}
+	} else if (evt->status != BT_HCI_ERR_OP_CANCELLED_BY_HOST) {
+		iso->err = evt->status;
+		bt_iso_disconnected(iso);
+	} /* else we wait for disconnect event */
 
-	iso->err = evt->status;
-	bt_iso_disconnected(iso);
 	bt_conn_unref(iso);
 }
 

@@ -566,7 +566,9 @@ struct adc_reg {
 	volatile uint16_t ASCADD;
 	/* 0x008: ADC Scan Channels Select */
 	volatile uint16_t ADCCS;
-	volatile uint8_t reserved1[16];
+	/* 0x00A: ADC Scan Channels Select 2 */
+	volatile uint16_t ADCCS2;
+	volatile uint8_t reserved1[14];
 	/* 0x01A:  Threshold Status */
 	volatile uint16_t THRCTS;
 	volatile uint8_t reserved2[4];
@@ -579,12 +581,34 @@ struct adc_reg {
 	volatile uint16_t MEAST;
 };
 
+/* ADC internal inline functions for multi-registers */
 static inline uint32_t npcx_chndat_offset(uint32_t ch)
 {
 	return 0x40 + ch * 2;
 }
 
+static inline uint32_t npcx_thr_base(void)
+{
+	if (IS_ENABLED(CONFIG_SOC_SERIES_NPCX7)) {
+		return 0x014;
+	} else if (IS_ENABLED(CONFIG_SOC_SERIES_NPCX9)) {
+		return 0x060;
+	} else { /* NPCX4 and later series */
+		return 0x080;
+	}
+}
+
+static inline uint32_t npcx_thrctl_offset(uint32_t ctrl)
+{
+	return npcx_thr_base() + ctrl * 2;
+}
+
 #define CHNDAT(base, ch) (*(volatile uint16_t *)((base) + npcx_chndat_offset(ch)))
+#define THRCTL(base, ctrl) \
+	(*(volatile uint16_t *)(base + npcx_thrctl_offset(ctrl)))
+#ifdef CONFIG_SOC_SERIES_NPCX4
+#define THEN(base) (*(volatile uint16_t *)(base + 0x90))
+#endif
 
 /* ADC register fields */
 #define NPCX_ATCTL_SCLKDIV_FIELD              FIELD(0, 6)
@@ -604,10 +628,16 @@ static inline uint32_t npcx_chndat_offset(uint32_t ch)
 #define NPCX_ADCCNF_STOP                      11
 #define NPCX_CHNDAT_CHDAT_FIELD               FIELD(0, 10)
 #define NPCX_CHNDAT_NEW                       15
+#ifdef CONFIG_SOC_SERIES_NPCX4
+#define NPCX_THRCTL_L_H                       15
+#define NPCX_THRCTL_CHNSEL                    FIELD(10, 5)
+#define NPCX_THRCTL_THRVAL                    FIELD(0, 10)
+#else
 #define NPCX_THRCTL_THEN                      15
 #define NPCX_THRCTL_L_H                       14
 #define NPCX_THRCTL_CHNSEL                    FIELD(10, 4)
 #define NPCX_THRCTL_THRVAL                    FIELD(0, 10)
+#endif
 #define NPCX_THRCTS_ADC_WKEN                  15
 #define NPCX_THRCTS_THR3_IEN                  10
 #define NPCX_THRCTS_THR2_IEN                  9

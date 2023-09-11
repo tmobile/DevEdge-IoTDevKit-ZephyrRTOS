@@ -111,6 +111,10 @@ Build system and infrastructure
 
   * Added support for CodeChecker
 
+* Twister now supports ``required_snippets`` in testsuite .yml files, this can
+  be used to include a snippet when a test is ran (and exclude any boards from
+  running that the snippet cannot be applied to).
+
 Drivers and Sensors
 *******************
 
@@ -262,6 +266,9 @@ Networking
 
 USB
 ***
+
+* USB device HID
+  * Kconfig option USB_HID_PROTOCOL_CODE, deprecated in v2.6, is finally removed.
 
 Devicetree
 **********
