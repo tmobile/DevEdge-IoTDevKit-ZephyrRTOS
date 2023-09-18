@@ -237,5 +237,4 @@ subsys/net/lib/ping/Kconfig merge=ours
 subsys/net/lib/ping/ping.c merge=ours
 subsys/shell/modules/date_service.c merge=ours
 subsys/shell/shell_help.c merge=ours
-subsys/shell/shell_cmds.c merge=ours
 west.yml merge=ours
